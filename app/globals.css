@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Cor base do mapa de calor do painel (RF-73). */
+:root {
+  --cor-calor: oklch(0.45 0.13 250);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cor-calor: oklch(0.72 0.14 250);
+  }
+}

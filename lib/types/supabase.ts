@@ -212,6 +212,87 @@ export type Database = {
           },
         ];
       };
+      comissao: {
+        Row: {
+          agendamento_id: string;
+          base_calculo: number;
+          competencia: string;
+          created_at: string;
+          id: string;
+          percentual: number | null;
+          profissional_id: string;
+          status: Database["public"]["Enums"]["status_comissao"];
+          valor: number;
+        };
+        Insert: {
+          agendamento_id: string;
+          base_calculo: number;
+          competencia: string;
+          created_at?: string;
+          id?: string;
+          percentual?: number | null;
+          profissional_id: string;
+          status?: Database["public"]["Enums"]["status_comissao"];
+          valor: number;
+        };
+        Update: {
+          agendamento_id?: string;
+          base_calculo?: number;
+          competencia?: string;
+          created_at?: string;
+          id?: string;
+          percentual?: number | null;
+          profissional_id?: string;
+          status?: Database["public"]["Enums"]["status_comissao"];
+          valor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "comissao_agendamento_id_fkey";
+            columns: ["agendamento_id"];
+            isOneToOne: false;
+            referencedRelation: "agendamento";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comissao_profissional_id_fkey";
+            columns: ["profissional_id"];
+            isOneToOne: false;
+            referencedRelation: "profissional";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      despesa_fixa: {
+        Row: {
+          categoria: string | null;
+          competencia: string;
+          created_at: string;
+          descricao: string;
+          id: string;
+          recorrente: boolean;
+          valor: number;
+        };
+        Insert: {
+          categoria?: string | null;
+          competencia: string;
+          created_at?: string;
+          descricao: string;
+          id?: string;
+          recorrente?: boolean;
+          valor: number;
+        };
+        Update: {
+          categoria?: string | null;
+          competencia?: string;
+          created_at?: string;
+          descricao?: string;
+          id?: string;
+          recorrente?: boolean;
+          valor?: number;
+        };
+        Relationships: [];
+      };
       equipamento: {
         Row: {
           ativo: boolean;
@@ -287,6 +368,57 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      lancamento: {
+        Row: {
+          categoria: string | null;
+          created_at: string;
+          data_pagamento: string | null;
+          descricao: string | null;
+          forma_pagamento: string | null;
+          id: string;
+          origem_id: string | null;
+          origem_tipo: string;
+          parcela_num: number | null;
+          parcela_total: number | null;
+          status: Database["public"]["Enums"]["status_lancamento"];
+          tipo: Database["public"]["Enums"]["tipo_lancamento"];
+          valor: number;
+          vencimento: string;
+        };
+        Insert: {
+          categoria?: string | null;
+          created_at?: string;
+          data_pagamento?: string | null;
+          descricao?: string | null;
+          forma_pagamento?: string | null;
+          id?: string;
+          origem_id?: string | null;
+          origem_tipo: string;
+          parcela_num?: number | null;
+          parcela_total?: number | null;
+          status?: Database["public"]["Enums"]["status_lancamento"];
+          tipo: Database["public"]["Enums"]["tipo_lancamento"];
+          valor: number;
+          vencimento: string;
+        };
+        Update: {
+          categoria?: string | null;
+          created_at?: string;
+          data_pagamento?: string | null;
+          descricao?: string | null;
+          forma_pagamento?: string | null;
+          id?: string;
+          origem_id?: string | null;
+          origem_tipo?: string;
+          parcela_num?: number | null;
+          parcela_total?: number | null;
+          status?: Database["public"]["Enums"]["status_lancamento"];
+          tipo?: Database["public"]["Enums"]["tipo_lancamento"];
+          valor?: number;
+          vencimento?: string;
+        };
+        Relationships: [];
       };
       paciente: {
         Row: {
@@ -840,6 +972,8 @@ export type Database = {
         Returns: string;
       };
       custo_direto_procedimento: { Args: { p_procedimento: string }; Returns: number };
+      custo_direto_sessao: { Args: { p_agendamento: string }; Returns: number };
+      custo_hora_estrutura: { Args: { p_competencia: string }; Returns: number };
       detalhar_conflito: {
         Args: {
           p_equipamentos?: string[];
@@ -865,7 +999,30 @@ export type Database = {
         };
         Returns: unknown;
       };
+      dre_competencia: {
+        Args: { p_competencia: string };
+        Returns: {
+          comissoes: number;
+          custo_hora_estr: number;
+          custos_diretos: number;
+          despesas_fixas: number;
+          margem_contrib: number;
+          receita_realizada: number;
+          resultado: number;
+        }[];
+      };
       e_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      gargalos_equipamento: {
+        Args: { p_fim: string; p_inicio: string; p_limiar?: number };
+        Returns: {
+          horas_livres: number;
+          modelo: string;
+          procedimentos: number;
+          taxa_media: number;
+          unidades: number;
+        }[];
+      };
+      gerar_comissoes: { Args: { p_agendamento: string }; Returns: undefined };
       horarios_livres: {
         Args: {
           p_ate: string;
@@ -890,6 +1047,44 @@ export type Database = {
         };
         Returns: unknown;
       };
+      janelas_vagas: {
+        Args: {
+          p_fim: string;
+          p_id: string;
+          p_inicio: string;
+          p_min_minutos?: number;
+          p_tipo: Database["public"]["Enums"]["tipo_recurso"];
+        };
+        Returns: {
+          fim: string;
+          inicio: string;
+          minutos: number;
+        }[];
+      };
+      mapa_calor_ocupacao: {
+        Args: {
+          p_fim: string;
+          p_inicio: string;
+          p_tipo: Database["public"]["Enums"]["tipo_recurso"];
+        };
+        Returns: {
+          atendimentos: number;
+          dia_semana: number;
+          hora: number;
+          horas: number;
+        }[];
+      };
+      margem_sessao: {
+        Args: { p_agendamento: string };
+        Returns: {
+          comissao: number;
+          custo_direto: number;
+          margem_contrib: number;
+          margem_pct: number;
+          margem_por_hora: number;
+          receita: number;
+        }[];
+      };
       ocupacao_recurso: {
         Args: {
           p_fim: string;
@@ -905,12 +1100,46 @@ export type Database = {
           taxa_efetiva: number;
         }[];
       };
+      painel_ocupacao: {
+        Args: {
+          p_fim: string;
+          p_inicio: string;
+          p_tipo: Database["public"]["Enums"]["tipo_recurso"];
+        };
+        Returns: {
+          agendadas_h: number;
+          agrupador: string;
+          atendimentos: number;
+          capacidade_h: number;
+          faltas: number;
+          nome: string;
+          ociosidade_h: number;
+          realizadas_h: number;
+          receita: number;
+          receita_por_hora: number;
+          recurso_id: string;
+          taxa_agendada: number;
+          taxa_efetiva: number;
+        }[];
+      };
+      passivo_entrega: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          horas_devidas: number;
+          nome: string;
+          pacotes: number;
+          procedimento_id: string;
+          sessoes_devidas: number;
+          valor_devido: number;
+        }[];
+      };
       perfil_atual: {
         Args: Record<PropertyKey, never>;
         Returns: Database["public"]["Enums"]["perfil_usuario"];
       };
       profissional_atual: { Args: Record<PropertyKey, never>; Returns: string };
       rebuild_reservas: { Args: { p_agendamento: string }; Returns: undefined };
+      receita_sessao: { Args: { p_agendamento: string }; Returns: number };
       recurso_vigencia: {
         Args: { p_id: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
         Returns: {
@@ -918,6 +1147,22 @@ export type Database = {
           vi: string;
         }[];
       };
+      rentabilidade_procedimentos: {
+        Args: { p_fim: string; p_inicio: string };
+        Returns: {
+          comissao: number;
+          custo_direto: number;
+          horas: number;
+          margem: number;
+          margem_pct: number;
+          margem_por_hora: number;
+          nome: string;
+          procedimento_id: string;
+          receita: number;
+          sessoes: number;
+        }[];
+      };
+      reservas_suspensas: { Args: Record<PropertyKey, never>; Returns: boolean };
       tz_clinica: { Args: Record<PropertyKey, never>; Returns: string };
     };
     Enums: {

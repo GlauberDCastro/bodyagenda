@@ -44,6 +44,9 @@ export default async function AppLayout({
               <Link href="/pacientes" className="transition hover:text-slate-900 dark:hover:text-slate-100">
                 Pacientes
               </Link>
+              <Link href="/financeiro/despesas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
+                Financeiro
+              </Link>
               <Link href="/configuracoes/salas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
                 Configuração
               </Link>

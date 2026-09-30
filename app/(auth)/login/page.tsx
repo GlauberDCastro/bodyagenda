@@ -1,6 +1,6 @@
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Entrar · Body Prime" };
+export const metadata = { title: "Entrar" };
 
 // Next 16: searchParams é uma Promise. O acesso síncrono foi removido.
 export default async function LoginPage(props: {
