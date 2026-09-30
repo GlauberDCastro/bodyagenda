@@ -3,9 +3,16 @@ import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { calcularMargem } from "@/lib/domain/margem";
 import { Etiqueta, Vazio } from "@/components/ui/primitivos";
+import { ROTULO_UNIDADE } from "@/lib/constantes";
 import { Cartao, brlExato, pct } from "@/components/painel/indicadores";
 import { FormularioCusto } from "./formulario-custo";
 import { FormularioRequisito } from "./formulario-requisito";
+import {
+  FormularioRegiao,
+  AcoesProtocolo,
+  type RegiaoOpcao,
+  type Protocolo,
+} from "./formulario-regiao";
 
 const ROTULO_TIPO: Record<string, string> = {
   insumo: "Insumo",
@@ -14,17 +21,37 @@ const ROTULO_TIPO: Record<string, string> = {
   outro: "Outro",
 };
 
+/** Campo vazio no protocolo significa "herda do procedimento". */
+function Herdado({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[var(--tinta-3)]" title="Herdado do procedimento">
+      {children} · herdado
+    </span>
+  );
+}
+
 export default async function ProcedimentoPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const supabase = await createServerSupabase();
 
-  const [{ data: proc }, { data: custos }, { data: requisitos }, { data: modelos }] =
-    await Promise.all([
-      supabase.from("procedimento").select("*").eq("id", id).maybeSingle(),
-      supabase.from("procedimento_custo").select("*").eq("procedimento_id", id),
-      supabase.from("procedimento_requisito").select("*").eq("procedimento_id", id),
-      supabase.from("equipamento").select("modelo").eq("ativo", true),
-    ]);
+  const [
+    { data: proc },
+    { data: custos },
+    { data: requisitos },
+    { data: modelos },
+    { data: regioes },
+    { data: protocolos },
+  ] = await Promise.all([
+    supabase.from("procedimento").select("*").eq("id", id).maybeSingle(),
+    supabase.from("procedimento_custo").select("*").eq("procedimento_id", id),
+    supabase.from("procedimento_requisito").select("*").eq("procedimento_id", id),
+    supabase.from("equipamento").select("modelo").eq("ativo", true),
+    supabase.from("regiao").select("id, nome, grupo").eq("ativo", true).order("ordem"),
+    supabase
+      .from("procedimento_regiao")
+      .select("*, regiao:regiao_id (id, nome, grupo, ordem)")
+      .eq("procedimento_id", id),
+  ]);
 
   if (!proc) notFound();
 
@@ -40,6 +67,12 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
   });
 
   const modelosUnicos = [...new Set((modelos ?? []).map((m) => m.modelo))].sort();
+
+  const protocoloOrdenado = [...(protocolos ?? [])].sort(
+    (a, b) =>
+      ((a.regiao as { ordem?: number } | null)?.ordem ?? 0) -
+      ((b.regiao as { ordem?: number } | null)?.ordem ?? 0),
+  );
 
   return (
     <div className="space-y-8">
@@ -94,9 +127,109 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
         </p>
       )}
 
+      {/*
+        Regiões vêm ANTES dos custos de propósito: é a região que define
+        duração e preço, e o custo é consequência.
+      */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="titulo-md">Regiões e protocolo</h2>
+            <p className="mt-0.5 text-[12.5px] text-[var(--tinta-3)]">
+              Duração, preço e dosagem por região. Em branco, herda do procedimento.
+            </p>
+          </div>
+          <FormularioRegiao procedimentoId={id} regioes={(regioes ?? []) as RegiaoOpcao[]} />
+        </div>
+
+        {protocoloOrdenado.length === 0 ? (
+          <Vazio>
+            Nenhuma região cadastrada. Sem ela, o procedimento vale para o corpo
+            inteiro com uma duração e um preço só.
+          </Vazio>
+        ) : (
+          <div className="cartao overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13.5px]">
+                <thead>
+                  <tr className="border-b border-[var(--traco)] text-left text-[12px] font-medium text-[var(--tinta-3)]">
+                    <th className="px-4 py-2.5">Região</th>
+                    <th className="px-4 py-2.5 text-right">Duração</th>
+                    <th className="px-4 py-2.5 text-right">Sessões</th>
+                    <th className="px-4 py-2.5 text-right">Valor</th>
+                    <th className="px-4 py-2.5">Dosagem</th>
+                    <th className="px-4 py-2.5">
+                      <span className="sr-only">Ações</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {protocoloOrdenado.map((pr) => {
+                    const regiao = pr.regiao as {
+                      nome?: string;
+                      grupo?: string | null;
+                    } | null;
+                    return (
+                      <tr
+                        key={pr.id}
+                        className="border-b border-[var(--traco)] last:border-0 hover:bg-[var(--superficie-2)]"
+                      >
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-[var(--tinta-1)]">
+                            {regiao?.nome ?? "—"}
+                          </span>
+                          <span className="mt-0.5 block text-[11.5px] text-[var(--tinta-3)]">
+                            {regiao?.grupo ?? ""}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--tinta-2)]">
+                          {pr.duracao_min ? (
+                            <>{pr.duracao_min} min</>
+                          ) : (
+                            <Herdado>{proc.duracao_min} min</Herdado>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--tinta-2)]">
+                          {pr.sessoes_padrao ?? <Herdado>{proc.sessoes_padrao}</Herdado>}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--tinta-2)]">
+                          {pr.valor_sessao !== null ? (
+                            brlExato.format(Number(pr.valor_sessao))
+                          ) : (
+                            <Herdado>{brlExato.format(Number(proc.valor_sessao))}</Herdado>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {pr.unidade === "sessao" ? (
+                            <span className="text-[var(--tinta-3)]">—</span>
+                          ) : (
+                            <Etiqueta tom="marca">
+                              {Number(pr.quantidade_padrao)}{" "}
+                              {ROTULO_UNIDADE[pr.unidade] ?? pr.unidade}
+                            </Etiqueta>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <AcoesProtocolo
+                            procedimentoId={id}
+                            regioes={(regioes ?? []) as RegiaoOpcao[]}
+                            protocolo={pr as unknown as Protocolo}
+                            nomeRegiao={regiao?.nome ?? "região"}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold">Tabela de custos</h2>
+          <h2 className="titulo-md">Tabela de custos</h2>
           <FormularioCusto procedimentoId={id} />
         </div>
 
