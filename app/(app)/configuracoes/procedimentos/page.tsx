@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { listarProcedimentos } from "@/lib/consultas/recursos";
 import { calcularMargem } from "@/lib/domain/margem";
-import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
+import { AvisoBanco, Aviso, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { brlExato, pct } from "@/components/painel/indicadores";
 import { FormularioProcedimento } from "./formulario-procedimento";
 
@@ -13,9 +13,21 @@ export default async function ProcedimentosPage() {
   if (procedimentos.semSchema) return <AvisoBanco />;
 
   const supabase = await createServerSupabase();
-  const { data: custos } = await supabase
-    .from("procedimento_custo")
-    .select("procedimento_id, valor_unitario, quantidade");
+  const [{ data: custos }, { data: habilitacoes }] = await Promise.all([
+    supabase.from("procedimento_custo").select("procedimento_id, valor_unitario, quantidade"),
+    supabase.from("profissional_habilitacao").select("procedimento_id"),
+  ]);
+
+  // Procedimento sem profissional habilitado nao pode ser agendado (RF-23a):
+  // a agenda nao tem ninguem para oferecer. Vale avisar no cadastro, nao
+  // deixar a recepcao descobrir na frente do paciente.
+  const profissionaisPorProc = new Map<string, number>();
+  for (const h of habilitacoes ?? []) {
+    profissionaisPorProc.set(
+      h.procedimento_id,
+      (profissionaisPorProc.get(h.procedimento_id) ?? 0) + 1,
+    );
+  }
 
   const porProcedimento = new Map<string, { valor_unitario: number; quantidade: number }[]>();
   for (const c of custos ?? []) {
@@ -27,6 +39,7 @@ export default async function ProcedimentosPage() {
   const linhas = procedimentos.dados.map((p) => ({
     ...p,
     temCusto: (porProcedimento.get(p.id)?.length ?? 0) > 0,
+    profissionais: profissionaisPorProc.get(p.id) ?? 0,
     margem: calcularMargem({
       valorSessao: Number(p.valor_sessao),
       duracaoMin: p.duracao_min,
@@ -35,6 +48,7 @@ export default async function ProcedimentosPage() {
   }));
 
   const semCusto = linhas.filter((l) => !l.temCusto).length;
+  const semProfissional = linhas.filter((l) => l.ativo && l.profissionais === 0);
 
   return (
     <div className="space-y-6">
@@ -44,6 +58,19 @@ export default async function ProcedimentosPage() {
         </p>
         <FormularioProcedimento />
       </div>
+
+      {semProfissional.length > 0 && (
+        <Aviso>
+          <p className="font-semibold">
+            {semProfissional.length} procedimento(s) sem profissional habilitado
+          </p>
+          <p className="mt-1">
+            {semProfissional.map((l) => l.nome).join(", ")} — a agenda não tem
+            ninguém para oferecer, então não é possível agendar. Habilite em
+            Profissionais.
+          </p>
+        </Aviso>
+      )}
 
       {semCusto > 0 && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
@@ -67,6 +94,7 @@ export default async function ProcedimentosPage() {
                 <th className="px-4 py-2.5 text-right font-medium">Custo</th>
                 <th className="px-4 py-2.5 text-right font-medium">Margem</th>
                 <th className="px-4 py-2.5 text-right font-medium">Margem/hora</th>
+                <th className="px-4 py-2.5 text-right font-medium">Equipe</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
               </tr>
             </thead>
@@ -112,6 +140,13 @@ export default async function ProcedimentosPage() {
                       {p.margem.margemPorHora === null
                         ? "—"
                         : brlExato.format(p.margem.margemPorHora)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {p.profissionais === 0 ? (
+                        <Etiqueta tom="atencao">nenhuma</Etiqueta>
+                      ) : (
+                        p.profissionais
+                      )}
                     </td>
                     <td className="px-4 py-2.5">
                       <Etiqueta tom={p.ativo ? "bom" : "neutro"}>
