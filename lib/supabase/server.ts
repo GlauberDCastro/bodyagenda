@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { Database } from "@/lib/types/supabase";
 import { cookies } from "next/headers";
 import { env, chaveServiceRole } from "@/lib/env";
 
@@ -11,7 +12,7 @@ import { env, chaveServiceRole } from "@/lib/env";
 export async function createServerSupabase() {
   const cookieStore = await cookies();
 
-  return createServerClient(env.supabaseUrl, env.supabaseChavePublica, {
+  return createServerClient<Database>(env.supabaseUrl, env.supabaseChavePublica, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -38,7 +39,7 @@ export async function createServerSupabase() {
  * "resolver" um erro de permissão, a política RLS é que está errada.
  */
 export function createAdminSupabase() {
-  return createServerClient(env.supabaseUrl, chaveServiceRole(), {
+  return createServerClient<Database>(env.supabaseUrl, chaveServiceRole(), {
     cookies: { getAll: () => [], setAll: () => {} },
   });
 }

@@ -112,25 +112,31 @@ export async function salvarEquipamento(
 export async function duplicarEquipamento(id: string): Promise<Resultado> {
   const supabase = await createServerSupabase();
 
+  // Colunas explícitas, não `select("*")` com spread: assim o TypeScript
+  // garante que `modelo` — obrigatório — sempre viaja para a cópia.
   const { data: origem, error } = await supabase
     .from("equipamento")
-    .select("*")
+    .select(
+      "nome, modelo, tipo_alocacao, sala_id, custo_aquisicao, vigencia_inicio, vigencia_fim, ativo",
+    )
     .eq("id", id)
     .single();
   if (error) return erroDeBanco(error);
 
-  const {
-    id: _ignorado,
-    created_at: _c,
-    updated_at: _u,
-    numero_serie: _s,
-    nome,
-    ...atributos
-  } = origem as Record<string, unknown> & { nome: string };
-
   const { data: copia, error: erroInsert } = await supabase
     .from("equipamento")
-    .insert({ ...atributos, nome: `${nome} (cópia)`, numero_serie: null })
+    .insert({
+      modelo: origem.modelo,
+      nome: `${origem.nome} (cópia)`,
+      tipo_alocacao: origem.tipo_alocacao,
+      sala_id: origem.sala_id,
+      custo_aquisicao: origem.custo_aquisicao,
+      vigencia_inicio: origem.vigencia_inicio,
+      vigencia_fim: origem.vigencia_fim,
+      ativo: origem.ativo,
+      // Série e nome são identidade da unidade, não do modelo — não se copiam.
+      numero_serie: null,
+    })
     .select("id")
     .single();
   if (erroInsert) return erroDeBanco(erroInsert);

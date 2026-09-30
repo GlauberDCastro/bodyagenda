@@ -23,11 +23,6 @@ language sql stable security definer set search_path = public, auth as $$
   select u.perfil from usuario u where u.id = auth.uid() and u.ativo
 $$;
 
-create or replace function profissional_atual() returns uuid
-language sql stable security definer set search_path = public, auth as $$
-  select p.id from profissional p where p.usuario_id = auth.uid() and p.ativo
-$$;
-
 create or replace function e_admin() returns boolean
 language sql stable as $$ select perfil_atual() = 'admin' $$;
 

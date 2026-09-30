@@ -157,3 +157,11 @@ returns table (vi date, vf date) language sql stable as $$
          coalesce(vigencia_fim,     'infinity'::date)
     from profissional where p_tipo = 'profissional' and id = p_id
 $$;
+
+-- Definida aqui, e não na 0002 junto de perfil_atual(), porque o Postgres
+-- valida o corpo de função `language sql` na criação: ela precisa que a
+-- tabela `profissional` já exista.
+create or replace function profissional_atual() returns uuid
+language sql stable security definer set search_path = public, auth as $$
+  select p.id from profissional p where p.usuario_id = auth.uid() and p.ativo
+$$;

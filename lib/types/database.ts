@@ -1,118 +1,46 @@
 /**
- * Tipos do banco, espelhando supabase/migrations/.
+ * Aliases de conveniência sobre os tipos GERADOS do banco.
  *
- * Escritos à mão porque o `supabase gen types` exige acesso ao banco, que
- * ainda não temos. Quando as migrações forem aplicadas, este arquivo deve ser
- * substituído pelo gerado — tipo escrito à mão diverge do schema com o tempo.
+ * A fonte de verdade é `supabase.ts`, produzido por
+ * `supabase gen types typescript --db-url $DATABASE_URL` direto do schema.
+ * Nada aqui é escrito à mão: tipo manual diverge do banco com o tempo, e foi
+ * exatamente um cast manual que escondeu um insert sem `modelo` em
+ * duplicarEquipamento() até os tipos reais entrarem.
+ *
+ * Para regenerar depois de uma migração:
+ *   npx supabase gen types typescript --db-url "$DATABASE_URL" > lib/types/supabase.ts
  */
 
-export type PerfilUsuario = "admin" | "recepcao" | "profissional";
-export type TipoRecurso = "sala" | "equipamento" | "profissional";
-export type AlocacaoSala = "dedicada" | "flexivel";
-export type AlocacaoEquipamento = "fixo" | "movel";
-export type MotivoBloqueio = "manutencao" | "ferias" | "folga" | "outro";
-export type TipoCusto = "insumo" | "mao_de_obra" | "equipamento" | "outro";
-export type TipoComissao = "percentual" | "valor_fixo" | "nenhuma";
+import type { Database } from "./supabase";
 
-export type StatusAgendamento =
-  | "agendado"
-  | "confirmado"
-  | "em_atendimento"
-  | "realizado"
-  | "falta"
-  | "cancelado";
+type Tabelas = Database["public"]["Tables"];
+type Enums = Database["public"]["Enums"];
 
-export interface Usuario {
-  id: string;
-  nome: string;
-  email: string;
-  perfil: PerfilUsuario;
-  ativo: boolean;
-  ultimo_acesso: string | null;
-}
+export type PerfilUsuario = Enums["perfil_usuario"];
+export type TipoRecurso = Enums["tipo_recurso"];
+export type AlocacaoSala = Enums["alocacao_sala"];
+export type AlocacaoEquipamento = Enums["alocacao_equipamento"];
+export type MotivoBloqueio = Enums["motivo_bloqueio"];
+export type TipoCusto = Enums["tipo_custo"];
+export type TipoComissao = Enums["tipo_comissao"];
+export type StatusAgendamento = Enums["status_agendamento"];
+export type StatusPacote = Enums["status_pacote"];
 
-export interface Procedimento {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  duracao_min: number;
-  buffer_min: number;
-  sessoes_padrao: number;
-  valor_sessao: number;
-  intervalo_min_dias: number;
-  ativo: boolean;
-}
-
-export interface Sala {
-  id: string;
-  numero: number;
-  nome: string;
-  descricao: string | null;
-  tipo_alocacao: AlocacaoSala;
-  procedimento_fixo_id: string | null;
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  ativo: boolean;
-}
-
-export interface Equipamento {
-  id: string;
-  nome: string;
-  /** Agrupa unidades: "Ultraformer" cobre as 4 unidades (RF-21c). */
-  modelo: string;
-  numero_serie: string | null;
-  tipo_alocacao: AlocacaoEquipamento;
-  sala_id: string | null;
-  custo_aquisicao: number | null;
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  ativo: boolean;
-}
-
-export interface Profissional {
-  id: string;
-  usuario_id: string | null;
-  nome: string;
-  cpf: string | null;
-  especialidade: string | null;
-  cor_agenda: string;
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  ativo: boolean;
-}
-
-export interface RecursoDisponibilidade {
-  id: string;
-  recurso_tipo: TipoRecurso;
-  recurso_id: string;
-  /** 0 = domingo … 6 = sábado */
-  dia_semana: number;
-  hora_inicio: string;
-  hora_fim: string;
-}
-
-export interface RecursoBloqueio {
-  id: string;
-  recurso_tipo: TipoRecurso;
-  recurso_id: string;
-  inicio: string;
-  fim: string;
-  motivo: MotivoBloqueio;
-  observacao: string | null;
-}
-
-/** Tabela separada porque o RLS é row-level (SPEC §3.2). Só admin alcança. */
-export interface EquipamentoCusto {
-  equipamento_id: string;
-  custo_hora: number;
-}
-
-export interface ProfissionalRemuneracao {
-  profissional_id: string;
-  custo_hora: number;
-  comissao_tipo: TipoComissao;
-  comissao_valor: number;
-}
+export type Usuario = Tabelas["usuario"]["Row"];
+export type Procedimento = Tabelas["procedimento"]["Row"];
+export type ProcedimentoCusto = Tabelas["procedimento_custo"]["Row"];
+export type ProcedimentoRequisito = Tabelas["procedimento_requisito"]["Row"];
+export type Sala = Tabelas["sala"]["Row"];
+export type Equipamento = Tabelas["equipamento"]["Row"];
+export type EquipamentoCusto = Tabelas["equipamento_custo"]["Row"];
+export type Profissional = Tabelas["profissional"]["Row"];
+export type ProfissionalRemuneracao = Tabelas["profissional_remuneracao"]["Row"];
+export type RecursoDisponibilidade = Tabelas["recurso_disponibilidade"]["Row"];
+export type RecursoBloqueio = Tabelas["recurso_bloqueio"]["Row"];
+export type Paciente = Tabelas["paciente"]["Row"];
+export type Pacote = Tabelas["pacote"]["Row"];
+export type Agendamento = Tabelas["agendamento"]["Row"];
+export type Reserva = Tabelas["reserva"]["Row"];
 
 export const DIAS_SEMANA = [
   { valor: 0, curto: "Dom", longo: "Domingo" },

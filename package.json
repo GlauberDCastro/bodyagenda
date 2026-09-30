@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:migrate": "node scripts/aplicar-migracoes.mjs",
     "db:reset": "node scripts/aplicar-migracoes.mjs --seed",
-    "db:check": "node scripts/aplicar-migracoes.mjs --verificar"
+    "db:check": "node scripts/aplicar-migracoes.mjs --verificar",
+    "db:test": "node scripts/testar-motor-reserva.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
