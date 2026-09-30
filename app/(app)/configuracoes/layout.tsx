@@ -4,6 +4,7 @@ const ABAS = [
   { href: "/configuracoes/salas", rotulo: "Salas" },
   { href: "/configuracoes/equipamentos", rotulo: "Equipamentos" },
   { href: "/configuracoes/profissionais", rotulo: "Profissionais" },
+  { href: "/configuracoes/procedimentos", rotulo: "Procedimentos" },
 ] as const;
 
 export default function ConfiguracoesLayout({

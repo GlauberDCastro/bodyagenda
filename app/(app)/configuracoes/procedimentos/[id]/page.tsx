@@ -1,0 +1,207 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { calcularMargem } from "@/lib/domain/margem";
+import { Etiqueta, Vazio } from "@/components/ui/primitivos";
+import { Cartao, brlExato, pct } from "@/components/painel/indicadores";
+import { FormularioCusto } from "./formulario-custo";
+import { FormularioRequisito } from "./formulario-requisito";
+
+const ROTULO_TIPO: Record<string, string> = {
+  insumo: "Insumo",
+  mao_de_obra: "Mão de obra",
+  equipamento: "Equipamento",
+  outro: "Outro",
+};
+
+export default async function ProcedimentoPage(props: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await props.params;
+  const supabase = await createServerSupabase();
+
+  const [{ data: proc }, { data: custos }, { data: requisitos }, { data: modelos }] =
+    await Promise.all([
+      supabase.from("procedimento").select("*").eq("id", id).maybeSingle(),
+      supabase.from("procedimento_custo").select("*").eq("procedimento_id", id),
+      supabase.from("procedimento_requisito").select("*").eq("procedimento_id", id),
+      supabase.from("equipamento").select("modelo").eq("ativo", true),
+    ]);
+
+  if (!proc) notFound();
+
+  const linhasCusto = (custos ?? []).map((c) => ({
+    valor_unitario: Number(c.valor_unitario),
+    quantidade: Number(c.quantidade),
+  }));
+
+  const margem = calcularMargem({
+    valorSessao: Number(proc.valor_sessao),
+    duracaoMin: proc.duracao_min,
+    custos: linhasCusto,
+  });
+
+  const modelosUnicos = [...new Set((modelos ?? []).map((m) => m.modelo))].sort();
+
+  return (
+    <div className="space-y-8">
+      <header className="space-y-1">
+        <Link
+          href="/configuracoes/procedimentos"
+          className="text-sm text-slate-500 underline-offset-4 hover:underline dark:text-slate-400"
+        >
+          ← Procedimentos
+        </Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold tracking-tight">{proc.nome}</h1>
+          <Etiqueta tom={proc.ativo ? "verde" : "neutro"}>
+            {proc.ativo ? "Ativo" : "Inativo"}
+          </Etiqueta>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {proc.duracao_min} min
+          {proc.buffer_min > 0 && ` + ${proc.buffer_min} de preparo`} ·{" "}
+          {proc.sessoes_padrao} sessão(ões) · {brlExato.format(Number(proc.valor_sessao))} por
+          sessão
+        </p>
+      </header>
+
+      {/* RF-32 · margem calculada sobre os custos reais */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Cartao rotulo="Receita por sessão" valor={brlExato.format(margem.receita)} />
+        <Cartao
+          rotulo="Custo direto"
+          valor={brlExato.format(margem.custoDireto)}
+          apoio={linhasCusto.length === 0 ? "Nenhum custo lançado" : `${linhasCusto.length} item(ns)`}
+          destaque={linhasCusto.length === 0 ? "atencao" : "neutro"}
+        />
+        <Cartao
+          rotulo="Margem de contribuição"
+          valor={brlExato.format(margem.margem)}
+          apoio={pct(margem.margemPct)}
+          destaque={margem.margem < 0 ? "atencao" : margem.margem > 0 ? "bom" : "neutro"}
+        />
+        <Cartao
+          rotulo="Margem por hora"
+          valor={margem.margemPorHora === null ? "—" : brlExato.format(margem.margemPorHora)}
+          apoio="Comparável entre durações diferentes"
+        />
+      </section>
+
+      {linhasCusto.length === 0 && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          Sem custo lançado, a margem acima é apenas a receita. O custo de
+          insumo é o que separa o procedimento que paga a estrutura do que é
+          vendido no prejuízo.
+        </p>
+      )}
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold">Tabela de custos</h2>
+          <FormularioCusto procedimentoId={id} />
+        </div>
+
+        {(custos ?? []).length === 0 ? (
+          <Vazio>Nenhum custo cadastrado para este procedimento.</Vazio>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
+                <tr className="text-slate-500 dark:text-slate-400">
+                  <th className="px-4 py-2.5 font-medium">Descrição</th>
+                  <th className="px-4 py-2.5 font-medium">Tipo</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Unitário</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Qtd</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(custos ?? []).map((c) => (
+                  <tr
+                    key={c.id}
+                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
+                  >
+                    <td className="px-4 py-2.5 font-medium">{c.descricao}</td>
+                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                      {ROTULO_TIPO[c.tipo] ?? c.tipo}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brlExato.format(Number(c.valor_unitario))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {Number(c.quantidade)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brlExato.format(Number(c.valor_unitario) * Number(c.quantidade))}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 font-medium dark:bg-slate-900">
+                  <td className="px-4 py-2.5" colSpan={4}>
+                    Custo direto por sessão
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">
+                    {brlExato.format(margem.custoInsumos)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          O custo/hora dos aparelhos entra separadamente, no cadastro de cada
+          equipamento, proporcional à duração da sessão.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold">Recursos exigidos</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Por modelo, não por unidade: o sistema acha sozinho qual aparelho
+              está livre.
+            </p>
+          </div>
+          <FormularioRequisito procedimentoId={id} modelos={modelosUnicos} />
+        </div>
+
+        {(requisitos ?? []).length === 0 ? (
+          <Vazio>
+            Nenhum recurso exigido. A agenda não vai pré-selecionar equipamento
+            para este procedimento.
+          </Vazio>
+        ) : (
+          <ul className="space-y-1.5">
+            {(requisitos ?? []).map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-800"
+              >
+                <span>
+                  <span className="font-medium">{r.modelo ?? r.recurso_id}</span>
+                  <span className="ml-2 text-slate-500 dark:text-slate-400">
+                    {r.quantidade} unidade(s) · {r.recurso_tipo}
+                  </span>
+                </span>
+                <Etiqueta>{r.obrigatorio ? "Obrigatório" : "Opcional"}</Etiqueta>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export async function generateMetadata(props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("procedimento")
+    .select("nome")
+    .eq("id", id)
+    .maybeSingle();
+  return { title: data?.nome ?? "Procedimento" };
+}
