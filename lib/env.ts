@@ -7,10 +7,12 @@
 
 function obrigatoria(nome: string, valor: string | undefined): string {
   if (!valor) {
-    throw new Error(
-      `Variável de ambiente ausente: ${nome}. ` +
-        `Copie .env.example para .env.local e preencha.`,
-    );
+    // A mensagem muda conforme onde o build está rodando: dizer "copie o
+    // .env.example" no log da Vercel manda a pessoa para o lugar errado.
+    const onde = process.env.VERCEL
+      ? "Defina-a em Settings → Environment Variables do projeto na Vercel e refaça o deploy."
+      : "Copie .env.example para .env.local e preencha.";
+    throw new Error(`Variável de ambiente ausente: ${nome}. ${onde}`);
   }
   return valor;
 }
