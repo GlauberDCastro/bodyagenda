@@ -38,6 +38,12 @@ export default async function AppLayout({
               <Link href="/" className="transition hover:text-slate-900 dark:hover:text-slate-100">
                 Painel
               </Link>
+              <Link href="/agenda" className="transition hover:text-slate-900 dark:hover:text-slate-100">
+                Agenda
+              </Link>
+              <Link href="/pacientes" className="transition hover:text-slate-900 dark:hover:text-slate-100">
+                Pacientes
+              </Link>
               <Link href="/configuracoes/salas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
                 Configuração
               </Link>

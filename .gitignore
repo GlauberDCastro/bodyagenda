@@ -47,3 +47,6 @@ Thumbs.db
 npm-debug.log*
 yarn-error.log*
 *.log
+
+# Credenciais do admin inicial geradas por scripts/criar-admin.mjs
+supabase/.admin-inicial.txt
