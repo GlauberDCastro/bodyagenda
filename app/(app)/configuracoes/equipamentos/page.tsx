@@ -2,6 +2,7 @@ import { listarEquipamentos, listarSalas, agruparPorModelo } from "@/lib/consult
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioEquipamento } from "./formulario-equipamento";
 import { BotaoDuplicar } from "./botao-duplicar";
+import { AcoesEquipamento } from "@/components/config/acoes-equipamento";
 
 export const metadata = { title: "Equipamentos" };
 
@@ -95,7 +96,10 @@ export default async function EquipamentosPage() {
                           </Etiqueta>
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          <BotaoDuplicar id={eq.id} nome={eq.nome} />
+                          <div className="flex items-center justify-end gap-1">
+                            <BotaoDuplicar id={eq.id} nome={eq.nome} />
+                            <AcoesEquipamento equipamento={eq} salas={salas.dados} />
+                          </div>
                         </td>
                       </tr>
                     ))}

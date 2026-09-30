@@ -8,18 +8,42 @@ const hora = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-const ESTILO_STATUS: Record<StatusAgendamento, string> = {
-  agendado: "bg-slate-100 border-[var(--traco)] text-[var(--tinta-1)] dark:border-slate-600 ",
-  confirmado:
-    "bg-sky-100 border-sky-300 text-sky-900 dark:bg-sky-950 dark:border-sky-800 dark:text-sky-100",
-  em_atendimento:
-    "bg-amber-100 border-amber-400 text-amber-900 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-100",
-  realizado:
-    "bg-emerald-100 border-emerald-300 text-emerald-900 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-100",
-  falta:
-    "bg-red-50 border-red-300 text-red-900 line-through dark:bg-red-950/50 dark:border-red-900 dark:text-red-200",
-  cancelado: "hidden",
+/**
+ * Cor do bloco por status.
+ *
+ * Usa a paleta de status (fixa, nunca tematizada) em vez de cores cruas: os
+ * mesmos tons do resto do sistema, e os passos escuros funcionam sobre a
+ * superfície escura em vez de serem uma inversão automática.
+ *
+ * O status também aparece no `title`, porque cor sozinha não carrega estado.
+ */
+const COR_STATUS: Record<StatusAgendamento, string | null> = {
+  agendado: "var(--tinta-3)",
+  confirmado: "var(--serie-1)",
+  em_atendimento: "var(--status-atencao)",
+  realizado: "var(--status-bom)",
+  falta: "var(--status-critico)",
+  cancelado: null,
 };
+
+const ROTULO_STATUS: Record<StatusAgendamento, string> = {
+  agendado: "Agendado",
+  confirmado: "Confirmado",
+  em_atendimento: "Em atendimento",
+  realizado: "Realizado",
+  falta: "Falta",
+  cancelado: "Cancelado",
+};
+
+function estiloBloco(status: StatusAgendamento) {
+  const cor = COR_STATUS[status];
+  if (!cor) return null;
+  return {
+    background: `color-mix(in oklab, ${cor} 13%, var(--superficie))`,
+    borderColor: `color-mix(in oklab, ${cor} 38%, var(--superficie))`,
+    color: `color-mix(in oklab, ${cor} 62%, var(--tinta-1))`,
+  };
+}
 
 /** Minutos desde o início do dia, no fuso da clínica. */
 function minutosDoDia(iso: string, tz: string): number {
@@ -69,11 +93,11 @@ export function Timeline({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
+    <div className="cartao overflow-x-auto">
       <div className="min-w-max">
         {/* Cabeçalho de colunas */}
         <div
-          className="sticky top-0 z-10 flex border-b border-[var(--traco)] bg-white dark:bg-slate-950"
+          className="sticky top-0 z-10 flex border-b border-[var(--traco)] bg-[var(--superficie)]"
           style={{ paddingLeft: 56 }}
         >
           {colunas.map((c) => (
@@ -130,14 +154,21 @@ export function Timeline({
                   // Fora da faixa exibida: não renderiza em vez de estourar.
                   if (fimMin <= horaInicio * 60 || inicioMin >= horaFim * 60) return null;
 
+                  const estilo = estiloBloco(a.status);
+                  if (!estilo) return null;
+
                   return (
                     <div
                       key={a.id}
-                      className={`absolute left-1 right-1 overflow-hidden rounded border px-1.5 py-1 text-[11px] leading-tight ${ESTILO_STATUS[a.status]}`}
-                      style={{ top: topo, height: altura }}
-                      title={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))}`}
+                      className="absolute left-1 right-1 overflow-hidden rounded-[7px] border px-1.5 py-1 text-[11px] leading-tight"
+                      style={{ top: topo, height: altura, ...estilo }}
+                      title={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${ROTULO_STATUS[a.status]}`}
                     >
-                      <p className="truncate font-medium">{a.paciente?.nome ?? "—"}</p>
+                      <p
+                        className={`truncate font-medium ${a.status === "falta" ? "line-through" : ""}`}
+                      >
+                        {a.paciente?.nome ?? "—"}
+                      </p>
                       <p className="truncate opacity-75">
                         {hora.format(new Date(a.inicio))} · {a.procedimento?.nome ?? "—"}
                       </p>

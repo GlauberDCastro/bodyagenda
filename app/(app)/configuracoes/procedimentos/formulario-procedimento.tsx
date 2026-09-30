@@ -6,6 +6,7 @@ import { salvarProcedimento } from "@/lib/actions/procedimentos";
 import type { Resultado } from "@/lib/actions/recursos";
 import { calcularMargem } from "@/lib/domain/margem";
 import { Campo, Input, Textarea, Botao } from "@/components/ui/primitivos";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -30,22 +31,19 @@ export function FormularioProcedimento() {
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Novo procedimento
-      </Botao>
-    );
-  }
 
   // RF-32 · margem ao vivo enquanto o gestor digita, sem ida ao servidor.
   const previa = calcularMargem({ valorSessao: valor, duracaoMin: duracao, custos: [] });
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
+    <GatilhoModal
+      rotulo="Novo procedimento"
+      titulo="Novo procedimento"
+      descricao="O valor é POR SESSÃO, não do pacote."
+      aberto={aberto}
+      aoMudar={setAberto}
     >
+      <form action={acao} className="space-y-4">
       <Campo label="Nome" erro={estado.campos?.nome}>
         <Input name="nome" required autoFocus placeholder="Ultraformer Olhos" />
       </Campo>
@@ -136,12 +134,10 @@ export function FormularioProcedimento() {
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
-    </form>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
+          <Salvar />
+        </AcoesModal>
+      </form>
+    </GatilhoModal>
   );
 }

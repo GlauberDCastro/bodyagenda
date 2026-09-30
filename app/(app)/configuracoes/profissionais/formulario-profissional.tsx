@@ -4,57 +4,64 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { salvarProfissional, type Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
-import type { Procedimento } from "@/lib/types/database";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
+import type { Procedimento, Profissional, TipoComissao } from "@/lib/types/database";
 
-function Salvar() {
+export type ProfissionalCompleto = Profissional & {
+  custo_hora?: number;
+  comissao_tipo?: TipoComissao;
+  comissao_valor?: number;
+  procedimentos?: string[];
+};
+
+function Salvar({ rotulo }: { rotulo: string }) {
   const { pending } = useFormStatus();
   return (
     <Botao type="submit" disabled={pending}>
-      {pending ? "Salvando…" : "Salvar profissional"}
+      {pending ? "Salvando…" : rotulo}
     </Botao>
   );
 }
 
-export function FormularioProfissional({ procedimentos }: { procedimentos: Procedimento[] }) {
-  const [aberto, setAberto] = useState(false);
-  const [comissao, setComissao] = useState<"percentual" | "valor_fixo" | "nenhuma">("nenhuma");
+export function CamposProfissional({
+  procedimentos,
+  inicial,
+  aoConcluir,
+}: {
+  procedimentos: Procedimento[];
+  inicial?: ProfissionalCompleto;
+  aoConcluir: () => void;
+}) {
+  const [comissao, setComissao] = useState<"percentual" | "valor_fixo" | "nenhuma">(
+    (inicial?.comissao_tipo as "percentual" | "valor_fixo" | "nenhuma") ?? "nenhuma",
+  );
 
   const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
-    const r = await salvarProfissional(null, anterior, formData);
-    if (r.ok) setAberto(false);
+    const r = await salvarProfissional(inicial?.id ?? null, anterior, formData);
+    if (r.ok) aoConcluir();
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Novo profissional
-      </Botao>
-    );
-  }
 
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
-    >
+    <form action={acao} className="space-y-4">
       <Campo label="Nome" erro={estado.campos?.nome}>
-        <Input name="nome" required />
+        <Input name="nome" required  defaultValue={inicial?.nome} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="CPF" erro={estado.campos?.cpf}>
-          <Input name="cpf" />
+          <Input name="cpf"  defaultValue={inicial?.cpf ?? ""} />
         </Campo>
         <Campo label="Especialidade" erro={estado.campos?.especialidade}>
-          <Input name="especialidade" />
+          <Input name="especialidade"  defaultValue={inicial?.especialidade ?? ""} />
         </Campo>
       </div>
 
       <Campo label="Cor na agenda" erro={estado.campos?.cor_agenda}>
-        <Input name="cor_agenda" type="color" defaultValue="#64748b" className="h-10" />
+        <Input name="cor_agenda" type="color" defaultValue={inicial?.cor_agenda ?? "#64748b"} className="h-10" />
       </Campo>
 
       <Campo
@@ -67,7 +74,12 @@ export function FormularioProfissional({ procedimentos }: { procedimentos: Proce
           )}
           {procedimentos.map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="procedimentos" value={p.id} />
+              <input
+                type="checkbox"
+                name="procedimentos"
+                value={p.id}
+                defaultChecked={inicial?.procedimentos?.includes(p.id)}
+              />
               {p.nome}
             </label>
           ))}
@@ -95,7 +107,7 @@ export function FormularioProfissional({ procedimentos }: { procedimentos: Proce
             type="number"
             step="0.01"
             min="0"
-            defaultValue="0"
+            defaultValue={inicial?.comissao_valor ?? 0}
             disabled={comissao === "nenhuma"}
           />
         </Campo>
@@ -106,15 +118,15 @@ export function FormularioProfissional({ procedimentos }: { procedimentos: Proce
         erro={estado.campos?.custo_hora}
         dica="Opcional. Entra no custo direto da sessão, separado da comissão."
       >
-        <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue="0" />
+        <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue={inicial?.custo_hora ?? 0} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Admissão" erro={estado.campos?.vigencia_inicio}>
-          <Input name="vigencia_inicio" type="date" defaultValue={hoje} required />
+          <Input name="vigencia_inicio" type="date" defaultValue={inicial?.vigencia_inicio ?? hoje} required />
         </Campo>
         <Campo label="Desligamento" erro={estado.campos?.vigencia_fim}>
-          <Input name="vigencia_fim" type="date" />
+          <Input name="vigencia_fim" type="date" defaultValue={inicial?.vigencia_fim ?? ""} />
         </Campo>
       </div>
 
@@ -124,12 +136,28 @@ export function FormularioProfissional({ procedimentos }: { procedimentos: Proce
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
+      <AcoesModal aoCancelar={aoConcluir}>
+        <Salvar rotulo={inicial ? "Salvar alterações" : "Criar profissional"} />
+      </AcoesModal>
     </form>
+  );
+}
+
+export function FormularioProfissional({
+  procedimentos,
+}: {
+  procedimentos: Procedimento[];
+}) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <GatilhoModal
+      rotulo="Novo profissional"
+      titulo="Novo profissional"
+      descricao="Pode existir sem login: o vínculo com usuário é opcional."
+      aberto={aberto}
+      aoMudar={setAberto}
+    >
+      <CamposProfissional procedimentos={procedimentos} aoConcluir={() => setAberto(false)} />
+    </GatilhoModal>
   );
 }

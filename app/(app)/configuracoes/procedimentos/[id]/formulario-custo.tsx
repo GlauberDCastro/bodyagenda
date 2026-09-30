@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { adicionarCusto } from "@/lib/actions/procedimentos";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 function Salvar() {
   const { pending } = useFormStatus();
@@ -24,19 +25,16 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Novo custo
-      </Botao>
-    );
-  }
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-[var(--traco)] p-4 "
+    <GatilhoModal
+      rotulo="Novo custo"
+      titulo="Novo custo"
+      descricao="Custo por sessão. Sem ele não existe margem."
+      aberto={aberto}
+      aoMudar={setAberto}
     >
+      <form action={acao} className="space-y-4">
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
 
       <Campo label="Descrição" erro={estado.campos?.descricao}>
@@ -74,12 +72,10 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
-    </form>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
+          <Salvar />
+        </AcoesModal>
+      </form>
+    </GatilhoModal>
   );
 }

@@ -300,3 +300,68 @@ export async function removerBloqueio(id: string): Promise<Resultado> {
   revalidarConfig();
   return { ok: true };
 }
+
+/**
+ * Exclusão de recurso.
+ *
+ * O banco decide (migração 0013): recurso sem nenhuma referência é apagado de
+ * verdade; com histórico, recusa e devolvemos o motivo para a tela oferecer a
+ * inativação. Apagar sala com agendamento passado não limpa cadastro —
+ * quebra todo relatório retroativo.
+ */
+export async function excluirRecurso(
+  tipo: TipoRecurso,
+  id: string,
+): Promise<Resultado & { emUso?: boolean }> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.rpc("excluir_recurso", {
+    p_tipo: tipo,
+    p_id: id,
+  });
+
+  if (error) {
+    if (error.code === "23503") {
+      return { erro: error.message, emUso: true };
+    }
+    return erroDeBanco(error);
+  }
+
+  revalidarConfig();
+  return { ok: true };
+}
+
+/** Carrega um recurso para edição, com os campos que vivem em tabela própria. */
+export async function carregarEquipamento(id: string) {
+  const supabase = await createServerSupabase();
+  const [{ data: eq }, { data: custo }] = await Promise.all([
+    supabase.from("equipamento").select("*").eq("id", id).maybeSingle(),
+    supabase.from("equipamento_custo").select("custo_hora").eq("equipamento_id", id).maybeSingle(),
+  ]);
+  return eq ? { ...eq, custo_hora: Number(custo?.custo_hora ?? 0) } : null;
+}
+
+export async function carregarProfissional(id: string) {
+  const supabase = await createServerSupabase();
+  const [{ data: prof }, { data: remun }, { data: hab }] = await Promise.all([
+    supabase.from("profissional").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("profissional_remuneracao")
+      .select("custo_hora, comissao_tipo, comissao_valor")
+      .eq("profissional_id", id)
+      .maybeSingle(),
+    supabase
+      .from("profissional_habilitacao")
+      .select("procedimento_id")
+      .eq("profissional_id", id),
+  ]);
+
+  return prof
+    ? {
+        ...prof,
+        custo_hora: Number(remun?.custo_hora ?? 0),
+        comissao_tipo: remun?.comissao_tipo ?? ("nenhuma" as const),
+        comissao_valor: Number(remun?.comissao_valor ?? 0),
+        procedimentos: (hab ?? []).map((h) => h.procedimento_id),
+      }
+    : null;
+}

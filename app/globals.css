@@ -201,3 +201,15 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Entrada do modal: sobe 8px e aparece. Curto — 160ms; mais que isso a
+   interface parece lenta em cadastro repetitivo. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* O <dialog> nativo centraliza sozinho com margin auto. */
+dialog {
+  margin: auto;
+}

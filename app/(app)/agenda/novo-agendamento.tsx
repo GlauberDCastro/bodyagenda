@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agenda";
 import { buscarPacientesAction, pacotesDoPacienteAction } from "@/lib/actions/busca";
 import { Campo, Input, Select, Textarea, Botao } from "@/components/ui/primitivos";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Sala, Equipamento, Profissional, Procedimento } from "@/lib/types/database";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -79,19 +80,16 @@ export function NovoAgendamento({
   const pacientesVisiveis = termo.trim().length < 2 ? [] : pacientes;
   const pacotesVisiveis = pacienteId ? pacotes : [];
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Novo agendamento
-      </Botao>
-    );
-  }
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-lg space-y-4 rounded-lg border border-[var(--traco)] p-4 "
+    <GatilhoModal
+      rotulo="Novo agendamento"
+      titulo="Novo agendamento"
+      descricao="Sala, equipamentos e profissionais são checados contra conflito."
+      aberto={aberto}
+      aoMudar={setAberto}
     >
+      <form action={acao} className="space-y-4">
       <Campo label="Paciente" erro={estado.campos?.paciente_id}>
         <Input
           value={termo}
@@ -236,12 +234,10 @@ export function NovoAgendamento({
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
-    </form>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
+          <Salvar />
+        </AcoesModal>
+      </form>
+    </GatilhoModal>
   );
 }

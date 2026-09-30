@@ -171,6 +171,42 @@ export type Database = {
           },
         ];
       };
+      agendamento_regiao: {
+        Row: {
+          agendamento_id: string;
+          quantidade: number;
+          regiao_id: string;
+          unidade: Database["public"]["Enums"]["unidade_medida"];
+        };
+        Insert: {
+          agendamento_id: string;
+          quantidade?: number;
+          regiao_id: string;
+          unidade?: Database["public"]["Enums"]["unidade_medida"];
+        };
+        Update: {
+          agendamento_id?: string;
+          quantidade?: number;
+          regiao_id?: string;
+          unidade?: Database["public"]["Enums"]["unidade_medida"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agendamento_regiao_agendamento_id_fkey";
+            columns: ["agendamento_id"];
+            isOneToOne: false;
+            referencedRelation: "agendamento";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "agendamento_regiao_regiao_id_fkey";
+            columns: ["regiao_id"];
+            isOneToOne: false;
+            referencedRelation: "regiao";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       auditoria: {
         Row: {
           acao: string;
@@ -477,6 +513,7 @@ export type Database = {
           paciente_id: string;
           procedimento_id: string;
           quantidade_sessoes: number;
+          regiao_id: string | null;
           status: Database["public"]["Enums"]["status_pacote"];
           validade: string | null;
           valor_total: number;
@@ -490,6 +527,7 @@ export type Database = {
           paciente_id: string;
           procedimento_id: string;
           quantidade_sessoes: number;
+          regiao_id?: string | null;
           status?: Database["public"]["Enums"]["status_pacote"];
           validade?: string | null;
           valor_total: number;
@@ -503,6 +541,7 @@ export type Database = {
           paciente_id?: string;
           procedimento_id?: string;
           quantidade_sessoes?: number;
+          regiao_id?: string | null;
           status?: Database["public"]["Enums"]["status_pacote"];
           validade?: string | null;
           valor_total?: number;
@@ -521,6 +560,13 @@ export type Database = {
             columns: ["procedimento_id"];
             isOneToOne: false;
             referencedRelation: "procedimento";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pacote_regiao_id_fkey";
+            columns: ["regiao_id"];
+            isOneToOne: false;
+            referencedRelation: "regiao";
             referencedColumns: ["id"];
           },
           {
@@ -605,6 +651,63 @@ export type Database = {
             columns: ["procedimento_id"];
             isOneToOne: false;
             referencedRelation: "procedimento";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      procedimento_regiao: {
+        Row: {
+          ativo: boolean;
+          duracao_min: number | null;
+          id: string;
+          intervalo_min_dias: number | null;
+          observacoes: string | null;
+          procedimento_id: string;
+          quantidade_padrao: number;
+          regiao_id: string;
+          sessoes_padrao: number | null;
+          unidade: Database["public"]["Enums"]["unidade_medida"];
+          valor_sessao: number | null;
+        };
+        Insert: {
+          ativo?: boolean;
+          duracao_min?: number | null;
+          id?: string;
+          intervalo_min_dias?: number | null;
+          observacoes?: string | null;
+          procedimento_id: string;
+          quantidade_padrao?: number;
+          regiao_id: string;
+          sessoes_padrao?: number | null;
+          unidade?: Database["public"]["Enums"]["unidade_medida"];
+          valor_sessao?: number | null;
+        };
+        Update: {
+          ativo?: boolean;
+          duracao_min?: number | null;
+          id?: string;
+          intervalo_min_dias?: number | null;
+          observacoes?: string | null;
+          procedimento_id?: string;
+          quantidade_padrao?: number;
+          regiao_id?: string;
+          sessoes_padrao?: number | null;
+          unidade?: Database["public"]["Enums"]["unidade_medida"];
+          valor_sessao?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "procedimento_regiao_procedimento_id_fkey";
+            columns: ["procedimento_id"];
+            isOneToOne: false;
+            referencedRelation: "procedimento";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "procedimento_regiao_regiao_id_fkey";
+            columns: ["regiao_id"];
+            isOneToOne: false;
+            referencedRelation: "regiao";
             referencedColumns: ["id"];
           },
         ];
@@ -816,6 +919,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      regiao: {
+        Row: {
+          ativo: boolean;
+          grupo: string | null;
+          id: string;
+          nome: string;
+          ordem: number;
+        };
+        Insert: {
+          ativo?: boolean;
+          grupo?: string | null;
+          id?: string;
+          nome: string;
+          ordem?: number;
+        };
+        Update: {
+          ativo?: boolean;
+          grupo?: string | null;
+          id?: string;
+          nome?: string;
+          ordem?: number;
+        };
+        Relationships: [];
+      };
       reserva: {
         Row: {
           agendamento_id: string;
@@ -957,20 +1084,37 @@ export type Database = {
         };
         Returns: string;
       };
-      criar_agendamento: {
-        Args: {
-          p_equipamentos?: string[];
-          p_inicio: string;
-          p_observacoes?: string;
-          p_paciente: string;
-          p_pacote?: string;
-          p_procedimento: string;
-          p_profissionais?: string[];
-          p_sala: string;
-          p_valor_avulso?: number;
-        };
-        Returns: string;
-      };
+      criar_agendamento:
+        | {
+            Args: {
+              p_equipamentos?: string[];
+              p_inicio: string;
+              p_observacoes?: string;
+              p_paciente: string;
+              p_pacote?: string;
+              p_procedimento: string;
+              p_profissionais?: string[];
+              p_sala: string;
+              p_valor_avulso?: number;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              p_equipamentos?: string[];
+              p_inicio: string;
+              p_observacoes?: string;
+              p_paciente: string;
+              p_pacote?: string;
+              p_procedimento: string;
+              p_profissionais?: string[];
+              p_quantidade?: number;
+              p_regiao?: string;
+              p_sala: string;
+              p_valor_avulso?: number;
+            };
+            Returns: string;
+          };
       custo_direto_procedimento: { Args: { p_procedimento: string }; Returns: number };
       custo_direto_sessao: { Args: { p_agendamento: string }; Returns: number };
       custo_hora_estrutura: { Args: { p_competencia: string }; Returns: number };
@@ -1012,6 +1156,10 @@ export type Database = {
         }[];
       };
       e_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      excluir_recurso: {
+        Args: { p_id: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
+        Returns: undefined;
+      };
       gargalos_equipamento: {
         Args: { p_fim: string; p_inicio: string; p_limiar?: number };
         Returns: {
@@ -1138,6 +1286,18 @@ export type Database = {
         Returns: Database["public"]["Enums"]["perfil_usuario"];
       };
       profissional_atual: { Args: Record<PropertyKey, never>; Returns: string };
+      protocolo_efetivo: {
+        Args: { p_procedimento: string; p_regiao?: string };
+        Returns: {
+          buffer_min: number;
+          duracao_min: number;
+          intervalo_min_dias: number;
+          quantidade_padrao: number;
+          sessoes_padrao: number;
+          unidade: Database["public"]["Enums"]["unidade_medida"];
+          valor_sessao: number;
+        }[];
+      };
       rebuild_reservas: { Args: { p_agendamento: string }; Returns: undefined };
       receita_sessao: { Args: { p_agendamento: string }; Returns: number };
       recurso_vigencia: {
@@ -1145,6 +1305,13 @@ export type Database = {
         Returns: {
           vf: string;
           vi: string;
+        }[];
+      };
+      referencias_recurso: {
+        Args: { p_id: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
+        Returns: {
+          origem: string;
+          quantidade: number;
         }[];
       };
       rentabilidade_procedimentos: {
@@ -1184,6 +1351,7 @@ export type Database = {
       tipo_custo: "insumo" | "mao_de_obra" | "equipamento" | "outro";
       tipo_lancamento: "receita" | "despesa";
       tipo_recurso: "sala" | "equipamento" | "profissional";
+      unidade_medida: "sessao" | "ui" | "ml" | "seringa" | "flash" | "aplicacao";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1318,6 +1486,7 @@ export const Constants = {
       tipo_custo: ["insumo", "mao_de_obra", "equipamento", "outro"],
       tipo_lancamento: ["receita", "despesa"],
       tipo_recurso: ["sala", "equipamento", "profissional"],
+      unidade_medida: ["sessao", "ui", "ml", "seringa", "flash", "aplicacao"],
     },
   },
 } as const;

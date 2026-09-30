@@ -1,6 +1,7 @@
 import { listarSalas, listarProcedimentos } from "@/lib/consultas/recursos";
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioSala } from "./formulario-sala";
+import { AcoesSala } from "@/components/config/acoes-sala";
 
 export const metadata = { title: "Salas" };
 
@@ -46,6 +47,7 @@ export default async function SalasPage() {
                 <th className="px-4 py-2.5 font-medium">Procedimento fixo</th>
                 <th className="px-4 py-2.5 font-medium">Vigência</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
+                <th className="px-4 py-2.5 font-medium"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +71,9 @@ export default async function SalasPage() {
                     <Etiqueta tom={sala.ativo ? "bom" : "neutro"}>
                       {sala.ativo ? "Ativa" : "Inativa"}
                     </Etiqueta>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <AcoesSala sala={sala} procedimentos={procedimentos.dados} />
                   </td>
                 </tr>
               ))}

@@ -4,56 +4,56 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { salvarEquipamento, type Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
-import type { Sala } from "@/lib/types/database";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
+import type { Sala, Equipamento } from "@/lib/types/database";
 
-function Salvar() {
+function Salvar({ rotulo }: { rotulo: string }) {
   const { pending } = useFormStatus();
   return (
     <Botao type="submit" disabled={pending}>
-      {pending ? "Salvando…" : "Salvar equipamento"}
+      {pending ? "Salvando…" : rotulo}
     </Botao>
   );
 }
 
-export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
-  const [aberto, setAberto] = useState(false);
-  const [alocacao, setAlocacao] = useState<"fixo" | "movel">("movel");
+export function CamposEquipamento({
+  salas,
+  inicial,
+  aoConcluir,
+}: {
+  salas: Sala[];
+  inicial?: Equipamento & { custo_hora?: number };
+  aoConcluir: () => void;
+}) {
+  const [alocacao, setAlocacao] = useState<"fixo" | "movel">(
+    inicial?.tipo_alocacao ?? "movel",
+  );
 
   const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
-    const r = await salvarEquipamento(null, anterior, formData);
-    if (r.ok) setAberto(false);
+    const r = await salvarEquipamento(inicial?.id ?? null, anterior, formData);
+    if (r.ok) aoConcluir();
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Novo equipamento
-      </Botao>
-    );
-  }
 
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
-    >
+    <form action={acao} className="space-y-4">
       <Campo
         label="Modelo"
         erro={estado.campos?.modelo}
         dica="Agrupa as unidades. Os 4 Ultraformer compartilham o modelo 'Ultraformer'."
       >
-        <Input name="modelo" required placeholder="Ultraformer" />
+        <Input name="modelo" required placeholder="Ultraformer"  defaultValue={inicial?.modelo} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Nome da unidade" erro={estado.campos?.nome}>
-          <Input name="nome" required placeholder="Ultraformer #1" />
+          <Input name="nome" required placeholder="Ultraformer #1"  defaultValue={inicial?.nome} />
         </Campo>
         <Campo label="Nº de série" erro={estado.campos?.numero_serie}>
-          <Input name="numero_serie" />
+          <Input name="numero_serie"  defaultValue={inicial?.numero_serie ?? ""} />
         </Campo>
       </div>
 
@@ -70,7 +70,7 @@ export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
 
       {alocacao === "fixo" && (
         <Campo label="Sala" erro={estado.campos?.sala_id}>
-          <Select name="sala_id" required>
+          <Select name="sala_id" required defaultValue={inicial?.sala_id ?? ""}>
             <option value="">Selecione…</option>
             {salas.map((s) => (
               <option key={s.id} value={s.id}>
@@ -83,14 +83,14 @@ export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Custo de aquisição" erro={estado.campos?.custo_aquisicao}>
-          <Input name="custo_aquisicao" type="number" step="0.01" min="0" />
+          <Input name="custo_aquisicao" type="number" step="0.01" min="0"  defaultValue={inicial?.custo_aquisicao ?? ""} />
         </Campo>
         <Campo
           label="Custo por hora"
           erro={estado.campos?.custo_hora}
           dica="Entra no custo direto da sessão."
         >
-          <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue="0" />
+          <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue={inicial?.custo_hora ?? 0} />
         </Campo>
       </div>
 
@@ -103,7 +103,7 @@ export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
           <Input name="vigencia_inicio" type="date" defaultValue={hoje} required />
         </Campo>
         <Campo label="Vigência — fim" erro={estado.campos?.vigencia_fim}>
-          <Input name="vigencia_fim" type="date" />
+          <Input name="vigencia_fim" type="date"  defaultValue={inicial?.vigencia_fim ?? ""} />
         </Campo>
       </div>
 
@@ -113,12 +113,24 @@ export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
+      <AcoesModal aoCancelar={aoConcluir}>
+        <Salvar rotulo={inicial ? "Salvar alterações" : "Criar equipamento"} />
+      </AcoesModal>
     </form>
+  );
+}
+
+export function FormularioEquipamento({ salas }: { salas: Sala[] }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <GatilhoModal
+      rotulo="Novo equipamento"
+      titulo="Novo equipamento"
+      descricao="O modelo agrupa as unidades — os Ultraformer compartilham o mesmo modelo."
+      aberto={aberto}
+      aoMudar={setAberto}
+    >
+      <CamposEquipamento salas={salas} aoConcluir={() => setAberto(false)} />
+    </GatilhoModal>
   );
 }

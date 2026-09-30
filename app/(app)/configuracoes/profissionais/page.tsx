@@ -1,6 +1,7 @@
 import { listarProfissionais, listarProcedimentos } from "@/lib/consultas/recursos";
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioProfissional } from "./formulario-profissional";
+import { AcoesProfissional } from "@/components/config/acoes-profissional";
 
 export const metadata = { title: "Profissionais" };
 
@@ -43,6 +44,7 @@ export default async function ProfissionaisPage() {
                 <th className="px-4 py-2.5 font-medium">Login</th>
                 <th className="px-4 py-2.5 font-medium">Vigência</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
+                <th className="px-4 py-2.5 font-medium"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
@@ -70,6 +72,9 @@ export default async function ProfissionaisPage() {
                     <Etiqueta tom={p.ativo ? "bom" : "neutro"}>
                       {p.ativo ? "Ativo" : "Inativo"}
                     </Etiqueta>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <AcoesProfissional profissional={p} procedimentos={procedimentos.dados} />
                   </td>
                 </tr>
               ))}

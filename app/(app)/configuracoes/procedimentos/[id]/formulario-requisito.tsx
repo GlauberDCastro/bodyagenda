@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { adicionarRequisito } from "@/lib/actions/procedimentos";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Select, Input, Botao } from "@/components/ui/primitivos";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 function Salvar() {
   const { pending } = useFormStatus();
@@ -30,19 +31,16 @@ export function FormularioRequisito({
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)} disabled={modelos.length === 0}>
-        Exigir equipamento
-      </Botao>
-    );
-  }
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-[var(--traco)] p-4 "
+    <GatilhoModal
+      rotulo="Exigir equipamento"
+      titulo="Recurso exigido"
+      descricao="Por modelo: o sistema acha sozinho qual unidade está livre."
+      aberto={aberto}
+      aoMudar={setAberto}
     >
+      <form action={acao} className="space-y-4">
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
       <input type="hidden" name="recurso_tipo" value="equipamento" />
 
@@ -71,12 +69,10 @@ export function FormularioRequisito({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
-    </form>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
+          <Salvar />
+        </AcoesModal>
+      </form>
+    </GatilhoModal>
   );
 }

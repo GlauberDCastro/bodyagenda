@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { venderPacote } from "@/lib/actions/pacientes";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
+import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento } from "@/lib/types/database";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,13 +38,6 @@ export function FormularioPacote({
     return r;
   }, {});
 
-  if (!aberto) {
-    return (
-      <Botao type="button" onClick={() => setAberto(true)}>
-        Vender pacote
-      </Botao>
-    );
-  }
 
   /** Preenche a partir do catálogo, mas o valor continua editável: pacote
    * vendido congela o preço (RN-09), então promoção não altera a tabela. */
@@ -60,10 +54,14 @@ export function FormularioPacote({
   const porSessao = sessoes > 0 ? liquido / sessoes : 0;
 
   return (
-    <form
-      action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
+    <GatilhoModal
+      rotulo="Vender pacote"
+      titulo="Vender pacote"
+      descricao="O valor fica congelado na venda — reajuste depois não altera este pacote."
+      aberto={aberto}
+      aoMudar={setAberto}
     >
+      <form action={acao} className="space-y-4">
       <input type="hidden" name="paciente_id" value={pacienteId} />
 
       <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
@@ -148,12 +146,10 @@ export function FormularioPacote({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Salvar />
-        <Botao type="button" variante="secundario" onClick={() => setAberto(false)}>
-          Cancelar
-        </Botao>
-      </div>
-    </form>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
+          <Salvar />
+        </AcoesModal>
+      </form>
+    </GatilhoModal>
   );
 }
