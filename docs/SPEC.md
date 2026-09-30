@@ -21,10 +21,10 @@
                         │ HTTPS
 ┌───────────────────────▼─────────────────────────────┐
 │  Vercel — região gru1 (São Paulo)                   │
-│  Next.js 15 App Router                              │
+│  Next.js 16 App Router                              │
 │   · Server Components  → leitura                    │
 │   · Server Actions     → escrita                    │
-│   · Middleware         → sessão Supabase            │
+│   · proxy.ts           → sessão Supabase            │
 └───────────────────────┬─────────────────────────────┘
                         │ Postgres wire / PostgREST
 ┌───────────────────────▼─────────────────────────────┐
@@ -51,7 +51,7 @@
 
 | Camada | Escolha | Observação |
 |---|---|---|
-| Framework | Next.js 15 (App Router) + TypeScript strict | |
+| Framework | Next.js 16 (App Router) + TypeScript strict | Turbopack por padrão |
 | UI | Tailwind CSS + shadcn/ui (Radix) | Componentes acessíveis sem dependência pesada |
 | Banco / Auth | Supabase (Postgres 15+, Auth, RLS) | |
 | Validação | Zod — mesmo schema no cliente e no Server Action | |
@@ -83,7 +83,7 @@ bodyprime-ocupacao/
 │  │     ├─ ocupacao/ financeiro/
 │  └─ api/                             # só webhooks e exportação de arquivo
 ├─ lib/
-│  ├─ supabase/{server,client,middleware}.ts
+│  ├─ supabase/{server,client,proxy}.ts
 │  ├─ domain/                          # ← lógica pura, sem I/O, 100% testável
 │  │  ├─ conflito.ts
 │  │  ├─ ocupacao.ts
@@ -597,6 +597,23 @@ Server Components chamando RPC diretamente. Sem estado global de servidor no cli
 ### 6.4 Fuso horário
 
 Regra única: **`timestamptz` no banco (UTC), conversão apenas na borda de apresentação.** O Brasil não tem mais horário de verão desde 2019, mas o offset não é fixado em lugar nenhum — tudo passa por `America/Sao_Paulo`, para que a mudança da regra não quebre a agenda.
+
+
+### 6.5 Especificidades do Next 16
+
+O projeto nasceu no **Next 16.3.8**, que traz mudanças incompatíveis com a v15. As que afetam esta aplicação:
+
+| Mudança | Efeito aqui |
+|---|---|
+| `middleware.ts` → **`proxy.ts`** | A renovação de sessão do Supabase vive em `proxy.ts`, com a função exportada chamada `proxy`. O runtime é `nodejs` e **não é configurável** — edge não é suportado |
+| `cookies()` e `headers()` **só assíncronos** | O acesso síncrono que a v15 tolerava foi removido. `createServerSupabase()` é `async` por isso |
+| `params` e `searchParams` são **Promises** | Toda página que os usa precisa de `await`. Ex.: `/login` lê `?redirecionar=` com `await props.searchParams` |
+| Turbopack por padrão | Build e dev usam Turbopack sem configuração adicional |
+| Tipos globais gerados | `LayoutProps`, `PageProps` e `RouteContext` vêm de `next typegen`. Typecheck em máquina limpa exige rodá-lo antes (`next build` o executa sozinho) |
+
+> A documentação da versão instalada fica em `node_modules/next/dist/docs/` e é a referência a consultar antes de escrever código de framework — ela reflete a versão em uso, não a mais divulgada.
+
+> **O proxy não é autorização.** A documentação do Next é explícita nisso, e a spec concorda: o `proxy.ts` faz apenas redirecionamento otimista, para que um visitante sem sessão não veja a casca da aplicação. Quem protege cada linha de cada tabela é o RLS (princípio P2). O `app/(app)/layout.tsx` revalida com `getUser()`, que confere o token no servidor do Supabase — `getSession()` apenas lê o cookie, que o cliente poderia ter forjado.
 
 ---
 
