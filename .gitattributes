@@ -1,0 +1,14 @@
+# Normaliza finais de linha. O repositorio guarda sempre LF; o checkout no
+# Windows pode usar CRLF, mas o que vai para o Supabase e para a Vercel
+# (ambos Linux) fica consistente.
+* text=auto eol=lf
+
+# Binarios nunca sofrem conversao
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
