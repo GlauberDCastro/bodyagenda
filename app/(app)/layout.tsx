@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { sair } from "@/lib/actions/auth";
@@ -29,7 +30,19 @@ export default async function AppLayout({
     <div className="min-h-dvh">
       <header className="border-b border-slate-200 dark:border-slate-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold tracking-tight">Body Prime</span>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="text-sm font-semibold tracking-tight">
+              Body Prime
+            </Link>
+            <nav className="flex gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <Link href="/" className="transition hover:text-slate-900 dark:hover:text-slate-100">
+                Painel
+              </Link>
+              <Link href="/configuracoes/salas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
+                Configuração
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-slate-500 dark:text-slate-400">
               {perfil?.nome ?? user.email}
