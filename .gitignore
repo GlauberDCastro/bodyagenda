@@ -1,0 +1,49 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.*
+
+# Build
+.next/
+out/
+build/
+dist/
+
+# Ambiente — NUNCA versionar. Só .env.example entra no git.
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# Supabase CLI
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testes
+coverage/
+test-results/
+playwright-report/
+.playwright/
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+*.log
