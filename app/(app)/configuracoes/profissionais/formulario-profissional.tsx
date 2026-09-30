@@ -15,24 +15,15 @@ function Salvar() {
   );
 }
 
-export function FormularioProfissional({
-  procedimentos,
-}: {
-  procedimentos: Procedimento[];
-}) {
+export function FormularioProfissional({ procedimentos }: { procedimentos: Procedimento[] }) {
   const [aberto, setAberto] = useState(false);
-  const [comissao, setComissao] = useState<"percentual" | "valor_fixo" | "nenhuma">(
-    "nenhuma",
-  );
+  const [comissao, setComissao] = useState<"percentual" | "valor_fixo" | "nenhuma">("nenhuma");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarProfissional(null, anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarProfissional(null, anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -47,7 +38,7 @@ export function FormularioProfissional({
   return (
     <form
       action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <Campo label="Nome" erro={estado.campos?.nome}>
         <Input name="nome" required />
@@ -70,9 +61,9 @@ export function FormularioProfissional({
         label="Procedimentos habilitados"
         dica="A agenda só oferece profissionais habilitados para o procedimento escolhido."
       >
-        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-300 p-2 dark:border-slate-700">
+        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
           {procedimentos.length === 0 && (
-            <p className="text-xs text-slate-500">Nenhum procedimento cadastrado.</p>
+            <p className="text-xs text-[var(--tinta-3)]">Nenhum procedimento cadastrado.</p>
           )}
           {procedimentos.map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-sm">
@@ -88,9 +79,7 @@ export function FormularioProfissional({
           <Select
             name="comissao_tipo"
             value={comissao}
-            onChange={(e) =>
-              setComissao(e.target.value as "percentual" | "valor_fixo" | "nenhuma")
-            }
+            onChange={(e) => setComissao(e.target.value as "percentual" | "valor_fixo" | "nenhuma")}
           >
             <option value="nenhuma">Sem comissão</option>
             <option value="percentual">Percentual</option>
@@ -130,7 +119,7 @@ export function FormularioProfissional({
       </div>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

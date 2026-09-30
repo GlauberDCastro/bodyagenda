@@ -124,10 +124,7 @@ export interface CelulaCalor {
   horas: number;
 }
 
-export async function mapaDeCalor(
-  tipo: TipoRecurso,
-  periodo: Periodo,
-): Promise<CelulaCalor[]> {
+export async function mapaDeCalor(tipo: TipoRecurso, periodo: Periodo): Promise<CelulaCalor[]> {
   const supabase = await createServerSupabase();
   const { data } = await supabase.rpc("mapa_calor_ocupacao", {
     p_tipo: tipo,

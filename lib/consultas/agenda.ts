@@ -72,9 +72,7 @@ export async function agendamentosDoPeriodo(
         .filter((x): x is { id: string; nome: string } => x !== null),
       profissionais: linha.agendamento_profissional
         .map((x) => x.profissional)
-        .filter(
-          (x): x is { id: string; nome: string; cor_agenda: string } => x !== null,
-        ),
+        .filter((x): x is { id: string; nome: string; cor_agenda: string } => x !== null),
     };
   });
 }
@@ -128,6 +126,15 @@ export async function profissionaisHabilitados(procedimentoId: string) {
     .eq("procedimento_id", procedimentoId);
 
   return (data ?? [])
-    .map((x) => (x as unknown as { profissional: { id: string; nome: string; cor_agenda: string; ativo: boolean } | null }).profissional)
-    .filter((p): p is { id: string; nome: string; cor_agenda: string; ativo: boolean } => !!p?.ativo);
+    .map(
+      (x) =>
+        (
+          x as unknown as {
+            profissional: { id: string; nome: string; cor_agenda: string; ativo: boolean } | null;
+          }
+        ).profissional,
+    )
+    .filter(
+      (p): p is { id: string; nome: string; cor_agenda: string; ativo: boolean } => !!p?.ativo,
+    );
 }

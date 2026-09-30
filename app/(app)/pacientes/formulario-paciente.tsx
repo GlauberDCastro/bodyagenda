@@ -18,14 +18,11 @@ function Salvar() {
 export function FormularioPaciente() {
   const [aberto, setAberto] = useState(false);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarPaciente(null, anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarPaciente(null, anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -38,7 +35,7 @@ export function FormularioPaciente() {
   return (
     <form
       action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <Campo label="Nome completo" erro={estado.campos?.nome}>
         <Input name="nome" required autoFocus />
@@ -74,14 +71,14 @@ export function FormularioPaciente() {
         <input type="checkbox" name="consentimento_lgpd" className="mt-0.5" />
         <span>
           Paciente consentiu com o tratamento de dados (LGPD)
-          <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+          <span className="mt-0.5 block text-xs text-[var(--tinta-3)]">
             A data do consentimento é registrada automaticamente.
           </span>
         </span>
       </label>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

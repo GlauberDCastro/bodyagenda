@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
-import {
-  carregarPainel,
-  consolidar,
-  resolverPeriodo,
-  type Periodo,
-} from "@/lib/consultas/painel";
+import { carregarPainel, consolidar, resolverPeriodo, type Periodo } from "@/lib/consultas/painel";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, TabelaRecursos, brl, pct, horas } from "@/components/painel/indicadores";
 import type { TipoRecurso } from "@/lib/types/database";
@@ -46,7 +41,10 @@ async function janelasVagas(
     }),
   );
 
-  return porRecurso.flat().sort((a, b) => b.minutos - a.minutos).slice(0, 40);
+  return porRecurso
+    .flat()
+    .sort((a, b) => b.minutos - a.minutos)
+    .slice(0, 40);
 }
 
 const dataHora = new Intl.DateTimeFormat("pt-BR", {
@@ -59,7 +57,9 @@ export default async function OcupacaoPage(props: {
   searchParams: Promise<{ por?: string; de?: string; ate?: string }>;
 }) {
   const { por = "sala", de, ate } = await props.searchParams;
-  const tipo = (["sala", "equipamento", "profissional"].includes(por) ? por : "sala") as TipoRecurso;
+  const tipo = (
+    ["sala", "equipamento", "profissional"].includes(por) ? por : "sala"
+  ) as TipoRecurso;
   const periodo = resolverPeriodo(de, ate);
 
   const painel = await carregarPainel(tipo, periodo);
@@ -71,7 +71,7 @@ export default async function OcupacaoPage(props: {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Relatórios de ocupação</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{periodo.rotulo}</p>
+          <p className="text-sm text-[var(--tinta-3)]">{periodo.rotulo}</p>
         </div>
         <Link href="/" className="text-sm underline-offset-4 hover:underline">
           ← Painel
@@ -80,7 +80,11 @@ export default async function OcupacaoPage(props: {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Cartao rotulo="Capacidade" valor={horas(total.capacidade)} />
-        <Cartao rotulo="Realizadas" valor={horas(total.realizadas)} apoio={pct(total.taxaEfetiva)} />
+        <Cartao
+          rotulo="Realizadas"
+          valor={horas(total.realizadas)}
+          apoio={pct(total.taxaEfetiva)}
+        />
         <Cartao
           rotulo="Ociosas"
           valor={horas(total.ociosidade)}
@@ -102,19 +106,21 @@ export default async function OcupacaoPage(props: {
       <section className="space-y-3">
         <div>
           <h2 className="text-sm font-semibold">Horários vagos</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Janelas livres de 30 min ou mais, da maior para a menor. Cada uma é
-            capacidade que a clínica paga e não usou.
+          <p className="text-xs text-[var(--tinta-3)]">
+            Janelas livres de 30 min ou mais, da maior para a menor. Cada uma é capacidade que a
+            clínica paga e não usou.
           </p>
         </div>
 
         {vagas.length === 0 ? (
-          <Vazio>Nenhuma janela livre no período — ou nenhum recurso com disponibilidade cadastrada.</Vazio>
+          <Vazio>
+            Nenhuma janela livre no período — ou nenhum recurso com disponibilidade cadastrada.
+          </Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                <tr className="text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-[var(--traco)] text-left ">
+                <tr className="text-[var(--tinta-3)]">
                   <th className="px-4 py-2.5 font-medium">Recurso</th>
                   <th className="px-4 py-2.5 font-medium">De</th>
                   <th className="px-4 py-2.5 font-medium">Até</th>
@@ -125,10 +131,12 @@ export default async function OcupacaoPage(props: {
                 {vagas.map((v, i) => (
                   <tr
                     key={`${v.recurso}-${v.inicio}-${i}`}
-                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
+                    className="border-b border-[var(--traco)] last:border-0 "
                   >
                     <td className="px-4 py-2.5 font-medium">{v.recurso}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{dataHora.format(new Date(v.inicio))}</td>
+                    <td className="px-4 py-2.5 tabular-nums">
+                      {dataHora.format(new Date(v.inicio))}
+                    </td>
                     <td className="px-4 py-2.5 tabular-nums">{dataHora.format(new Date(v.fim))}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {Math.floor(v.minutos / 60)}h{String(v.minutos % 60).padStart(2, "0")}
@@ -141,7 +149,7 @@ export default async function OcupacaoPage(props: {
         )}
       </section>
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-[var(--tinta-3)]">
         Receita total no período: {brl.format(total.receita)}.
       </p>
     </div>

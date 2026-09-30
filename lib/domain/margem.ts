@@ -52,9 +52,7 @@ export function calcularMargem(e: EntradaMargem): ResultadoMargem {
 
   const custoDireto = arredondar(custoInsumos + custoRecursos);
 
-  const comissao = arredondar(
-    e.comissaoFixa ?? (e.valorSessao * (e.comissaoPct ?? 0)) / 100,
-  );
+  const comissao = arredondar(e.comissaoFixa ?? (e.valorSessao * (e.comissaoPct ?? 0)) / 100);
 
   const margem = arredondar(e.valorSessao - custoDireto - comissao);
 

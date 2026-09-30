@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  despesasDaCompetencia,
-  dre,
-  competenciaAtual,
-} from "@/lib/consultas/financeiro";
+import { despesasDaCompetencia, dre, competenciaAtual } from "@/lib/consultas/financeiro";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, brl, brlExato } from "@/components/painel/indicadores";
 import { FormularioDespesa } from "./formulario-despesa";
@@ -26,7 +22,7 @@ export default async function DespesasPage(props: {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Despesas fixas</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-[var(--tinta-3)]">
             Competência {competencia} · rateadas por hora de sala (RN-07)
           </p>
         </div>
@@ -36,7 +32,7 @@ export default async function DespesasPage(props: {
               type="month"
               name="competencia"
               defaultValue={competencia}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm "
             />
           </form>
           <FormularioDespesa competencia={competencia} />
@@ -48,31 +44,27 @@ export default async function DespesasPage(props: {
         <Cartao
           rotulo="Custo por hora de sala"
           valor={
-            resultado?.custo_hora_estr
-              ? brlExato.format(Number(resultado.custo_hora_estr))
-              : "—"
+            resultado?.custo_hora_estr ? brlExato.format(Number(resultado.custo_hora_estr)) : "—"
           }
           apoio="Denominador usa só salas, para não contar a mesma hora física duas vezes"
         />
         <Cartao
           rotulo="Resultado da competência"
           valor={resultado ? brl.format(Number(resultado.resultado)) : "—"}
-          destaque={
-            resultado && Number(resultado.resultado) >= 0 ? "bom" : "atencao"
-          }
+          destaque={resultado && Number(resultado.resultado) >= 0 ? "bom" : "atencao"}
         />
       </section>
 
       {despesas.length === 0 ? (
         <Vazio>
-          Nenhuma despesa lançada em {competencia}. Sem elas, o resultado exibido
-          é margem de contribuição, não lucro.
+          Nenhuma despesa lançada em {competencia}. Sem elas, o resultado exibido é margem de
+          contribuição, não lucro.
         </Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-              <tr className="text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-[var(--traco)] text-left ">
+              <tr className="text-[var(--tinta-3)]">
                 <th className="px-4 py-2.5 font-medium">Descrição</th>
                 <th className="px-4 py-2.5 font-medium">Categoria</th>
                 <th className="px-4 py-2.5 font-medium">Recorrente</th>
@@ -81,12 +73,10 @@ export default async function DespesasPage(props: {
             </thead>
             <tbody>
               {despesas.map((d) => (
-                <tr key={d.id} className="border-b border-slate-100 last:border-0 dark:border-slate-900">
+                <tr key={d.id} className="border-b border-[var(--traco)] last:border-0 ">
                   <td className="px-4 py-2.5 font-medium">{d.descricao}</td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                    {d.categoria ?? "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                  <td className="px-4 py-2.5 text-[var(--tinta-2)]">{d.categoria ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-[var(--tinta-2)]">
                     {d.recorrente ? "Sim" : "Não"}
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">
@@ -94,8 +84,10 @@ export default async function DespesasPage(props: {
                   </td>
                 </tr>
               ))}
-              <tr className="bg-slate-50 font-medium dark:bg-slate-900">
-                <td className="px-4 py-2.5" colSpan={3}>Total</td>
+              <tr className="bg-[var(--superficie-2)] font-medium ">
+                <td className="px-4 py-2.5" colSpan={3}>
+                  Total
+                </td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{brlExato.format(total)}</td>
               </tr>
             </tbody>

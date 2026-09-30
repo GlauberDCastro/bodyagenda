@@ -6,9 +6,7 @@ import { FormularioPaciente } from "./formulario-paciente";
 
 export const metadata = { title: "Pacientes" };
 
-export default async function PacientesPage(props: {
-  searchParams: Promise<{ q?: string }>;
-}) {
+export default async function PacientesPage(props: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await props.searchParams;
   const pacientes = await buscarPacientes(q);
 
@@ -17,9 +15,7 @@ export default async function PacientesPage(props: {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Pacientes</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Busque por nome, CPF ou telefone.
-          </p>
+          <p className="text-sm text-[var(--tinta-3)]">Busque por nome, CPF ou telefone.</p>
         </div>
         <FormularioPaciente />
       </header>
@@ -36,15 +32,13 @@ export default async function PacientesPage(props: {
 
       {pacientes.length === 0 ? (
         <Vazio>
-          {q
-            ? `Nenhum paciente encontrado para "${q}".`
-            : "Nenhum paciente cadastrado ainda."}
+          {q ? `Nenhum paciente encontrado para "${q}".` : "Nenhum paciente cadastrado ainda."}
         </Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-              <tr className="text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-[var(--traco)] text-left ">
+              <tr className="text-[var(--tinta-3)]">
                 <th className="px-4 py-2.5 font-medium">Nome</th>
                 <th className="px-4 py-2.5 font-medium">CPF</th>
                 <th className="px-4 py-2.5 font-medium">Telefone</th>
@@ -54,10 +48,7 @@ export default async function PacientesPage(props: {
             </thead>
             <tbody>
               {pacientes.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-slate-100 last:border-0 dark:border-slate-900"
-                >
+                <tr key={p.id} className="border-b border-[var(--traco)] last:border-0 ">
                   <td className="px-4 py-2.5">
                     <Link
                       href={`/pacientes/${p.id}`}
@@ -66,19 +57,17 @@ export default async function PacientesPage(props: {
                       {p.nome}
                     </Link>
                   </td>
-                  <td className="px-4 py-2.5 tabular-nums text-slate-600 dark:text-slate-400">
+                  <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">
                     {p.cpf ? formatarCpf(p.cpf) : "—"}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                    {p.telefone ?? "—"}
-                  </td>
+                  <td className="px-4 py-2.5 text-[var(--tinta-2)]">{p.telefone ?? "—"}</td>
                   <td className="px-4 py-2.5">
-                    <Etiqueta tom={p.consentimento_lgpd ? "verde" : "ambar"}>
+                    <Etiqueta tom={p.consentimento_lgpd ? "bom" : "atencao"}>
                       {p.consentimento_lgpd ? "Consentido" : "Pendente"}
                     </Etiqueta>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Etiqueta tom={p.ativo ? "verde" : "neutro"}>
+                    <Etiqueta tom={p.ativo ? "bom" : "neutro"}>
                       {p.ativo ? "Ativo" : "Inativo"}
                     </Etiqueta>
                   </td>

@@ -33,6 +33,5 @@ export function cpfValido(valor: string): boolean {
   // Sequências repetidas passam no módulo 11 mas não são CPF válido.
   if (/^(\d)\1{10}$/.test(d)) return false;
 
-  return digito(d.slice(0, 9), 10) === Number(d[9])
-    && digito(d.slice(0, 10), 11) === Number(d[10]);
+  return digito(d.slice(0, 9), 10) === Number(d[9]) && digito(d.slice(0, 10), 11) === Number(d[10]);
 }

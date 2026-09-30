@@ -65,10 +65,7 @@ export async function salvarProcedimento(
   return { ok: true };
 }
 
-export async function adicionarCusto(
-  _anterior: Resultado,
-  formData: FormData,
-): Promise<Resultado> {
+export async function adicionarCusto(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = custoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return validacao(parsed.error.issues);
 
@@ -118,10 +115,7 @@ export async function removerRequisito(id: string, procedimentoId: string): Prom
   return { ok: true };
 }
 
-export async function alternarAtivoProcedimento(
-  id: string,
-  ativo: boolean,
-): Promise<Resultado> {
+export async function alternarAtivoProcedimento(id: string, ativo: boolean): Promise<Resultado> {
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("procedimento").update({ ativo }).eq("id", id);
   if (error) return erroDeBanco(error);

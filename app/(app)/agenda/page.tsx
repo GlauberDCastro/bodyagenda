@@ -38,14 +38,13 @@ export default async function AgendaPage(props: {
   const { dia = hojeNaClinica(), por = "sala" } = await props.searchParams;
   const { inicio, fim } = limitesDoDia(dia);
 
-  const [salas, equipamentos, profissionais, procedimentos, agendamentos] =
-    await Promise.all([
-      listarSalas(),
-      listarEquipamentos(),
-      listarProfissionais(),
-      listarProcedimentos(),
-      agendamentosDoPeriodo(inicio, fim),
-    ]);
+  const [salas, equipamentos, profissionais, procedimentos, agendamentos] = await Promise.all([
+    listarSalas(),
+    listarEquipamentos(),
+    listarProfissionais(),
+    listarProcedimentos(),
+    agendamentosDoPeriodo(inicio, fim),
+  ]);
 
   if (salas.semSchema) return <AvisoBanco />;
 
@@ -77,12 +76,8 @@ export default async function AgendaPage(props: {
               subtitulo: s.nome,
             }));
 
-  const diaAnterior = new Date(inicio.getTime() - 86_400_000)
-    .toISOString()
-    .slice(0, 10);
-  const diaSeguinte = new Date(inicio.getTime() + 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const diaAnterior = new Date(inicio.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const diaSeguinte = new Date(inicio.getTime() + 86_400_000).toISOString().slice(0, 10);
 
   const realizados = agendamentos.filter((a) => a.status === "realizado").length;
   const faltas = agendamentos.filter((a) => a.status === "falta").length;
@@ -92,7 +87,7 @@ export default async function AgendaPage(props: {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-[var(--tinta-3)]">
             {agendamentos.length} atendimento(s) · {realizados} realizado(s)
             {faltas > 0 && ` · ${faltas} falta(s)`}
           </p>
@@ -110,7 +105,7 @@ export default async function AgendaPage(props: {
         <div className="flex items-center gap-1">
           <Link
             href={`/agenda?dia=${diaAnterior}&por=${por}`}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
           >
             ←
           </Link>
@@ -121,32 +116,32 @@ export default async function AgendaPage(props: {
               type="date"
               name="dia"
               defaultValue={dia}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm "
             />
           </form>
           <Link
             href={`/agenda?dia=${diaSeguinte}&por=${por}`}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
           >
             →
           </Link>
           <Link
             href={`/agenda?dia=${hojeNaClinica()}&por=${por}`}
-            className="ml-1 rounded-md px-2 py-1 text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            className="ml-1 rounded-md px-2 py-1 text-sm text-[var(--tinta-3)] transition hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
           >
             Hoje
           </Link>
         </div>
 
-        <nav className="flex gap-1 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
+        <nav className="flex gap-1 rounded-lg border border-[var(--traco)] p-0.5 ">
           {VISOES.map((v) => (
             <Link
               key={v.chave}
               href={`/agenda?dia=${dia}&por=${v.chave}`}
               className={`rounded-md px-2.5 py-1 text-sm transition ${
                 por === v.chave
-                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-[var(--tinta-1)]"
+                  : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
               }`}
             >
               {v.rotulo}

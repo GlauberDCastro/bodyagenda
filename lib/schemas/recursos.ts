@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 /** Data no formato ISO que o Postgres aceita em coluna `date`. */
-const dataISO = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD");
+const dataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD");
 
 const vigencia = {
   vigencia_inicio: dataISO,
@@ -93,9 +91,7 @@ export const profissionalSchema = z
       .nullish()
       .or(z.literal("").transform(() => null)),
     especialidade: z.string().nullish(),
-    cor_agenda: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/, "Cor deve estar no formato #RRGGBB"),
+    cor_agenda: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor deve estar no formato #RRGGBB"),
     custo_hora: z.coerce.number().nonnegative().default(0),
     comissao_tipo: z.enum(["percentual", "valor_fixo", "nenhuma"]),
     comissao_valor: z.coerce.number().nonnegative().default(0),

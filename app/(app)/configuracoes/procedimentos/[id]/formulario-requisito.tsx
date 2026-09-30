@@ -24,14 +24,11 @@ export function FormularioRequisito({
 }) {
   const [aberto, setAberto] = useState(false);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await adicionarRequisito(anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await adicionarRequisito(anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -44,7 +41,7 @@ export function FormularioRequisito({
   return (
     <form
       action={acao}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-sm space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
       <input type="hidden" name="recurso_tipo" value="equipamento" />
@@ -69,7 +66,7 @@ export function FormularioRequisito({
       </Campo>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

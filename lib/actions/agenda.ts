@@ -136,10 +136,7 @@ export async function criarAgendamento(
  * Marcar `realizado` faz o pacote baixar a sessão (a contagem é derivada dos
  * agendamentos não cancelados) e é onde a comissão será gerada no M6.
  */
-export async function mudarStatus(
-  _anterior: Resultado,
-  formData: FormData,
-): Promise<Resultado> {
+export async function mudarStatus(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = mudancaStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { erro: parsed.error.issues[0].message };
 
@@ -166,10 +163,7 @@ export async function mudarStatus(
 }
 
 /** RF-49 · remarcar. O trigger reconstrói as reservas e revalida conflito. */
-export async function remarcar(
-  id: string,
-  novoInicio: string,
-): Promise<ResultadoAgendamento> {
+export async function remarcar(id: string, novoInicio: string): Promise<ResultadoAgendamento> {
   const supabase = await createServerSupabase();
 
   const { data: atual, error: erroBusca } = await supabase

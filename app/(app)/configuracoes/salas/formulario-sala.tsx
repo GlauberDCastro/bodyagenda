@@ -19,14 +19,11 @@ export function FormularioSala({ procedimentos }: { procedimentos: Procedimento[
   const [aberto, setAberto] = useState(false);
   const [alocacao, setAlocacao] = useState<"dedicada" | "flexivel">("flexivel");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarSala(null, anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarSala(null, anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -41,7 +38,7 @@ export function FormularioSala({ procedimentos }: { procedimentos: Procedimento[
   return (
     <form
       action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Número" erro={estado.campos?.numero}>
@@ -97,7 +94,7 @@ export function FormularioSala({ procedimentos }: { procedimentos: Procedimento[
       </div>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

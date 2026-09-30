@@ -45,7 +45,9 @@ export function NovoAgendamento({
   const [procId, setProcId] = useState("");
 
   const procedimento = procedimentos.find((p) => p.id === procId);
-  const sala = salas.find((s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === procId);
+  const sala = salas.find(
+    (s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === procId,
+  );
 
   const [estado, acao] = useActionState<ResultadoAgendamento, FormData>(
     async (anterior, formData) => {
@@ -88,7 +90,7 @@ export function NovoAgendamento({
   return (
     <form
       action={acao}
-      className="w-full max-w-lg space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-lg space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <Campo label="Paciente" erro={estado.campos?.paciente_id}>
         <Input
@@ -137,15 +139,8 @@ export function NovoAgendamento({
       </Campo>
 
       {pacotesVisiveis.length > 0 && (
-        <Campo
-          label="Consumir de um pacote"
-          dica="Deixe vazio para cobrar como sessão avulsa."
-        >
-          <Select
-            name="pacote_id"
-            value={pacoteId}
-            onChange={(e) => setPacoteId(e.target.value)}
-          >
+        <Campo label="Consumir de um pacote" dica="Deixe vazio para cobrar como sessão avulsa.">
+          <Select name="pacote_id" value={pacoteId} onChange={(e) => setPacoteId(e.target.value)}>
             <option value="">Sessão avulsa</option>
             {pacotesVisiveis.map((p) => (
               <option key={p.id} value={p.id}>
@@ -161,9 +156,7 @@ export function NovoAgendamento({
           label="Valor da sessão avulsa"
           erro={estado.campos?.valor_avulso}
           dica={
-            procedimento
-              ? `Tabela: ${brl.format(Number(procedimento.valor_sessao))}`
-              : undefined
+            procedimento ? `Tabela: ${brl.format(Number(procedimento.valor_sessao))}` : undefined
           }
         >
           <Input
@@ -178,12 +171,7 @@ export function NovoAgendamento({
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Início" erro={estado.campos?.inicio}>
-          <Input
-            name="inicio"
-            type="datetime-local"
-            defaultValue={`${diaPadrao}T09:00`}
-            required
-          />
+          <Input name="inicio" type="datetime-local" defaultValue={`${diaPadrao}T09:00`} required />
         </Campo>
         <Campo
           label="Sala"
@@ -204,21 +192,21 @@ export function NovoAgendamento({
       </div>
 
       <Campo label="Equipamentos" dica="Marque quantos a sessão usar ao mesmo tempo.">
-        <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-slate-300 p-2 dark:border-slate-700">
+        <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
           {equipamentos.map((e) => (
             <label key={e.id} className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="equipamentos" value={e.id} />
               {e.nome}
-              <span className="text-xs text-slate-500">({e.modelo})</span>
+              <span className="text-xs text-[var(--tinta-3)]">({e.modelo})</span>
             </label>
           ))}
         </div>
       </Campo>
 
       <Campo label="Profissionais">
-        <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-slate-300 p-2 dark:border-slate-700">
+        <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
           {profissionais.length === 0 && (
-            <p className="text-xs text-slate-500">Nenhum profissional cadastrado.</p>
+            <p className="text-xs text-[var(--tinta-3)]">Nenhum profissional cadastrado.</p>
           )}
           {profissionais.map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-sm">

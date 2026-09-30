@@ -31,14 +31,11 @@ export function FormularioPacote({
   const [valor, setValor] = useState(0);
   const [desconto, setDesconto] = useState(0);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await venderPacote(anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await venderPacote(anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -49,7 +46,7 @@ export function FormularioPacote({
   }
 
   /** Preenche a partir do catálogo, mas o valor continua editável: pacote
-   *  vendido congela o preço (RN-09), então promoção não altera a tabela. */
+   * vendido congela o preço (RN-09), então promoção não altera a tabela. */
   function aoEscolherProcedimento(id: string) {
     setProcId(id);
     const p = procedimentos.find((x) => x.id === id);
@@ -65,7 +62,7 @@ export function FormularioPacote({
   return (
     <form
       action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <input type="hidden" name="paciente_id" value={pacienteId} />
 
@@ -121,17 +118,17 @@ export function FormularioPacote({
         </Campo>
       </div>
 
-      <div className="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
+      <div className="rounded-lg bg-[var(--superficie-2)] p-3 text-sm ">
         <div className="flex justify-between">
-          <span className="text-slate-500 dark:text-slate-400">Líquido</span>
+          <span className="text-[var(--tinta-3)]">Líquido</span>
           <span className="font-medium tabular-nums">{brl.format(liquido)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-slate-500 dark:text-slate-400">Por sessão</span>
+          <span className="text-[var(--tinta-3)]">Por sessão</span>
           <span className="font-medium tabular-nums">{brl.format(porSessao)}</span>
         </div>
         {sessoes > 1 && (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-xs text-[var(--tinta-3)]">
             Compromete {sessoes} horário(s) de agenda por um caixa único.
           </p>
         )}
@@ -146,7 +143,7 @@ export function FormularioPacote({
       </Campo>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

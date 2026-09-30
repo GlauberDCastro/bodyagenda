@@ -39,7 +39,7 @@ export default async function ProcedimentosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-[var(--tinta-3)]">
           {linhas.filter((l) => l.ativo).length} procedimento(s) ativo(s)
         </p>
         <FormularioProcedimento />
@@ -47,19 +47,19 @@ export default async function ProcedimentosPage() {
 
       {semCusto > 0 && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          {semCusto} procedimento(s) sem custo cadastrado. Enquanto o custo não
-          entrar, a coluna de margem mostra a receita bruta — e nenhuma decisão
-          de portfólio ou preço deve ser tomada sobre ela.
+          {semCusto} procedimento(s) sem custo cadastrado. Enquanto o custo não entrar, a coluna de
+          margem mostra a receita bruta — e nenhuma decisão de portfólio ou preço deve ser tomada
+          sobre ela.
         </p>
       )}
 
       {linhas.length === 0 ? (
         <Vazio>Nenhum procedimento cadastrado.</Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-              <tr className="text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-[var(--traco)] text-left ">
+              <tr className="text-[var(--tinta-3)]">
                 <th className="px-4 py-2.5 font-medium">Procedimento</th>
                 <th className="px-4 py-2.5 text-right font-medium">Duração</th>
                 <th className="px-4 py-2.5 text-right font-medium">Sessões</th>
@@ -74,10 +74,7 @@ export default async function ProcedimentosPage() {
               {[...linhas]
                 .sort((a, b) => (b.margem.margemPorHora ?? 0) - (a.margem.margemPorHora ?? 0))
                 .map((p) => (
-                  <tr
-                    key={p.id}
-                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
-                  >
+                  <tr key={p.id} className="border-b border-[var(--traco)] last:border-0 ">
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/configuracoes/procedimentos/${p.id}`}
@@ -89,7 +86,7 @@ export default async function ProcedimentosPage() {
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {p.duracao_min} min
                       {p.buffer_min > 0 && (
-                        <span className="text-slate-500"> +{p.buffer_min}</span>
+                        <span className="text-[var(--tinta-3)]"> +{p.buffer_min}</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{p.sessoes_padrao}</td>
@@ -100,24 +97,24 @@ export default async function ProcedimentosPage() {
                       {p.temCusto ? (
                         brlExato.format(p.margem.custoDireto)
                       ) : (
-                        <span className="text-amber-700 dark:text-amber-400">—</span>
+                        <span className="text-[color:var(--status-atencao)]">—</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {brlExato.format(p.margem.margem)}
-                      <span className="ml-1 text-xs text-slate-500">
+                      <span className="ml-1 text-xs text-[var(--tinta-3)]">
                         {pct(p.margem.margemPct)}
                       </span>
                     </td>
                     {/* Ordenação padrão da tabela: é o indicador que compara
-                        procedimentos de durações diferentes (RN-04). */}
+ procedimentos de durações diferentes (RN-04). */}
                     <td className="px-4 py-2.5 text-right font-medium tabular-nums">
                       {p.margem.margemPorHora === null
                         ? "—"
                         : brlExato.format(p.margem.margemPorHora)}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Etiqueta tom={p.ativo ? "verde" : "neutro"}>
+                      <Etiqueta tom={p.ativo ? "bom" : "neutro"}>
                         {p.ativo ? "Ativo" : "Inativo"}
                       </Etiqueta>
                     </td>
@@ -128,10 +125,9 @@ export default async function ProcedimentosPage() {
         </div>
       )}
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
-        Ordenado por margem por hora. Alterar valor ou custo aqui não muda
-        pacotes já vendidos nem sessões realizadas — esses guardam o preço do
-        momento da venda.
+      <p className="text-xs text-[var(--tinta-3)]">
+        Ordenado por margem por hora. Alterar valor ou custo aqui não muda pacotes já vendidos nem
+        sessões realizadas — esses guardam o preço do momento da venda.
       </p>
     </div>
   );

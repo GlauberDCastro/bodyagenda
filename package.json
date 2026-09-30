@@ -1,5 +1,5 @@
 {
-  "name": "bodyagenda",
+  "name": "hellodoctor-performance-clinica",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,8 @@
     "db:check": "node scripts/aplicar-migracoes.mjs --verificar",
     "db:test": "node scripts/testar-motor-reserva.mjs",
     "db:rls": "node scripts/testar-rls.mjs",
-    "db:financeiro": "node scripts/testar-financeiro.mjs"
+    "db:financeiro": "node scripts/testar-financeiro.mjs",
+    "format": "oxfmt app components lib"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -39,5 +40,5 @@
     "typescript": "^5",
     "vitest": "^5.0.3"
   },
-  "description": "Painel de gestao de ocupacao e agenda - Body Prime"
+  "description": "hellodoctor · Performance Clínica — painel de ocupação, agenda e resultado"
 }

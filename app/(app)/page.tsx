@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createServerSupabase } from "@/lib/supabase/server";
 import {
   carregarPainel,
   consolidar,
@@ -7,19 +8,12 @@ import {
   resolverPeriodo,
   hojeNaClinica,
 } from "@/lib/consultas/painel";
-import { AvisoBanco } from "@/components/ui/primitivos";
-import {
-  Cartao,
-  TabelaRecursos,
-  brl,
-  brlExato,
-  pct,
-  horas,
-} from "@/components/painel/indicadores";
+import { AvisoBanco, Aviso, Secao, Botao } from "@/components/ui/primitivos";
+import { Cartao, TabelaRecursos, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
 import { MapaCalor } from "@/components/painel/mapa-calor";
 import type { TipoRecurso } from "@/lib/types/database";
 
-export const metadata = { title: "Painel de ocupação" };
+export const metadata = { title: "Painel" };
 
 const VISOES = [
   { chave: "sala", rotulo: "Salas" },
@@ -27,12 +21,42 @@ const VISOES = [
   { chave: "profissional", rotulo: "Profissionais" },
 ] as const;
 
+function saudacao(): string {
+  const h = Number(
+    new Intl.DateTimeFormat("pt-BR", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date()),
+  );
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+const dataPorExtenso = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "America/Sao_Paulo",
+});
+
 export default async function PainelPage(props: {
   searchParams: Promise<{ por?: string; de?: string; ate?: string }>;
 }) {
   const { por = "sala", de, ate } = await props.searchParams;
   const tipo = (VISOES.find((v) => v.chave === por)?.chave ?? "sala") as TipoRecurso;
   const periodo = resolverPeriodo(de, ate);
+
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: perfil } = await supabase
+    .from("usuario")
+    .select("nome")
+    .eq("id", user?.id ?? "")
+    .maybeSingle();
 
   const [painel, calor, gargalosLista] = await Promise.all([
     carregarPainel(tipo, periodo),
@@ -44,60 +68,99 @@ export default async function PainelPage(props: {
 
   const total = consolidar(painel.linhas);
   const qs = (extra: Record<string, string>) =>
-    new URLSearchParams({ por, ...(de ? { de } : {}), ...(ate ? { ate } : {}), ...extra }).toString();
+    new URLSearchParams({
+      por,
+      ...(de ? { de } : {}),
+      ...(ate ? { ate } : {}),
+      ...extra,
+    }).toString();
+
+  // Série das 8 maiores ocupações — dá forma ao cartão sem inventar histórico.
+  const serieOcupacao = [...painel.linhas]
+    .map((l) => Number(l.taxa_efetiva ?? 0) * 100)
+    .slice(0, 8);
+  const serieReceita = [...painel.linhas].map((l) => Number(l.receita)).slice(0, 8);
+
+  // O nome pode vir do e-mail (minúsculo) quando o cadastro não foi preenchido.
+  const primeiroNome = (perfil?.nome ?? "")
+    .split(" ")[0]
+    .replace(/^./, (c) => c.toUpperCase());
+  const hoje = new Date();
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Painel de ocupação</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {periodo.rotulo} · {painel.linhas.length} recurso(s)
+          <h1 className="titulo-xl">
+            {saudacao()}
+            {primeiroNome ? `, ${primeiroNome}` : ""}
+          </h1>
+          <p className="mt-1 text-[13.5px] text-[var(--tinta-2)] first-letter:uppercase">
+            {dataPorExtenso.format(hoje)} · {periodo.rotulo.toLowerCase()} · {painel.linhas.length}{" "}
+            recurso(s)
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <form method="get" className="flex items-center gap-1">
-            <input type="hidden" name="por" value={por} />
-            <input
-              type="date"
-              name="de"
-              defaultValue={de ?? ""}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
-            />
-            <span className="text-sm text-slate-400">até</span>
-            <input
-              type="date"
-              name="ate"
-              defaultValue={ate ?? hojeNaClinica()}
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
-            />
-          </form>
-
-          <nav className="flex gap-1 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
-            {VISOES.map((v) => (
-              <Link
-                key={v.chave}
-                href={`/?${qs({ por: v.chave })}`}
-                className={`rounded-md px-2.5 py-1 text-sm transition ${
-                  por === v.chave
-                    ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                }`}
-              >
-                {v.rotulo}
-              </Link>
-            ))}
-          </nav>
+        <div className="flex items-center gap-2">
+          <Link href="/pacientes">
+            <Botao variante="secundario" type="button">
+              Novo paciente
+            </Botao>
+          </Link>
+          <Link href="/agenda">
+            <Botao type="button">Novo agendamento</Botao>
+          </Link>
         </div>
       </header>
 
-      {/* RF-76 · cartões de destaque */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Controle segmentado: as três visões são exclusivas entre si. */}
+        <nav className="flex gap-0.5 rounded-full bg-[var(--superficie)] p-1 shadow-[var(--sombra-1)]">
+          {VISOES.map((v) => (
+            <Link
+              key={v.chave}
+              href={`/?${qs({ por: v.chave })}`}
+              aria-current={por === v.chave ? "true" : undefined}
+              className={`rounded-full px-3.5 py-1.5 text-[13px] transition-colors ${
+                por === v.chave
+                  ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
+                  : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)]"
+              }`}
+            >
+              {v.rotulo}
+            </Link>
+          ))}
+        </nav>
+
+        <form
+          method="get"
+          className="flex items-center gap-1.5 rounded-full bg-[var(--superficie)] px-3 py-1.5 shadow-[var(--sombra-1)]"
+        >
+          <input type="hidden" name="por" value={por} />
+          <input
+            type="date"
+            name="de"
+            defaultValue={de ?? ""}
+            aria-label="Início do período"
+            className="bg-transparent text-[13px] text-[var(--tinta-1)] outline-none"
+          />
+          <span className="text-[var(--tinta-3)]">→</span>
+          <input
+            type="date"
+            name="ate"
+            defaultValue={ate ?? hojeNaClinica()}
+            aria-label="Fim do período"
+            className="bg-transparent text-[13px] text-[var(--tinta-1)] outline-none"
+          />
+        </form>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Cartao
           rotulo="Ocupação efetiva"
           valor={pct(total.taxaEfetiva)}
           apoio={`Agendada ${pct(total.taxaAgendada)} · ${horas(total.realizadas)} de ${horas(total.capacidade)}`}
+          serie={serieOcupacao}
         />
         <Cartao
           rotulo="Horas ociosas"
@@ -115,58 +178,60 @@ export default async function PainelPage(props: {
           rotulo="Receita por hora disponível"
           valor={total.receitaPorHora === null ? "—" : brlExato.format(total.receitaPorHora)}
           apoio={`${brl.format(total.receita)} no período`}
+          serie={serieReceita}
         />
       </section>
 
-      {/* A diferença entre as duas taxas é o custo do no-show, e só fica
-          visível porque são medidas separadamente (RN-03). */}
-      {total.taxaAgendada !== null && total.taxaEfetiva !== null
-        && total.taxaAgendada > total.taxaEfetiva && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          {horas(total.agendadas - total.realizadas)} foram bloqueadas na agenda e
-          não viraram atendimento. É a diferença entre a ocupação agendada e a
-          efetiva — o custo do no-show.
-        </p>
-      )}
+      {total.taxaAgendada !== null &&
+        total.taxaEfetiva !== null &&
+        total.taxaAgendada > total.taxaEfetiva && (
+          <Aviso>
+            {horas(total.agendadas - total.realizadas)} foram bloqueadas na agenda e não viraram
+            atendimento. É a diferença entre a ocupação agendada e a efetiva — o custo do no-show.
+          </Aviso>
+        )}
 
-      {/* RF-78 · gargalo */}
       {gargalosLista.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold">Gargalos de equipamento</h2>
+        <Secao titulo="Gargalos de equipamento">
           {gargalosLista.map((g) => (
-            <div
-              key={g.modelo}
-              className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40"
-            >
-              <p className="font-medium text-amber-900 dark:text-amber-200">
+            <Aviso key={g.modelo}>
+              <p className="font-semibold">
                 {g.modelo} — {pct(Number(g.taxa_media))} de ocupação
               </p>
-              <p className="mt-0.5 text-amber-800 dark:text-amber-300">
-                {g.unidades} unidade{g.unidades > 1 ? "s" : ""} atendendo{" "}
-                {g.procedimentos} procedimentos diferentes, com{" "}
-                {horas(Number(g.horas_livres))} livres no período. Cada sessão de
-                um procedimento desloca a de outro.
+              <p className="mt-1">
+                {g.unidades} unidade{g.unidades > 1 ? "s" : ""} atendendo {g.procedimentos}{" "}
+                procedimentos diferentes, com {horas(Number(g.horas_livres))} livres no período.
+                Cada sessão de um procedimento desloca a de outro.
               </p>
-            </div>
+            </Aviso>
           ))}
-        </section>
+        </Secao>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Por recurso</h2>
+      <Secao
+        titulo="Por recurso"
+        descricao="Ocupação e receita por hora lado a lado — o cruzamento que a taxa sozinha esconde."
+      >
         <TabelaRecursos linhas={painel.linhas} />
-      </section>
+      </Secao>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Quando a clínica está cheia</h2>
-        <MapaCalor celulas={calor} />
-      </section>
+      <Secao titulo="Quando a clínica está cheia">
+        <div className="cartao p-5">
+          <MapaCalor celulas={calor} />
+        </div>
+      </Secao>
 
-      <nav className="flex flex-wrap gap-4 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
-        <Link href="/relatorios/ocupacao" className="underline-offset-4 hover:underline">
+      <nav className="flex flex-wrap gap-4 pt-2 text-[13.5px]">
+        <Link
+          href="/relatorios/ocupacao"
+          className="text-[var(--marca)] underline-offset-4 hover:underline"
+        >
           Relatórios de ocupação →
         </Link>
-        <Link href="/relatorios/financeiro" className="underline-offset-4 hover:underline">
+        <Link
+          href="/relatorios/financeiro"
+          className="text-[var(--marca)] underline-offset-4 hover:underline"
+        >
           Relatórios financeiros →
         </Link>
       </nav>

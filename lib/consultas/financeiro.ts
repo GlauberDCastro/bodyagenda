@@ -65,10 +65,7 @@ export function competenciaAtual(): string {
     .slice(0, 7);
 }
 
-export async function rentabilidade(
-  inicio: Date,
-  fim: Date,
-): Promise<Rentabilidade[]> {
+export async function rentabilidade(inicio: Date, fim: Date): Promise<Rentabilidade[]> {
   const supabase = await createServerSupabase();
   const { data } = await supabase.rpc("rentabilidade_procedimentos", {
     p_inicio: inicio.toISOString(),
@@ -90,9 +87,7 @@ export async function dre(competencia: string): Promise<Dre | null> {
   return linhas[0] ?? null;
 }
 
-export async function comissoesDaCompetencia(
-  competencia: string,
-): Promise<LinhaComissao[]> {
+export async function comissoesDaCompetencia(competencia: string): Promise<LinhaComissao[]> {
   const supabase = await createServerSupabase();
   const { data } = await supabase
     .from("comissao")

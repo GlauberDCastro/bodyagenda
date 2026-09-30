@@ -1,13 +1,17 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { sair } from "@/lib/actions/auth";
+import { Navegacao, Migalha } from "@/components/shell/navegacao";
+import { BuscaPaciente } from "@/components/shell/busca-paciente";
+import { SUBTITULO_PRODUTO } from "@/components/ui/logo";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const ROTULO_PERFIL: Record<string, string> = {
+  admin: "Administrador da clínica",
+  recepcao: "Recepção",
+  profissional: "Profissional",
+};
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase();
 
   // getUser() revalida no servidor do Supabase. getSession() só lê o cookie,
@@ -18,58 +22,74 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-  // O perfil vem da tabela `usuario`, protegida por RLS. Se a linha não
-  // existir, o usuário autenticou mas não foi cadastrado no sistema.
   const { data: perfil } = await supabase
     .from("usuario")
     .select("nome, perfil")
     .eq("id", user.id)
     .maybeSingle();
 
+  const nome = (perfil?.nome ?? user.email?.split("@")[0] ?? "Usuário").replace(
+    /^./,
+    (c) => c.toUpperCase(),
+  );
+  const inicial = nome.charAt(0).toUpperCase();
+
   return (
-    <div className="min-h-dvh">
-      <header className="border-b border-slate-200 dark:border-slate-800">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-sm font-semibold tracking-tight">
-              Body Prime
-            </Link>
-            <nav className="flex gap-4 text-sm text-slate-600 dark:text-slate-400">
-              <Link href="/" className="transition hover:text-slate-900 dark:hover:text-slate-100">
-                Painel
-              </Link>
-              <Link href="/agenda" className="transition hover:text-slate-900 dark:hover:text-slate-100">
-                Agenda
-              </Link>
-              <Link href="/pacientes" className="transition hover:text-slate-900 dark:hover:text-slate-100">
-                Pacientes
-              </Link>
-              <Link href="/financeiro/despesas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
-                Financeiro
-              </Link>
-              <Link href="/configuracoes/salas" className="transition hover:text-slate-900 dark:hover:text-slate-100">
-                Configuração
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-slate-500 dark:text-slate-400">
-              {perfil?.nome ?? user.email}
-            </span>
+    <div className="flex min-h-dvh gap-3 p-3">
+      {/* Coluna de navegação: cartões flutuantes, não uma barra colada na borda. */}
+      <aside className="hidden w-[228px] shrink-0 lg:block">
+        <div className="sticky top-3 h-[calc(100dvh-1.5rem)]">
+          <Navegacao />
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <header className="cartao flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+          <Migalha />
+
+          <div className="flex flex-1 items-center justify-end gap-2.5">
+            <BuscaPaciente />
+
+            <div className="hidden items-center gap-2 rounded-full border border-[var(--traco)] px-3 py-1.5 sm:flex">
+              <span
+                aria-hidden
+                className="size-1.5 rounded-full"
+                style={{ background: "var(--status-bom)" }}
+              />
+              <span className="text-[13px] text-[var(--tinta-2)]">{SUBTITULO_PRODUTO}</span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 transition-colors hover:bg-[var(--superficie-2)]">
+              <span
+                className="grid size-7 place-items-center rounded-full text-[12px] font-semibold text-white"
+                style={{
+                  background: "linear-gradient(135deg, var(--marca), oklch(0.6 0.19 300))",
+                }}
+                aria-hidden
+              >
+                {inicial}
+              </span>
+              <span className="hidden leading-tight sm:block">
+                <span className="block text-[13px] font-medium text-[var(--tinta-1)]">{nome}</span>
+                <span className="block text-[11px] text-[var(--tinta-3)]">
+                  {ROTULO_PERFIL[perfil?.perfil ?? ""] ?? "Sem perfil"}
+                </span>
+              </span>
+            </div>
+
             <form action={sair}>
               <button
                 type="submit"
-                className="rounded-md px-2 py-1 text-slate-500 transition
-                           hover:bg-slate-100 hover:text-slate-900
-                           dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                className="rounded-full px-3 py-1.5 text-[13px] text-[var(--tinta-3)] transition-colors hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
               >
                 Sair
               </button>
             </form>
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
+        </header>
+
+        <main className="min-w-0 flex-1 pb-3">{children}</main>
+      </div>
     </div>
   );
 }

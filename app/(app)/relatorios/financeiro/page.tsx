@@ -37,7 +37,7 @@ export default async function FinanceiroPage(props: {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Relatórios financeiros</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-[var(--tinta-3)]">
             {periodo.rotulo} · competência {competencia}
           </p>
         </div>
@@ -54,7 +54,10 @@ export default async function FinanceiroPage(props: {
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Cartao rotulo="Receita realizada" valor={brl.format(Number(resultado.receita_realizada))} />
+              <Cartao
+                rotulo="Receita realizada"
+                valor={brl.format(Number(resultado.receita_realizada))}
+              />
               <Cartao
                 rotulo="Margem de contribuição"
                 valor={brl.format(Number(resultado.margem_contrib))}
@@ -78,8 +81,8 @@ export default async function FinanceiroPage(props: {
             </div>
             {Number(resultado.despesas_fixas) === 0 && (
               <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                Nenhuma despesa fixa lançada em {competencia}. O resultado acima é
-                margem de contribuição, não lucro — falta descontar a estrutura.
+                Nenhuma despesa fixa lançada em {competencia}. O resultado acima é margem de
+                contribuição, não lucro — falta descontar a estrutura.
               </p>
             )}
           </>
@@ -92,10 +95,10 @@ export default async function FinanceiroPage(props: {
         {comRealizacao.length === 0 ? (
           <Vazio>Nenhuma sessão realizada no período.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                <tr className="text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-[var(--traco)] text-left ">
+                <tr className="text-[var(--tinta-3)]">
                   <th className="px-4 py-2.5 font-medium">Procedimento</th>
                   <th className="px-4 py-2.5 text-right font-medium">Sessões</th>
                   <th className="px-4 py-2.5 text-right font-medium">Receita</th>
@@ -110,23 +113,29 @@ export default async function FinanceiroPage(props: {
                 {comRealizacao.map((r) => (
                   <tr
                     key={r.procedimento_id}
-                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
+                    className="border-b border-[var(--traco)] last:border-0 "
                   >
                     <td className="px-4 py-2.5 font-medium">{r.nome}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{r.sessoes}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(Number(r.receita))}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(Number(r.receita))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-[var(--tinta-3)]">
                       {brl.format(Number(r.custo_direto))}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-2.5 text-right tabular-nums text-[var(--tinta-3)]">
                       {brl.format(Number(r.comissao))}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(Number(r.margem))}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(Number(r.margem))}
+                    </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{pct(r.margem_pct)}</td>
                     {/* O indicador correto para comparar procedimentos de
-                        durações diferentes (RN-04). */}
+ durações diferentes (RN-04). */}
                     <td className="px-4 py-2.5 text-right font-medium tabular-nums">
-                      {r.margem_por_hora === null ? "—" : brlExato.format(Number(r.margem_por_hora))}
+                      {r.margem_por_hora === null
+                        ? "—"
+                        : brlExato.format(Number(r.margem_por_hora))}
                     </td>
                   </tr>
                 ))}
@@ -134,10 +143,9 @@ export default async function FinanceiroPage(props: {
             </table>
           </div>
         )}
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Margem por hora é o indicador para comparar procedimentos de durações
-          diferentes: um de margem menor que ocupa metade do tempo pode render
-          mais por hora de sala.
+        <p className="text-xs text-[var(--tinta-3)]">
+          Margem por hora é o indicador para comparar procedimentos de durações diferentes: um de
+          margem menor que ocupa metade do tempo pode render mais por hora de sala.
         </p>
       </section>
 
@@ -161,10 +169,10 @@ export default async function FinanceiroPage(props: {
                 apoio="Capacidade futura já vendida"
               />
             </div>
-            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                  <tr className="text-slate-500 dark:text-slate-400">
+                <thead className="border-b border-[var(--traco)] text-left ">
+                  <tr className="text-[var(--tinta-3)]">
                     <th className="px-4 py-2.5 font-medium">Procedimento</th>
                     <th className="px-4 py-2.5 text-right font-medium">Pacotes</th>
                     <th className="px-4 py-2.5 text-right font-medium">Sessões devidas</th>
@@ -174,12 +182,19 @@ export default async function FinanceiroPage(props: {
                 </thead>
                 <tbody>
                   {passivo.map((p) => (
-                    <tr key={p.procedimento_id} className="border-b border-slate-100 last:border-0 dark:border-slate-900">
+                    <tr
+                      key={p.procedimento_id}
+                      className="border-b border-[var(--traco)] last:border-0 "
+                    >
                       <td className="px-4 py-2.5 font-medium">{p.nome}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{p.pacotes}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{p.sessoes_devidas}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{horas(Number(p.horas_devidas))}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(Number(p.valor_devido))}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {horas(Number(p.horas_devidas))}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {brl.format(Number(p.valor_devido))}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -215,10 +230,10 @@ export default async function FinanceiroPage(props: {
         {comissoes.length === 0 ? (
           <Vazio>Nenhuma comissão apurada nesta competência.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                <tr className="text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-[var(--traco)] text-left ">
+                <tr className="text-[var(--tinta-3)]">
                   <th className="px-4 py-2.5 font-medium">Profissional</th>
                   <th className="px-4 py-2.5 font-medium">Procedimento</th>
                   <th className="px-4 py-2.5 text-right font-medium">Base</th>
@@ -228,22 +243,28 @@ export default async function FinanceiroPage(props: {
               </thead>
               <tbody>
                 {comissoes.map((c) => (
-                  <tr key={c.id} className="border-b border-slate-100 last:border-0 dark:border-slate-900">
+                  <tr key={c.id} className="border-b border-[var(--traco)] last:border-0 ">
                     <td className="px-4 py-2.5 font-medium">{c.profissional?.nome ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-2.5 text-[var(--tinta-2)]">
                       {c.agendamento?.procedimento?.nome ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-2.5 text-right tabular-nums text-[var(--tinta-3)]">
                       {brlExato.format(Number(c.base_calculo))}
                       {c.percentual !== null && ` · ${Number(c.percentual)}%`}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{brlExato.format(Number(c.valor))}</td>
-                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">{c.status}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brlExato.format(Number(c.valor))}
+                    </td>
+                    <td className="px-4 py-2.5 text-[var(--tinta-2)]">{c.status}</td>
                   </tr>
                 ))}
-                <tr className="bg-slate-50 font-medium dark:bg-slate-900">
-                  <td className="px-4 py-2.5" colSpan={3}>Total</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{brlExato.format(totalComissoes)}</td>
+                <tr className="bg-[var(--superficie-2)] font-medium ">
+                  <td className="px-4 py-2.5" colSpan={3}>
+                    Total
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">
+                    {brlExato.format(totalComissoes)}
+                  </td>
                   <td />
                 </tr>
               </tbody>

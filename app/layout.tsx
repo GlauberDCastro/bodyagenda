@@ -13,16 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Body Prime", template: "%s · Body Prime" },
-  description: "Gestão de ocupação e agenda da Body Prime",
+  title: {
+    default: "hellodoctor · Performance Clínica",
+    template: "%s · hellodoctor",
+  },
+  description: "Performance Clínica — ocupação, agenda e resultado da clínica em um só painel.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

@@ -1,9 +1,13 @@
 import type { ComponentProps, ReactNode } from "react";
 
-const base =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none " +
-  "focus:border-slate-900 disabled:opacity-50 " +
-  "dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-400";
+/* ── Campos ─────────────────────────────────────────────────────────────── */
+
+const campoBase =
+  "w-full rounded-[var(--r-md)] border border-[var(--traco)] bg-[var(--superficie-2)] " +
+  "px-3.5 py-2.5 text-[14px] text-[var(--tinta-1)] outline-none transition " +
+  "placeholder:text-[var(--tinta-3)] " +
+  "focus:border-[var(--marca)] focus:bg-[var(--superficie)] " +
+  "disabled:opacity-45";
 
 export function Campo({
   label,
@@ -18,13 +22,15 @@ export function Campo({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium">{label}</label>
+      <label className="block text-[13px] font-medium text-[var(--tinta-1)]">{label}</label>
       {children}
-      {dica && !erro && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{dica}</p>
-      )}
+      {dica && !erro && <p className="text-[12px] leading-snug text-[var(--tinta-3)]">{dica}</p>}
       {erro && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p
+          role="alert"
+          className="text-[12px] leading-snug"
+          style={{ color: "var(--status-critico)" }}
+        >
           {erro}
         </p>
       )}
@@ -33,60 +39,179 @@ export function Campo({
 }
 
 export function Input(props: ComponentProps<"input">) {
-  return <input {...props} className={`${base} ${props.className ?? ""}`} />;
+  return <input {...props} className={`${campoBase} ${props.className ?? ""}`} />;
 }
 
 export function Select(props: ComponentProps<"select">) {
-  return <select {...props} className={`${base} ${props.className ?? ""}`} />;
+  return <select {...props} className={`${campoBase} ${props.className ?? ""}`} />;
 }
 
 export function Textarea(props: ComponentProps<"textarea">) {
-  return <textarea {...props} className={`${base} ${props.className ?? ""}`} />;
+  return <textarea {...props} className={`${campoBase} resize-y ${props.className ?? ""}`} />;
 }
+
+/* ── Botões ─────────────────────────────────────────────────────────────── */
 
 export function Botao({
   variante = "primario",
   ...props
-}: ComponentProps<"button"> & { variante?: "primario" | "secundario" | "perigo" }) {
-  const estilos = {
+}: ComponentProps<"button"> & {
+  variante?: "primario" | "secundario" | "fantasma" | "perigo";
+}) {
+  const estilos: Record<string, string> = {
     primario:
-      "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white",
+      "bg-[var(--superficie-inversa)] text-[var(--tinta-inversa)] shadow-[var(--sombra-1)] " +
+      "hover:opacity-90 active:scale-[0.985]",
     secundario:
-      "border border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800",
-    perigo:
-      "border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950",
-  }[variante];
+      "bg-[var(--superficie)] text-[var(--tinta-1)] border border-[var(--traco)] " +
+      "shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)] active:scale-[0.985]",
+    fantasma: "text-[var(--tinta-2)] hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]",
+    perigo: "bg-[var(--superficie)] border border-[var(--traco)] hover:bg-[var(--superficie-2)]",
+  };
 
   return (
     <button
       {...props}
-      className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${estilos} ${props.className ?? ""}`}
+      style={variante === "perigo" ? { color: "var(--status-critico)" } : props.style}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5
+        text-[13.5px] font-medium transition-all duration-150
+        disabled:pointer-events-none disabled:opacity-45
+        ${estilos[variante]} ${props.className ?? ""}`}
     />
   );
 }
 
+/* ── Superfícies ────────────────────────────────────────────────────────── */
+
+export function Cartao({
+  children,
+  className = "",
+  padding = "p-5",
+}: {
+  children: ReactNode;
+  className?: string;
+  padding?: string;
+}) {
+  return <div className={`cartao ${padding} ${className}`}>{children}</div>;
+}
+
+export function Secao({
+  titulo,
+  descricao,
+  acao,
+  children,
+}: {
+  titulo: string;
+  descricao?: string;
+  acao?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="titulo-md">{titulo}</h2>
+          {descricao && (
+            <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--tinta-3)]">{descricao}</p>
+          )}
+        </div>
+        {acao}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/* ── Sinalização ────────────────────────────────────────────────────────── */
+
+/**
+ * Etiqueta de estado.
+ *
+ * `bom` / `atencao` / `critico` usam a paleta de status, que é fixa e nunca
+ * tematizada — e sempre acompanhada do rótulo, porque cor sozinha não carrega
+ * estado para quem não a distingue.
+ */
 export function Etiqueta({
   children,
   tom = "neutro",
 }: {
   children: ReactNode;
-  tom?: "neutro" | "verde" | "ambar";
+  tom?: "neutro" | "bom" | "atencao" | "critico" | "marca";
 }) {
-  const estilos = {
-    neutro: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-    verde: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-    ambar: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  }[tom];
+  const paleta: Record<string, { fundo: string; texto: string }> = {
+    neutro: {
+      fundo: "color-mix(in oklab, var(--tinta-3) 12%, transparent)",
+      texto: "var(--tinta-2)",
+    },
+    bom: {
+      fundo: "color-mix(in oklab, var(--status-bom) 14%, transparent)",
+      texto: "color-mix(in oklab, var(--status-bom) 78%, var(--tinta-1))",
+    },
+    atencao: {
+      fundo: "color-mix(in oklab, var(--status-atencao) 20%, transparent)",
+      texto: "color-mix(in oklab, var(--status-atencao) 55%, var(--tinta-1))",
+    },
+    critico: {
+      fundo: "color-mix(in oklab, var(--status-critico) 14%, transparent)",
+      texto: "color-mix(in oklab, var(--status-critico) 80%, var(--tinta-1))",
+    },
+    marca: {
+      fundo: "var(--marca-suave)",
+      texto: "var(--marca)",
+    },
+  };
+  const cores = paleta[tom] ?? paleta.neutro;
+
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${estilos}`}>
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11.5px] font-medium whitespace-nowrap"
+      style={{ background: cores.fundo, color: cores.texto }}
+    >
       {children}
     </span>
   );
 }
 
+/** Variação percentual. O sinal e a seta vêm junto — nunca só a cor. */
+export function Delta({ valor }: { valor: number | null }) {
+  if (valor === null) return null;
+  const positivo = valor >= 0;
+  return (
+    <Etiqueta tom={positivo ? "bom" : "critico"}>
+      {positivo ? "↑" : "↓"} {Math.abs(valor * 100).toFixed(1)}%
+    </Etiqueta>
+  );
+}
+
 export function Vazio({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+    <div className="rounded-[var(--r-lg)] border border-dashed border-[var(--traco-forte)] p-10 text-center text-[13.5px] leading-relaxed text-[var(--tinta-3)]">
+      {children}
+    </div>
+  );
+}
+
+export function Aviso({
+  children,
+  tom = "atencao",
+}: {
+  children: ReactNode;
+  tom?: "atencao" | "critico" | "neutro";
+}) {
+  const cor =
+    tom === "critico"
+      ? "var(--status-critico)"
+      : tom === "neutro"
+        ? "var(--tinta-3)"
+        : "var(--status-atencao)";
+  return (
+    <div
+      className="rounded-[var(--r-md)] px-4 py-3 text-[13px] leading-relaxed"
+      style={{
+        background: `color-mix(in oklab, ${cor} 9%, transparent)`,
+        color: `color-mix(in oklab, ${cor} 45%, var(--tinta-1))`,
+      }}
+    >
       {children}
     </div>
   );
@@ -94,17 +219,78 @@ export function Vazio({ children }: { children: ReactNode }) {
 
 export function AvisoBanco() {
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
-      <p className="font-medium text-amber-900 dark:text-amber-200">
-        Banco de dados ainda não migrado
-      </p>
-      <p className="mt-1 text-amber-800 dark:text-amber-300">
+    <Aviso>
+      <p className="font-semibold">Banco de dados ainda não migrado</p>
+      <p className="mt-1">
         As tabelas não existem no Supabase. Acrescente{" "}
-        <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">DATABASE_URL</code> ou{" "}
-        <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">SUPABASE_ACCESS_TOKEN</code>{" "}
-        ao <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">.env.local</code> e rode{" "}
-        <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">npm run db:reset</code>.
+        <code className="rounded px-1 font-mono text-[12px]">DATABASE_URL</code> ao{" "}
+        <code className="rounded px-1 font-mono text-[12px]">.env.local</code> e rode{" "}
+        <code className="rounded px-1 font-mono text-[12px]">npm run db:reset</code>.
       </p>
+    </Aviso>
+  );
+}
+
+/* ── Tabela ─────────────────────────────────────────────────────────────── */
+
+export function Tabela({ children }: { children: ReactNode }) {
+  return (
+    <div className="cartao overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13.5px]">{children}</table>
+      </div>
     </div>
+  );
+}
+
+export function Cabecalho({ children }: { children: ReactNode }) {
+  return (
+    <thead>
+      <tr className="border-b border-[var(--traco)] text-left text-[12px] font-medium text-[var(--tinta-3)]">
+        {children}
+      </tr>
+    </thead>
+  );
+}
+
+export function Th({
+  children,
+  alinhar = "left",
+}: {
+  children?: ReactNode;
+  alinhar?: "left" | "right";
+}) {
+  return (
+    <th className={`px-4 py-2.5 font-medium ${alinhar === "right" ? "text-right" : ""}`}>
+      {children}
+    </th>
+  );
+}
+
+export function Tr({ children }: { children: ReactNode }) {
+  return (
+    <tr className="border-b border-[var(--traco)] transition-colors last:border-0 hover:bg-[var(--superficie-2)]">
+      {children}
+    </tr>
+  );
+}
+
+export function Td({
+  children,
+  alinhar = "left",
+  forte = false,
+}: {
+  children?: ReactNode;
+  alinhar?: "left" | "right";
+  forte?: boolean;
+}) {
+  return (
+    <td
+      className={`px-4 py-3 ${alinhar === "right" ? "text-right tabular-nums" : ""} ${
+        forte ? "font-medium text-[var(--tinta-1)]" : "text-[var(--tinta-2)]"
+      }`}
+    >
+      {children}
+    </td>
   );
 }

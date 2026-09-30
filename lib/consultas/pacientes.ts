@@ -51,7 +51,10 @@ export async function pacotesDoPaciente(pacienteId: string): Promise<PacoteComSa
   const { data: agendamentos } = await supabase
     .from("agendamento")
     .select("pacote_id, status")
-    .in("pacote_id", pacotes.map((p) => p.id))
+    .in(
+      "pacote_id",
+      pacotes.map((p) => p.id),
+    )
     .neq("status", "cancelado");
 
   const consumo = new Map<string, number>();
@@ -86,9 +89,6 @@ export async function agendamentosDoPaciente(
 export async function pacotesAgendaveis(pacienteId: string): Promise<PacoteComSaldo[]> {
   const hoje = new Date().toISOString().slice(0, 10);
   return (await pacotesDoPaciente(pacienteId)).filter(
-    (p) =>
-      p.status === "ativo" &&
-      p.restantes > 0 &&
-      (!p.validade || p.validade >= hoje),
+    (p) => p.status === "ativo" && p.restantes > 0 && (!p.validade || p.validade >= hoje),
   );
 }

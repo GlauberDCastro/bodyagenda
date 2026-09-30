@@ -24,14 +24,11 @@ export function FormularioProcedimento() {
   const [valor, setValor] = useState(0);
   const [sessoes, setSessoes] = useState(1);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarProcedimento(null, anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarProcedimento(null, anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -47,7 +44,7 @@ export function FormularioProcedimento() {
   return (
     <form
       action={acao}
-      className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-md space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <Campo label="Nome" erro={estado.campos?.nome}>
         <Input name="nome" required autoFocus placeholder="Ultraformer Olhos" />
@@ -113,31 +110,28 @@ export function FormularioProcedimento() {
         <Input name="intervalo_min_dias" type="number" min={0} defaultValue={0} />
       </Campo>
 
-      <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900">
+      <div className="space-y-1 rounded-lg bg-[var(--superficie-2)] p-3 text-sm ">
         <div className="flex justify-between">
-          <span className="text-slate-500 dark:text-slate-400">Receita por hora</span>
+          <span className="text-[var(--tinta-3)]">Receita por hora</span>
           <span className="font-medium tabular-nums">
             {previa.receitaPorHora === null ? "—" : brl.format(previa.receitaPorHora)}
           </span>
         </div>
         {sessoes > 1 && (
           <div className="flex justify-between">
-            <span className="text-slate-500 dark:text-slate-400">
-              Protocolo de {sessoes}
-            </span>
+            <span className="text-[var(--tinta-3)]">Protocolo de {sessoes}</span>
             <span className="font-medium tabular-nums">
               {brl.format(valor * sessoes)} · {(duracao * sessoes) / 60} h de agenda
             </span>
           </div>
         )}
-        <p className="pt-1 text-xs text-slate-500 dark:text-slate-400">
-          Margem só aparece depois de cadastrar os custos, na página do
-          procedimento.
+        <p className="pt-1 text-xs text-[var(--tinta-3)]">
+          Margem só aparece depois de cadastrar os custos, na página do procedimento.
         </p>
       </div>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

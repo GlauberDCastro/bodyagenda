@@ -14,9 +14,7 @@ const ROTULO_TIPO: Record<string, string> = {
   outro: "Outro",
 };
 
-export default async function ProcedimentoPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ProcedimentoPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const supabase = await createServerSupabase();
 
@@ -48,21 +46,20 @@ export default async function ProcedimentoPage(props: {
       <header className="space-y-1">
         <Link
           href="/configuracoes/procedimentos"
-          className="text-sm text-slate-500 underline-offset-4 hover:underline dark:text-slate-400"
+          className="text-sm text-[var(--tinta-3)] underline-offset-4 hover:underline "
         >
           ← Procedimentos
         </Link>
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">{proc.nome}</h1>
-          <Etiqueta tom={proc.ativo ? "verde" : "neutro"}>
+          <Etiqueta tom={proc.ativo ? "bom" : "neutro"}>
             {proc.ativo ? "Ativo" : "Inativo"}
           </Etiqueta>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-[var(--tinta-3)]">
           {proc.duracao_min} min
-          {proc.buffer_min > 0 && ` + ${proc.buffer_min} de preparo`} ·{" "}
-          {proc.sessoes_padrao} sessão(ões) · {brlExato.format(Number(proc.valor_sessao))} por
-          sessão
+          {proc.buffer_min > 0 && ` + ${proc.buffer_min} de preparo`} · {proc.sessoes_padrao}{" "}
+          sessão(ões) · {brlExato.format(Number(proc.valor_sessao))} por sessão
         </p>
       </header>
 
@@ -72,7 +69,9 @@ export default async function ProcedimentoPage(props: {
         <Cartao
           rotulo="Custo direto"
           valor={brlExato.format(margem.custoDireto)}
-          apoio={linhasCusto.length === 0 ? "Nenhum custo lançado" : `${linhasCusto.length} item(ns)`}
+          apoio={
+            linhasCusto.length === 0 ? "Nenhum custo lançado" : `${linhasCusto.length} item(ns)`
+          }
           destaque={linhasCusto.length === 0 ? "atencao" : "neutro"}
         />
         <Cartao
@@ -90,9 +89,8 @@ export default async function ProcedimentoPage(props: {
 
       {linhasCusto.length === 0 && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          Sem custo lançado, a margem acima é apenas a receita. O custo de
-          insumo é o que separa o procedimento que paga a estrutura do que é
-          vendido no prejuízo.
+          Sem custo lançado, a margem acima é apenas a receita. O custo de insumo é o que separa o
+          procedimento que paga a estrutura do que é vendido no prejuízo.
         </p>
       )}
 
@@ -105,10 +103,10 @@ export default async function ProcedimentoPage(props: {
         {(custos ?? []).length === 0 ? (
           <Vazio>Nenhum custo cadastrado para este procedimento.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                <tr className="text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-[var(--traco)] text-left ">
+                <tr className="text-[var(--tinta-3)]">
                   <th className="px-4 py-2.5 font-medium">Descrição</th>
                   <th className="px-4 py-2.5 font-medium">Tipo</th>
                   <th className="px-4 py-2.5 text-right font-medium">Unitário</th>
@@ -118,26 +116,21 @@ export default async function ProcedimentoPage(props: {
               </thead>
               <tbody>
                 {(custos ?? []).map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
-                  >
+                  <tr key={c.id} className="border-b border-[var(--traco)] last:border-0 ">
                     <td className="px-4 py-2.5 font-medium">{c.descricao}</td>
-                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-2.5 text-[var(--tinta-2)]">
                       {ROTULO_TIPO[c.tipo] ?? c.tipo}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {brlExato.format(Number(c.valor_unitario))}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {Number(c.quantidade)}
-                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">{Number(c.quantidade)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {brlExato.format(Number(c.valor_unitario) * Number(c.quantidade))}
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-slate-50 font-medium dark:bg-slate-900">
+                <tr className="bg-[var(--superficie-2)] font-medium ">
                   <td className="px-4 py-2.5" colSpan={4}>
                     Custo direto por sessão
                   </td>
@@ -149,9 +142,9 @@ export default async function ProcedimentoPage(props: {
             </table>
           </div>
         )}
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          O custo/hora dos aparelhos entra separadamente, no cadastro de cada
-          equipamento, proporcional à duração da sessão.
+        <p className="text-xs text-[var(--tinta-3)]">
+          O custo/hora dos aparelhos entra separadamente, no cadastro de cada equipamento,
+          proporcional à duração da sessão.
         </p>
       </section>
 
@@ -159,9 +152,8 @@ export default async function ProcedimentoPage(props: {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">Recursos exigidos</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Por modelo, não por unidade: o sistema acha sozinho qual aparelho
-              está livre.
+            <p className="text-xs text-[var(--tinta-3)]">
+              Por modelo, não por unidade: o sistema acha sozinho qual aparelho está livre.
             </p>
           </div>
           <FormularioRequisito procedimentoId={id} modelos={modelosUnicos} />
@@ -169,19 +161,19 @@ export default async function ProcedimentoPage(props: {
 
         {(requisitos ?? []).length === 0 ? (
           <Vazio>
-            Nenhum recurso exigido. A agenda não vai pré-selecionar equipamento
-            para este procedimento.
+            Nenhum recurso exigido. A agenda não vai pré-selecionar equipamento para este
+            procedimento.
           </Vazio>
         ) : (
           <ul className="space-y-1.5">
             {(requisitos ?? []).map((r) => (
               <li
                 key={r.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-800"
+                className="flex items-center justify-between rounded-lg border border-[var(--traco)] px-4 py-2.5 text-sm "
               >
                 <span>
                   <span className="font-medium">{r.modelo ?? r.recurso_id}</span>
-                  <span className="ml-2 text-slate-500 dark:text-slate-400">
+                  <span className="ml-2 text-[var(--tinta-3)]">
                     {r.quantidade} unidade(s) · {r.recurso_tipo}
                   </span>
                 </span>
@@ -198,10 +190,6 @@ export default async function ProcedimentoPage(props: {
 export async function generateMetadata(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const supabase = await createServerSupabase();
-  const { data } = await supabase
-    .from("procedimento")
-    .select("nome")
-    .eq("id", id)
-    .maybeSingle();
+  const { data } = await supabase.from("procedimento").select("nome").eq("id", id).maybeSingle();
   return { title: data?.nome ?? "Procedimento" };
 }

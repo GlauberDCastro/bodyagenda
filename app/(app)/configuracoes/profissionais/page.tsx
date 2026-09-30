@@ -13,7 +13,7 @@ export default async function ProfissionaisPage() {
   if (profissionais.semSchema) return <AvisoBanco />;
   if (profissionais.erro) {
     return (
-      <p className="text-sm text-red-600 dark:text-red-400">
+      <p className="text-sm text-[color:var(--status-critico)]">
         Erro ao carregar profissionais: {profissionais.erro}
       </p>
     );
@@ -22,7 +22,7 @@ export default async function ProfissionaisPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-[var(--tinta-3)]">
           {profissionais.dados.filter((p) => p.ativo).length} profissional(is) ativo(s)
         </p>
         <FormularioProfissional procedimentos={procedimentos.dados} />
@@ -30,14 +30,14 @@ export default async function ProfissionaisPage() {
 
       {profissionais.dados.length === 0 ? (
         <Vazio>
-          Nenhum profissional cadastrado. Um profissional pode existir sem login
-          &mdash; o vínculo com usuário é opcional.
+          Nenhum profissional cadastrado. Um profissional pode existir sem login &mdash; o vínculo
+          com usuário é opcional.
         </Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-              <tr className="text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-[var(--traco)] text-left ">
+              <tr className="text-[var(--tinta-3)]">
                 <th className="px-4 py-2.5 font-medium">Nome</th>
                 <th className="px-4 py-2.5 font-medium">Especialidade</th>
                 <th className="px-4 py-2.5 font-medium">Login</th>
@@ -47,10 +47,7 @@ export default async function ProfissionaisPage() {
             </thead>
             <tbody>
               {profissionais.dados.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-slate-100 last:border-0 dark:border-slate-900"
-                >
+                <tr key={p.id} className="border-b border-[var(--traco)] last:border-0 ">
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-2">
                       <span
@@ -61,18 +58,16 @@ export default async function ProfissionaisPage() {
                       <span className="font-medium">{p.nome}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
-                    {p.especialidade ?? "—"}
-                  </td>
+                  <td className="px-4 py-2.5 text-[var(--tinta-2)]">{p.especialidade ?? "—"}</td>
                   <td className="px-4 py-2.5">
                     <Etiqueta>{p.usuario_id ? "Com acesso" : "Sem login"}</Etiqueta>
                   </td>
-                  <td className="px-4 py-2.5 tabular-nums text-slate-600 dark:text-slate-400">
+                  <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">
                     {p.vigencia_inicio}
                     {p.vigencia_fim ? ` → ${p.vigencia_fim}` : ""}
                   </td>
                   <td className="px-4 py-2.5">
-                    <Etiqueta tom={p.ativo ? "verde" : "neutro"}>
+                    <Etiqueta tom={p.ativo ? "bom" : "neutro"}>
                       {p.ativo ? "Ativo" : "Inativo"}
                     </Etiqueta>
                   </td>

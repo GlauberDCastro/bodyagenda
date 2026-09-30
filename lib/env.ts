@@ -18,10 +18,7 @@ function obrigatoria(nome: string, valor: string | undefined): string {
 }
 
 export const env = {
-  supabaseUrl: obrigatoria(
-    "NEXT_PUBLIC_SUPABASE_URL",
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-  ),
+  supabaseUrl: obrigatoria("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
   /**
    * Chave pública. É segura no navegador PORQUE o RLS existe — nunca porque
    * a interface esconde alguma coisa (SPEC §5.3, princípio P2).
@@ -30,8 +27,7 @@ export const env = {
    */
   supabaseChavePublica: obrigatoria(
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   ),
   tz: process.env.NEXT_PUBLIC_APP_TZ ?? "America/Sao_Paulo",
 } as const;
@@ -50,8 +46,5 @@ export function chaveServiceRole(): string {
         "Essa chave ignora o RLS e jamais pode chegar ao cliente.",
     );
   }
-  return obrigatoria(
-    "SUPABASE_SERVICE_ROLE_KEY",
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-  );
+  return obrigatoria("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
 }

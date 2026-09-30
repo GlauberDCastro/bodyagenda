@@ -8,10 +8,7 @@ export const pacienteSchema = z.object({
   nome: z.string().min(2, "Informe o nome completo"),
   cpf: z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? limparCpf(v) : null),
-    z
-      .string()
-      .refine(cpfValido, "CPF inválido — confira os dígitos")
-      .nullable(),
+    z.string().refine(cpfValido, "CPF inválido — confira os dígitos").nullable(),
   ),
   data_nascimento: vazioParaNulo(z.string()),
   telefone: vazioParaNulo(z.string()),

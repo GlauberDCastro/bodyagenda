@@ -41,9 +41,7 @@ export function sobrepoe(a: Intervalo, b: Intervalo): boolean {
 export function unir(intervalos: Intervalo[]): Intervalo[] {
   if (intervalos.length === 0) return [];
 
-  const ordenados = [...intervalos].sort(
-    (x, y) => x.inicio.getTime() - y.inicio.getTime(),
-  );
+  const ordenados = [...intervalos].sort((x, y) => x.inicio.getTime() - y.inicio.getTime());
   const saida: Intervalo[] = [{ ...ordenados[0] }];
 
   for (const atual of ordenados.slice(1)) {
@@ -90,10 +88,7 @@ export function subtrair(base: Intervalo[], remover: Intervalo[]): Intervalo[] {
  * Bloqueio fora da janela de atendimento não subtrai nada: não se perde
  * capacidade que nunca existiu.
  */
-export function capacidadeHoras(
-  disponibilidade: Intervalo[],
-  bloqueios: Intervalo[],
-): number {
+export function capacidadeHoras(disponibilidade: Intervalo[], bloqueios: Intervalo[]): number {
   return subtrair(disponibilidade, bloqueios).reduce(
     (total, faixa) => total + duracaoHoras(faixa),
     0,
@@ -137,9 +132,7 @@ export function calcularOcupacao(
   periodo: Intervalo,
 ): Ocupacao {
   const capacidade = capacidadeHoras(
-    disponibilidade
-      .map((d) => intersectar(d, periodo))
-      .filter((d): d is Intervalo => d !== null),
+    disponibilidade.map((d) => intersectar(d, periodo)).filter((d): d is Intervalo => d !== null),
     bloqueios,
   );
 
@@ -153,8 +146,7 @@ export function calcularOcupacao(
   const agendadas = somar((r) => r.status !== "cancelado");
   const realizadas = somar((r) => r.status === "realizado");
 
-  const taxa = (valor: number) =>
-    capacidade > 0 ? Number((valor / capacidade).toFixed(4)) : null;
+  const taxa = (valor: number) => (capacidade > 0 ? Number((valor / capacidade).toFixed(4)) : null);
 
   return {
     capacidadeHoras: capacidade,

@@ -18,14 +18,11 @@ function Salvar() {
 export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) {
   const [aberto, setAberto] = useState(false);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await adicionarCusto(anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await adicionarCusto(anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -38,7 +35,7 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
   return (
     <form
       action={acao}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-sm space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
 
@@ -59,17 +56,20 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
         <Campo label="Valor unitário" erro={estado.campos?.valor_unitario}>
           <Input name="valor_unitario" type="number" step="0.01" min="0" required />
         </Campo>
-        <Campo
-          label="Quantidade"
-          erro={estado.campos?.quantidade}
-          dica="Por sessão."
-        >
-          <Input name="quantidade" type="number" step="0.001" min="0.001" defaultValue={1} required />
+        <Campo label="Quantidade" erro={estado.campos?.quantidade} dica="Por sessão.">
+          <Input
+            name="quantidade"
+            type="number"
+            step="0.001"
+            min="0.001"
+            defaultValue={1}
+            required
+          />
         </Campo>
       </div>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

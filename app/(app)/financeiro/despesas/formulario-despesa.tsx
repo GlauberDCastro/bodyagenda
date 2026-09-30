@@ -17,14 +17,11 @@ function Salvar() {
 
 export function FormularioDespesa({ competencia }: { competencia: string }) {
   const [aberto, setAberto] = useState(false);
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await lancarDespesa(anterior, formData);
-      if (r.ok) setAberto(false);
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await lancarDespesa(anterior, formData);
+    if (r.ok) setAberto(false);
+    return r;
+  }, {});
 
   if (!aberto) {
     return (
@@ -37,7 +34,7 @@ export function FormularioDespesa({ competencia }: { competencia: string }) {
   return (
     <form
       action={acao}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+      className="w-full max-w-sm space-y-4 rounded-lg border border-[var(--traco)] p-4 "
     >
       <input type="hidden" name="competencia" value={competencia} />
 
@@ -60,7 +57,7 @@ export function FormularioDespesa({ competencia }: { competencia: string }) {
       </label>
 
       {estado.erro && !estado.campos && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
           {estado.erro}
         </p>
       )}

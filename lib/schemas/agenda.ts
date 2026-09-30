@@ -33,14 +33,7 @@ export const agendamentoSchema = z
 
 export const mudancaStatusSchema = z.object({
   id: z.uuid(),
-  status: z.enum([
-    "agendado",
-    "confirmado",
-    "em_atendimento",
-    "realizado",
-    "falta",
-    "cancelado",
-  ]),
+  status: z.enum(["agendado", "confirmado", "em_atendimento", "realizado", "falta", "cancelado"]),
   motivo_cancelamento: vazioParaNulo(z.string()),
 });
 

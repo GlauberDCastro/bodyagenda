@@ -20,10 +20,7 @@ function erroDeBanco(erro: { code?: string; message: string }): Resultado {
   return { erro: erro.message };
 }
 
-export async function lancarDespesa(
-  _anterior: Resultado,
-  formData: FormData,
-): Promise<Resultado> {
+export async function lancarDespesa(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = despesaSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     const campos: Record<string, string> = {};

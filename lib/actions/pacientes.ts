@@ -63,10 +63,7 @@ export async function inativarPaciente(id: string): Promise<Resultado> {
   return { ok: true };
 }
 
-export async function venderPacote(
-  _anterior: Resultado,
-  formData: FormData,
-): Promise<Resultado> {
+export async function venderPacote(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = pacoteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return erroDeValidacao(parsed.error.issues);
 
@@ -91,10 +88,7 @@ export async function venderPacote(
  */
 export async function cancelarPacote(id: string, pacienteId: string): Promise<Resultado> {
   const supabase = await createServerSupabase();
-  const { error } = await supabase
-    .from("pacote")
-    .update({ status: "cancelado" })
-    .eq("id", id);
+  const { error } = await supabase.from("pacote").update({ status: "cancelado" }).eq("id", id);
   if (error) return erroDeBanco(error);
   revalidatePath(`/pacientes/${pacienteId}`);
   return { ok: true };

@@ -197,9 +197,9 @@ export async function salvarProfissional(
   // RF-23a · habilitação por procedimento. Substitui o conjunto inteiro.
   await supabase.from("profissional_habilitacao").delete().eq("profissional_id", data.id);
   if (procedimentos.length) {
-    const { error: erroHab } = await supabase.from("profissional_habilitacao").insert(
-      procedimentos.map((p) => ({ profissional_id: data.id, procedimento_id: p })),
-    );
+    const { error: erroHab } = await supabase
+      .from("profissional_habilitacao")
+      .insert(procedimentos.map((p) => ({ profissional_id: data.id, procedimento_id: p })));
     if (erroHab) return erroDeBanco(erroHab);
   }
 

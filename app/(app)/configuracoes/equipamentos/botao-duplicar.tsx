@@ -13,7 +13,7 @@ export function BotaoDuplicar({ id, nome }: { id: string; nome: string }) {
 
   return (
     <div className="flex items-center justify-end gap-2">
-      {erro && <span className="text-xs text-red-600 dark:text-red-400">{erro}</span>}
+      {erro && <span className="text-xs text-[color:var(--status-critico)]">{erro}</span>}
       <button
         type="button"
         disabled={pendente}
@@ -25,9 +25,9 @@ export function BotaoDuplicar({ id, nome }: { id: string; nome: string }) {
             if (r.erro) setErro(r.erro);
           })
         }
-        className="rounded-md px-2 py-1 text-xs text-slate-500 transition
-                   hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50
-                   dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        className="rounded-md px-2 py-1 text-xs text-[var(--tinta-3)] transition
+ hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)] disabled:opacity-50
+ dark:hover:bg-slate-800 dark:hover:text-slate-100"
       >
         {pendente ? "Duplicando…" : "Duplicar"}
       </button>

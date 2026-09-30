@@ -17,18 +17,16 @@ const dataHora = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-const TOM_STATUS: Record<string, "neutro" | "verde" | "ambar"> = {
-  realizado: "verde",
+const TOM_STATUS: Record<string, "neutro" | "bom" | "atencao"> = {
+  realizado: "bom",
   agendado: "neutro",
   confirmado: "neutro",
-  em_atendimento: "ambar",
-  falta: "ambar",
+  em_atendimento: "atencao",
+  falta: "atencao",
   cancelado: "neutro",
 };
 
-export default async function PacientePage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function PacientePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
 
   const [paciente, pacotes, agendamentos, procedimentos] = await Promise.all([
@@ -45,39 +43,32 @@ export default async function PacientePage(props: {
       <header className="space-y-1">
         <Link
           href="/pacientes"
-          className="text-sm text-slate-500 underline-offset-4 hover:underline dark:text-slate-400"
+          className="text-sm text-[var(--tinta-3)] underline-offset-4 hover:underline "
         >
           ← Pacientes
         </Link>
         <h1 className="text-xl font-semibold tracking-tight">{paciente.nome}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {[
-            paciente.cpf ? formatarCpf(paciente.cpf) : null,
-            paciente.telefone,
-            paciente.email,
-          ]
+        <p className="text-sm text-[var(--tinta-3)]">
+          {[paciente.cpf ? formatarCpf(paciente.cpf) : null, paciente.telefone, paciente.email]
             .filter(Boolean)
             .join(" · ") || "Sem dados de contato"}
         </p>
         {!paciente.consentimento_lgpd && (
-          <Etiqueta tom="ambar">Consentimento LGPD pendente</Etiqueta>
+          <Etiqueta tom="atencao">Consentimento LGPD pendente</Etiqueta>
         )}
       </header>
 
       {paciente.observacoes && (
-        <section className="rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-800">
+        <section className="rounded-lg border border-[var(--traco)] p-4 text-sm ">
           <h2 className="mb-1 font-medium">Observações</h2>
-          <p className="text-slate-600 dark:text-slate-400">{paciente.observacoes}</p>
+          <p className="text-[var(--tinta-2)]">{paciente.observacoes}</p>
         </section>
       )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold">Pacotes</h2>
-          <FormularioPacote
-            pacienteId={paciente.id}
-            procedimentos={procedimentos.dados}
-          />
+          <FormularioPacote pacienteId={paciente.id} procedimentos={procedimentos.dados} />
         </div>
 
         {pacotes.length === 0 ? (
@@ -90,28 +81,22 @@ export default async function PacientePage(props: {
               return (
                 <div
                   key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--traco)] p-3 text-sm "
                 >
                   <div>
                     <p className="font-medium">{p.procedimento?.nome ?? "—"}</p>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <p className="text-[var(--tinta-3)]">
                       {brl.format(valorLiquido)} · {brl.format(porSessao)} por sessão
                       {p.validade ? ` · validade ${p.validade}` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     {/* RF-62 · saldo no formato "sessão 3 de 10" */}
-                    <span className="tabular-nums text-slate-600 dark:text-slate-400">
+                    <span className="tabular-nums text-[var(--tinta-2)]">
                       sessão {p.usadas} de {p.quantidade_sessoes}
                     </span>
                     <Etiqueta
-                      tom={
-                        p.status === "ativo"
-                          ? p.restantes > 0
-                            ? "verde"
-                            : "ambar"
-                          : "neutro"
-                      }
+                      tom={p.status === "ativo" ? (p.restantes > 0 ? "bom" : "atencao") : "neutro"}
                     >
                       {p.status === "ativo"
                         ? p.restantes > 0
@@ -132,10 +117,10 @@ export default async function PacientePage(props: {
         {agendamentos.length === 0 ? (
           <Vazio>Nenhum atendimento registrado.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left dark:border-slate-800">
-                <tr className="text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-[var(--traco)] text-left ">
+                <tr className="text-[var(--tinta-3)]">
                   <th className="px-4 py-2.5 font-medium">Quando</th>
                   <th className="px-4 py-2.5 font-medium">Procedimento</th>
                   <th className="px-4 py-2.5 font-medium">Sessão</th>
@@ -144,15 +129,12 @@ export default async function PacientePage(props: {
               </thead>
               <tbody>
                 {agendamentos.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b border-slate-100 last:border-0 dark:border-slate-900"
-                  >
+                  <tr key={a.id} className="border-b border-[var(--traco)] last:border-0 ">
                     <td className="px-4 py-2.5 tabular-nums">
                       {dataHora.format(new Date(a.inicio))}
                     </td>
                     <td className="px-4 py-2.5">{a.procedimento?.nome ?? "—"}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">
                       {a.numero_sessao ?? "avulsa"}
                     </td>
                     <td className="px-4 py-2.5">

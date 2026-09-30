@@ -9,8 +9,7 @@ const hora = new Intl.DateTimeFormat("pt-BR", {
 });
 
 const ESTILO_STATUS: Record<StatusAgendamento, string> = {
-  agendado:
-    "bg-slate-100 border-slate-300 text-slate-900 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100",
+  agendado: "bg-slate-100 border-[var(--traco)] text-[var(--tinta-1)] dark:border-slate-600 ",
   confirmado:
     "bg-sky-100 border-sky-300 text-sky-900 dark:bg-sky-950 dark:border-sky-800 dark:text-sky-100",
   em_atendimento:
@@ -63,30 +62,28 @@ export function Timeline({
 
   if (colunas.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <div className="rounded-lg border border-dashed border-[var(--traco-forte)] p-8 text-center text-sm text-[var(--tinta-3)] ">
         Nenhum recurso ativo para exibir. Cadastre em Configuração.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+    <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
       <div className="min-w-max">
         {/* Cabeçalho de colunas */}
         <div
-          className="sticky top-0 z-10 flex border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
+          className="sticky top-0 z-10 flex border-b border-[var(--traco)] bg-white dark:bg-slate-950"
           style={{ paddingLeft: 56 }}
         >
           {colunas.map((c) => (
             <div
               key={`${c.tipo}-${c.id}`}
-              className="w-40 shrink-0 border-l border-slate-100 px-2 py-2 dark:border-slate-900"
+              className="w-40 shrink-0 border-l border-[var(--traco)] px-2 py-2 "
             >
               <p className="truncate text-xs font-medium">{c.rotulo}</p>
               {c.subtitulo && (
-                <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                  {c.subtitulo}
-                </p>
+                <p className="truncate text-[11px] text-[var(--tinta-3)]">{c.subtitulo}</p>
               )}
             </div>
           ))}
@@ -98,7 +95,7 @@ export function Timeline({
             {horas.map((h) => (
               <div
                 key={h}
-                className="border-b border-slate-100 pr-2 text-right text-[11px] tabular-nums text-slate-400 dark:border-slate-900"
+                className="border-b border-[var(--traco)] pr-2 text-right text-[11px] tabular-nums text-[var(--tinta-3)] "
                 style={{ height: ALTURA_HORA }}
               >
                 {String(h).padStart(2, "0")}:00
@@ -114,12 +111,12 @@ export function Timeline({
             return (
               <div
                 key={`${coluna.tipo}-${coluna.id}`}
-                className="relative w-40 shrink-0 border-l border-slate-100 dark:border-slate-900"
+                className="relative w-40 shrink-0 border-l border-[var(--traco)]"
               >
                 {horas.map((h) => (
                   <div
                     key={h}
-                    className="border-b border-slate-100 dark:border-slate-900"
+                    className="border-b border-[var(--traco)]"
                     style={{ height: ALTURA_HORA }}
                   />
                 ))}
@@ -128,10 +125,7 @@ export function Timeline({
                   const inicioMin = minutosDoDia(a.inicio, tz);
                   const fimMin = minutosDoDia(a.fim, tz);
                   const topo = ((inicioMin - horaInicio * 60) / 60) * ALTURA_HORA;
-                  const altura = Math.max(
-                    18,
-                    ((fimMin - inicioMin) / 60) * ALTURA_HORA - 2,
-                  );
+                  const altura = Math.max(18, ((fimMin - inicioMin) / 60) * ALTURA_HORA - 2);
 
                   // Fora da faixa exibida: não renderiza em vez de estourar.
                   if (fimMin <= horaInicio * 60 || inicioMin >= horaFim * 60) return null;
@@ -145,8 +139,7 @@ export function Timeline({
                     >
                       <p className="truncate font-medium">{a.paciente?.nome ?? "—"}</p>
                       <p className="truncate opacity-75">
-                        {hora.format(new Date(a.inicio))} ·{" "}
-                        {a.procedimento?.nome ?? "—"}
+                        {hora.format(new Date(a.inicio))} · {a.procedimento?.nome ?? "—"}
                       </p>
                     </div>
                   );
