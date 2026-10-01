@@ -1,5 +1,6 @@
 import type { AgendamentoNaAgenda, ColunaRecurso } from "@/lib/consultas/agenda";
 import type { StatusAgendamento } from "@/lib/types/database";
+import { BlocoAgendamento } from "./bloco-agendamento";
 
 const ALTURA_HORA = 56; // px
 const hora = new Intl.DateTimeFormat("pt-BR", {
@@ -158,21 +159,13 @@ export function Timeline({
                   if (!estilo) return null;
 
                   return (
-                    <div
+                    <BlocoAgendamento
                       key={a.id}
-                      className="absolute left-1 right-1 overflow-hidden rounded-[7px] border px-1.5 py-1 text-[11px] leading-tight"
-                      style={{ top: topo, height: altura, ...estilo }}
-                      title={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${ROTULO_STATUS[a.status]}`}
-                    >
-                      <p
-                        className={`truncate font-medium ${a.status === "falta" ? "line-through" : ""}`}
-                      >
-                        {a.paciente?.nome ?? "—"}
-                      </p>
-                      <p className="truncate opacity-75">
-                        {hora.format(new Date(a.inicio))} · {a.procedimento?.nome ?? "—"}
-                      </p>
-                    </div>
+                      agendamento={a}
+                      rotuloStatus={ROTULO_STATUS[a.status]}
+                      estilo={{ top: topo, height: altura, ...estilo }}
+                      titulo={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${ROTULO_STATUS[a.status]}`}
+                    />
                   );
                 })}
               </div>

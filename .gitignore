@@ -50,3 +50,6 @@ yarn-error.log*
 
 # Credenciais do admin inicial geradas por scripts/criar-admin.mjs
 supabase/.admin-inicial.txt
+
+# Massa temporária do E2E (credenciais de usuário de teste)
+e2e/.massa.json

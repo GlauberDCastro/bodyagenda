@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { agendamentoSchema, mudancaStatusSchema } from "@/lib/schemas/agenda";
+import { agendamentoSchema, horarioDaClinica, mudancaStatusSchema } from "@/lib/schemas/agenda";
 import type { Resultado } from "./recursos";
 
 export interface ResultadoAgendamento extends Resultado {
@@ -165,6 +165,7 @@ export async function mudarStatus(_anterior: Resultado, formData: FormData): Pro
 /** RF-49 · remarcar. O trigger reconstrói as reservas e revalida conflito. */
 export async function remarcar(id: string, novoInicio: string): Promise<ResultadoAgendamento> {
   const supabase = await createServerSupabase();
+  const inicio = horarioDaClinica(novoInicio);
 
   const { data: atual, error: erroBusca } = await supabase
     .from("agendamento")
@@ -174,11 +175,11 @@ export async function remarcar(id: string, novoInicio: string): Promise<Resultad
   if (erroBusca) return { erro: erroBusca.message };
 
   const duracaoMs = new Date(atual.fim).getTime() - new Date(atual.inicio).getTime();
-  const fim = new Date(new Date(novoInicio).getTime() + duracaoMs);
+  const fim = new Date(new Date(inicio).getTime() + duracaoMs);
 
   const { error } = await supabase
     .from("agendamento")
-    .update({ inicio: novoInicio, fim: fim.toISOString() })
+    .update({ inicio, fim: fim.toISOString() })
     .eq("id", id);
 
   if (error) {
