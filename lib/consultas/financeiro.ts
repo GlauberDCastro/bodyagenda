@@ -172,3 +172,39 @@ export function paraCsv(
     ...linhas.map((l) => colunas.map((c) => escapar(l[c.chave])).join(";")),
   ].join("\n");
 }
+
+export interface ComissaoDetalhada {
+  id: string;
+  valor: number;
+  base_calculo: number;
+  percentual: number | null;
+  status: "prevista" | "apurada" | "paga";
+  profissional: { id: string; nome: string } | null;
+  agendamento: {
+    inicio: string;
+    paciente: { nome: string } | null;
+    procedimento: { nome: string } | null;
+  } | null;
+}
+
+/** RF-98 · comissões da competência com a sessão de cada uma. */
+export async function comissoesDetalhadas(competencia: string): Promise<ComissaoDetalhada[]> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("comissao")
+    .select(
+      `id, valor, base_calculo, percentual, status,
+       profissional:profissional_id (id, nome),
+       agendamento:agendamento_id (inicio, paciente:paciente_id (nome), procedimento:procedimento_id (nome))`,
+    )
+    .eq("competencia", competencia);
+  return ((data ?? []) as unknown as ComissaoDetalhada[]).sort((a, b) =>
+    (a.agendamento?.inicio ?? "").localeCompare(b.agendamento?.inicio ?? ""),
+  );
+}
+
+/** "2026-10" → "2026-09" / "2026-11". */
+export function competenciaVizinha(competencia: string, delta: number): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  return new Date(Date.UTC(ano, mes - 1 + delta, 1)).toISOString().slice(0, 7);
+}

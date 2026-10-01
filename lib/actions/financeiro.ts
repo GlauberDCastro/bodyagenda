@@ -38,16 +38,73 @@ export async function lancarDespesa(_anterior: Resultado, formData: FormData): P
   return { ok: true };
 }
 
-/** RF-85 · fecha a competência marcando as comissões previstas como pagas. */
-export async function pagarComissoes(competencia: string): Promise<Resultado> {
+/**
+ * RF-85 · fechar a competência: as comissões previstas viram apuradas, o
+ * valor que vai ser pago. Pagar vem depois, por profissional.
+ */
+export async function fecharComissoes(competencia: string): Promise<Resultado> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("comissao")
+    .update({ status: "apurada" })
+    .eq("competencia", competencia)
+    .eq("status", "prevista");
+  if (error) return erroComissao(error);
+  revalidatePath("/comissoes");
+  return { ok: true };
+}
+
+/** RF-85 · registra o pagamento das comissões de um profissional na competência. */
+export async function pagarComissoes(
+  competencia: string,
+  profissionalId: string,
+): Promise<Resultado> {
   const supabase = await createServerSupabase();
   const { error } = await supabase
     .from("comissao")
     .update({ status: "paga" })
     .eq("competencia", competencia)
+    .eq("profissional_id", profissionalId)
     .neq("status", "paga");
+  if (error) return erroComissao(error);
+  revalidatePath("/comissoes");
+  revalidatePath("/relatorios/financeiro");
+  return { ok: true };
+}
 
+function erroComissao(erro: { code?: string; message: string }): Resultado {
+  if (erro.code === "42501" || erro.message.includes("row-level security")) {
+    return { erro: "Só o financeiro e o administrador fecham e pagam comissões." };
+  }
+  return { erro: erro.message };
+}
+
+/**
+ * RF-86 · lança na competência as despesas marcadas como recorrentes no mês
+ * anterior que ainda não foram lançadas nela (mesma descrição).
+ */
+export async function lancarRecorrentes(competencia: string): Promise<Resultado> {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const anterior = new Date(Date.UTC(ano, mes - 2, 1)).toISOString().slice(0, 7);
+
+  const supabase = await createServerSupabase();
+  const [{ data: recorrentes }, { data: atuais }] = await Promise.all([
+    supabase
+      .from("despesa_fixa")
+      .select("descricao, categoria, valor, recorrente")
+      .eq("competencia", anterior)
+      .eq("recorrente", true),
+    supabase.from("despesa_fixa").select("descricao").eq("competencia", competencia),
+  ]);
+  const ja = new Set((atuais ?? []).map((d) => d.descricao));
+  const novas = (recorrentes ?? []).filter((d) => !ja.has(d.descricao));
+  if (novas.length === 0) return { ok: true };
+
+  const { error } = await supabase
+    .from("despesa_fixa")
+    .insert(novas.map((d) => ({ ...d, competencia })));
   if (error) return erroDeBanco(error);
+  revalidatePath("/configuracoes/despesas");
   revalidatePath("/relatorios/financeiro");
   return { ok: true };
 }

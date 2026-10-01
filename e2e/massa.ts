@@ -15,6 +15,8 @@ export interface Massa {
   usuarioId: string;
   /** Gestão: configura horários e bloqueios, que a recepção não pode. */
   gestao: { email: string; senha: string; usuarioId: string };
+  /** Financeiro: fecha e paga comissões, lança despesas. */
+  financeiro: { email: string; senha: string; usuarioId: string };
   paciente: string;
   pacienteId: string;
   /** Nome que NÃO existe no banco: o E2E o cadastra pelo agendamento. */
@@ -85,6 +87,7 @@ export async function criarMassa(): Promise<Massa> {
   try {
     const { email, senha, usuarioId } = await criarUsuario(db, sufixo, "recepcao", "Recepção E2E");
     const gestao = await criarUsuario(db, sufixo, "gestao", "Gestão E2E");
+    const financeiro = await criarUsuario(db, sufixo, "financeiro", "Financeiro E2E");
     const nomeSala = `TESTE E2E ${sufixo}`;
     const {
       rows: [sala],
@@ -114,6 +117,12 @@ export async function criarMassa(): Promise<Massa> {
       await db.query(
         `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
         [p.id, proc.id],
+      );
+      // 10% sobre a sessão: o teste de comissões fecha e paga.
+      await db.query(
+        `insert into profissional_remuneracao (profissional_id, custo_hora, comissao_tipo, comissao_valor)
+         values ($1, 0, 'percentual', 10)`,
+        [p.id],
       );
       await db.query(
         `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
@@ -163,6 +172,7 @@ export async function criarMassa(): Promise<Massa> {
       senha,
       usuarioId,
       gestao,
+      financeiro,
       paciente,
       pacienteId: pac.id,
       pacienteNovo: `Paciente Novo E2E ${sufixo}`,
@@ -280,6 +290,22 @@ export async function cobrancasDePacote(m: Massa): Promise<string[]> {
   }
 }
 
+/** Status das comissões dos atendimentos da massa. */
+export async function statusDasComissoes(m: Massa): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select c.status::text || ' ' || c.valor::text as s from comissao c
+         join agendamento a on a.id = c.agendamento_id
+        where a.procedimento_id = $1 order by a.inicio`,
+      [m.procedimentoId],
+    );
+    return rows.map((r) => r.s);
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
@@ -336,13 +362,14 @@ export async function apagarMassa() {
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.
-    const ids = [m.usuarioId, m.gestao?.usuarioId].filter(Boolean);
+    await db.query(`delete from despesa_fixa where descricao like 'TESTE E2E%'`);
+    const ids = [m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId].filter(Boolean);
     await db.query(`delete from auditoria where usuario_id = any($1::uuid[])`, [ids]);
     await db.query(`delete from usuario where id = any($1::uuid[])`, [ids]);
   } finally {
     await db.end();
   }
-  for (const id of [m.usuarioId, m.gestao?.usuarioId].filter(Boolean)) {
+  for (const id of [m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId].filter(Boolean)) {
     await authAdmin(`users/${id}`, "DELETE");
   }
   rmSync(ARQUIVO);

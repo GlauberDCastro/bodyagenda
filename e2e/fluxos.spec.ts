@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
   agendamentosDoPaciente,
+  statusDasComissoes,
   cobrancasDePacote,
   inicioDoPaciente,
   iniciosDosAgendamentos,
@@ -320,5 +321,44 @@ test.describe.serial("fluxos críticos", () => {
     await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Reativar" }).click();
     await expect(page.getByText("Inativo", { exact: true })).toHaveCount(0);
+  });
+
+  test("comissões: realizar, fechar a competência e pagar", async ({ page }) => {
+    const [, b] = m.profissionais;
+    await entrarComo(page);
+    // O atendimento das 14:00 ficou com a profissional B (teste de arrastar).
+    await page.goto(`/agenda?dia=${DIA}&por=profissional`);
+    const bloco = page
+      .locator(`[data-coluna="profissional-${b.id}"]`)
+      .getByRole("button", { name: /14:00/ });
+    await bloco.scrollIntoViewIfNeeded();
+    await bloco.click();
+    await page.getByRole("dialog").getByRole("button", { name: "Realizado" }).click();
+    await expect.poll(() => statusDasComissoes(m)).toContain("prevista 35.00");
+
+    await page.context().clearCookies();
+    await entrar(page, m.financeiro.email, m.financeiro.senha);
+    await page.goto("/comissoes?competencia=2030-01");
+    await expect(page.getByText(b.nome)).toBeVisible();
+    await page.getByRole("button", { name: "Fechar competência" }).click();
+    await expect.poll(() => statusDasComissoes(m)).toContain("apurada 35.00");
+    await page.getByRole("button", { name: "Registrar pagamento" }).click();
+    await expect.poll(() => statusDasComissoes(m)).toContain("paga 35.00");
+  });
+
+  test("despesa recorrente é lançada no mês seguinte com um clique", async ({ page }) => {
+    await entrar(page, m.financeiro.email, m.financeiro.senha);
+    await page.goto("/configuracoes/despesas?competencia=2030-01");
+    await page.getByRole("button", { name: "Nova despesa" }).click();
+    const dialogo = page.getByRole("dialog");
+    await dialogo.locator('input[name="descricao"]').fill("TESTE E2E aluguel");
+    await dialogo.locator('input[name="valor"]').fill("1000");
+    await dialogo.locator('input[name="recorrente"]').check();
+    await dialogo.getByRole("button", { name: /Lançar|Salvar/ }).click();
+    await expect(dialogo).toBeHidden();
+
+    await page.goto("/configuracoes/despesas?competencia=2030-02");
+    await page.getByRole("button", { name: "Lançar 1 recorrente(s)" }).click();
+    await expect(page.getByRole("cell", { name: "TESTE E2E aluguel" })).toBeVisible();
   });
 });

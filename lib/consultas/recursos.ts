@@ -90,3 +90,14 @@ export function agruparPorModelo(equipamentos: Equipamento[]) {
     }))
     .sort((a, b) => a.modelo.localeCompare(b.modelo, "pt-BR"));
 }
+
+/** Perfil de quem está logado, para mostrar só as ações que ele pode fazer. */
+export async function perfilDoUsuario(): Promise<string | null> {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("usuario").select("perfil").eq("id", user.id).maybeSingle();
+  return data?.perfil ?? null;
+}
