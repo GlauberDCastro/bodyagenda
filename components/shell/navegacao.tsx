@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logotipo } from "@/components/ui/logo";
+import { ABAS_CONFIGURACAO } from "@/components/config/abas-configuracao";
 
 /** Ícones em traço, 1.6px — peso único em toda a navegação. */
 function Icone({ d, tamanho = 18 }: { d: string; tamanho?: number }) {
@@ -51,10 +52,6 @@ const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
     ],
   },
   {
-    titulo: "Clínica",
-    itens: [{ href: "/configuracoes", rotulo: "Configurações", icone: "configuracoes" }],
-  },
-  {
     titulo: "Resultado",
     itens: [
       { href: "/relatorios/ocupacao", rotulo: "Ocupação", icone: "relatorios" },
@@ -63,9 +60,34 @@ const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   },
 ];
 
+/** Fixada no rodapé do menu, fora dos grupos: é onde se ajusta, não onde se opera. */
+const CONFIGURACOES: ItemNav = {
+  href: "/configuracoes",
+  rotulo: "Configurações",
+  icone: "configuracoes",
+};
+
 /** A rota `/` só casa exata; as demais casam por prefixo. */
 function estaAtivo(href: string, caminho: string): boolean {
   return href === "/" ? caminho === "/" : caminho.startsWith(href);
+}
+
+function ItemMenu({ item, ativo }: { item: ItemNav; ativo: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      aria-current={ativo ? "page" : undefined}
+      className={`flex items-center gap-2.5 rounded-[var(--r-md)] px-3 py-2 text-[13.5px] transition-colors
+        ${
+          ativo
+            ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
+            : "text-[var(--tinta-2)] hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
+        }`}
+    >
+      <Icone d={ICONES[item.icone]} />
+      {item.rotulo}
+    </Link>
+  );
 }
 
 export function Navegacao() {
@@ -79,33 +101,23 @@ export function Navegacao() {
         </Link>
       </div>
 
-      <nav className="cartao flex-1 space-y-5 p-3">
-        {GRUPOS.map((grupo) => (
-          <div key={grupo.titulo} className="space-y-1">
-            <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-[var(--tinta-3)]">
-              {grupo.titulo}
-            </p>
-            {grupo.itens.map((item) => {
-              const ativo = estaAtivo(item.href, caminho);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={ativo ? "page" : undefined}
-                  className={`flex items-center gap-2.5 rounded-[var(--r-md)] px-3 py-2 text-[13.5px] transition-colors
-                    ${
-                      ativo
-                        ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
-                        : "text-[var(--tinta-2)] hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
-                    }`}
-                >
-                  <Icone d={ICONES[item.icone]} />
-                  {item.rotulo}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+      <nav className="cartao flex flex-1 flex-col p-3">
+        <div className="space-y-5">
+          {GRUPOS.map((grupo) => (
+            <div key={grupo.titulo} className="space-y-1">
+              <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-[var(--tinta-3)]">
+                {grupo.titulo}
+              </p>
+              {grupo.itens.map((item) => (
+                <ItemMenu key={item.href} item={item} ativo={estaAtivo(item.href, caminho)} />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-auto border-t border-[var(--traco)] pt-3">
+          <ItemMenu item={CONFIGURACOES} ativo={estaAtivo(CONFIGURACOES.href, caminho)} />
+        </div>
       </nav>
     </div>
   );
@@ -115,7 +127,14 @@ export function Navegacao() {
 export function Migalha() {
   const caminho = usePathname();
 
-  const todos = GRUPOS.flatMap((g) => g.itens.map((i) => ({ ...i, grupo: g.titulo })));
+  // Em Configurações a migalha mostra a aba: "Configurações › Salas".
+  const aba = ABAS_CONFIGURACAO.find((a) => caminho.startsWith(a.href));
+  const todos = [
+    ...GRUPOS.flatMap((g) => g.itens.map((i) => ({ ...i, grupo: g.titulo }))),
+    ...(aba
+      ? [{ ...CONFIGURACOES, href: aba.href, rotulo: aba.rotulo, grupo: "Configurações" }]
+      : []),
+  ];
   const atual =
     [...todos]
       .filter((i) => estaAtivo(i.href, caminho))

@@ -236,7 +236,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
         {(custos ?? []).length === 0 ? (
           <Vazio>Nenhum custo cadastrado para este procedimento.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
+          <div className="cartao overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-[var(--traco)] text-left ">
                 <tr className="text-[var(--tinta-3)]">

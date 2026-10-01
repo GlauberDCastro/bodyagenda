@@ -37,7 +37,7 @@ export default async function SalasPage() {
           Anexo A, ou cadastre a primeira manualmente.
         </Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
+        <div className="cartao overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--traco)] text-left ">
               <tr className="text-[var(--tinta-3)]">

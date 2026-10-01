@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ABAS = [
+export const ABAS_CONFIGURACAO = [
   { href: "/configuracoes/salas", rotulo: "Salas" },
   { href: "/configuracoes/equipamentos", rotulo: "Equipamentos" },
   { href: "/configuracoes/profissionais", rotulo: "Profissionais" },
@@ -19,7 +19,7 @@ export function AbasConfiguracao() {
 
   return (
     <nav className="flex gap-1 overflow-x-auto border-b border-[var(--traco)]">
-      {ABAS.map((aba) => {
+      {ABAS_CONFIGURACAO.map((aba) => {
         const ativa = caminho.startsWith(aba.href);
         return (
           <Link

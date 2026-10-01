@@ -117,7 +117,7 @@ export default async function PacientePage(props: { params: Promise<{ id: string
         {agendamentos.length === 0 ? (
           <Vazio>Nenhum atendimento registrado.</Vazio>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
+          <div className="cartao overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-[var(--traco)] text-left ">
                 <tr className="text-[var(--tinta-3)]">

@@ -35,7 +35,7 @@ export default async function PacientesPage(props: { searchParams: Promise<{ q?:
           {q ? `Nenhum paciente encontrado para "${q}".` : "Nenhum paciente cadastrado ainda."}
         </Vazio>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--traco)]">
+        <div className="cartao overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--traco)] text-left ">
               <tr className="text-[var(--tinta-3)]">
