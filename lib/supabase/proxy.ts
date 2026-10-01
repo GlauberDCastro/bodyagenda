@@ -5,6 +5,10 @@ import { env } from "@/lib/env";
 /** Rotas acessíveis sem sessão. */
 const PUBLICAS = ["/login", "/auth"];
 
+/** RF-05 · sessão expira após 8 h sem nenhuma requisição. */
+const INATIVIDADE_MAX_MS = 8 * 60 * 60 * 1000;
+const COOKIE_ATIVIDADE = "hd_ultima_atividade";
+
 /**
  * Renova a sessão do Supabase e faz o redirecionamento otimista.
  *
@@ -47,6 +51,29 @@ export async function atualizarSessao(request: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("redirecionar", caminho);
     return NextResponse.redirect(url);
+  }
+
+  if (user && !ehPublica) {
+    const ultima = Number(request.cookies.get(COOKIE_ATIVIDADE)?.value ?? 0);
+    if (ultima && Date.now() - ultima > INATIVIDADE_MAX_MS) {
+      // signOut() limpa os cookies de sessão através do setAll acima.
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "";
+      url.searchParams.set("expirada", "1");
+      url.searchParams.set("redirecionar", caminho);
+      const redirecionar = NextResponse.redirect(url);
+      for (const c of response.cookies.getAll()) redirecionar.cookies.set(c);
+      redirecionar.cookies.delete(COOKIE_ATIVIDADE);
+      return redirecionar;
+    }
+    response.cookies.set(COOKIE_ATIVIDADE, String(Date.now()), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    });
   }
 
   if (user && caminho === "/login") {

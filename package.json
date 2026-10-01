@@ -23,6 +23,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
+    "exceljs": "^4.4.0",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -42,5 +43,8 @@
     "typescript": "^5",
     "vitest": "^5.0.3"
   },
-  "description": "hellodoctor · Performance Clínica — painel de ocupação, agenda e resultado"
+  "description": "hellodoctor · Performance Clínica — painel de ocupação, agenda e resultado",
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
 }

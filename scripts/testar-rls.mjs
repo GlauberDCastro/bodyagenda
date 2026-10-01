@@ -293,10 +293,12 @@ try {
 
   // ── Escrita ───────────────────────────────────────────────────────────────
   console.log("\n-- escrita por perfil --");
+  // Um número por tentativa: aleatório, dois perfis às vezes colidiam (409).
+  let numeroSala = 9000 + Math.floor(Math.random() * 500) * 2;
   const ESCRITA = [
     ["cria sala", { admin: true, gestao: true, financeiro: false, recepcao: false, profissional: false },
       (tk) => api("sala", { token: tk, metodo: "POST",
-        corpo: { numero: 9000 + Math.floor(Math.random() * 999), nome: "TESTE RLS escrita" } })],
+        corpo: { numero: numeroSala++, nome: "TESTE RLS escrita" } })],
     ["altera custo de procedimento", { admin: true, gestao: true, financeiro: false, recepcao: false, profissional: false },
       (tk) => api(`procedimento_custo?${filtroProc}`, { token: tk, metodo: "PATCH", corpo: { quantidade: 1 } })],
     ["cria paciente", { admin: true, gestao: false, financeiro: false, recepcao: true, profissional: false },

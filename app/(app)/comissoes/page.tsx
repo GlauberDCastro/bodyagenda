@@ -9,6 +9,7 @@ import { Cartao } from "@/components/painel/indicadores";
 import { Cabecalho, Etiqueta, Secao, Tabela, Td, Th, Tr, Vazio } from "@/components/ui/primitivos";
 import { FecharCompetencia, PagarProfissional } from "./acoes-comissao";
 import { perfilDoUsuario } from "@/lib/consultas/recursos";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Comissões" };
 
@@ -68,6 +69,7 @@ export default async function ComissoesPage(props: {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Exportar relatorio="comissoes" params={{ competencia }} />
           <Link
             href={`/comissoes?competencia=${competenciaVizinha(competencia, -1)}`}
             className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm hover:bg-[var(--superficie-2)]"

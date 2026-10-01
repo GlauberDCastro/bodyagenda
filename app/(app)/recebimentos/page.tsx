@@ -3,6 +3,7 @@ import { cobrancas, diasDeAtraso, emAberto, hojeNaClinica } from "@/lib/consulta
 import { Cartao } from "@/components/painel/indicadores";
 import { Cabecalho, Secao, Tabela, Td, Th, Tr, Vazio } from "@/components/ui/primitivos";
 import { TabelaCobrancas } from "@/components/financeiro/tabela-cobrancas";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Recebimentos" };
 
@@ -87,6 +88,8 @@ export default async function RecebimentosPage(props: {
       <Secao
         titulo="Cobranças"
         acao={
+          <div className="flex flex-wrap items-center gap-2">
+          <Exportar relatorio="cobrancas" params={{ ver }} />
           <nav className="flex gap-0.5 rounded-full bg-[var(--superficie)] p-1 shadow-[var(--sombra-1)]">
             {FILTROS.map((f) => (
               <Link
@@ -103,6 +106,7 @@ export default async function RecebimentosPage(props: {
               </Link>
             ))}
           </nav>
+          </div>
         }
       >
         <TabelaCobrancas

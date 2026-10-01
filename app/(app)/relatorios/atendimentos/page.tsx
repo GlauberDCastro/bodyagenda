@@ -4,6 +4,7 @@ import { hojeNaClinica, resolverPeriodo } from "@/lib/consultas/painel";
 import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
 import { Cabecalho, Etiqueta, Tabela, Td, Th, Tr, Vazio } from "@/components/ui/primitivos";
 import type { StatusAgendamento, TipoRecurso } from "@/lib/types/database";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Atendimentos" };
 
@@ -71,6 +72,13 @@ export default async function AtendimentosPage(props: {
           {periodo.rotulo} · {filtros.join(" · ")} · {lista.length} atendimento(s)
         </p>
       </header>
+
+      <div className="flex justify-end">
+        <Exportar
+          relatorio="atendimentos"
+          params={{ de: periodo.de, ate: periodo.ate, status: sp.status, tipo: sp.tipo, recurso: sp.recurso }}
+        />
+      </div>
 
       <SeletorPeriodo
         caminho="/relatorios/atendimentos"

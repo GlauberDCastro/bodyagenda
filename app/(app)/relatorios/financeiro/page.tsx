@@ -13,6 +13,7 @@ import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
 import { receitaPorForma } from "@/lib/consultas/caixa";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Relatórios financeiros" };
 
@@ -68,7 +69,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-99 · DRE simplificado */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Resultado da competência</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Resultado da competência</h2>
+          <Exportar relatorio="dre" params={{ competencia }} />
+        </div>
         {!resultado ? (
           <Vazio>Sem dados para {competencia}.</Vazio>
         ) : (
@@ -111,7 +115,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-96 · rentabilidade por procedimento */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Rentabilidade por procedimento</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Rentabilidade por procedimento</h2>
+          <Exportar relatorio="rentabilidade" params={{ de: periodo.de, ate: periodo.ate }} />
+        </div>
         {comRealizacao.length === 0 ? (
           <Vazio>Nenhuma sessão realizada no período.</Vazio>
         ) : (
@@ -171,7 +178,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-95 · passivo de entrega */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Passivo de entrega</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Passivo de entrega</h2>
+          <Exportar relatorio="passivo" params={{}} />
+        </div>
         {passivo.length === 0 ? (
           <Vazio>Nenhuma sessão vendida e pendente de execução.</Vazio>
         ) : (
@@ -227,7 +237,10 @@ export default async function FinanceiroPage(props: {
       {/* RF-66 · pacotes com sessões a entregar, por paciente */}
       {pendentes.length > 0 && (
         <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Pacotes com sessões a entregar</h2>
+          <Exportar relatorio="pacotes-pendentes" params={{}} />
+        </div>
           <div className="cartao overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-[var(--traco)] text-left">
@@ -274,7 +287,10 @@ export default async function FinanceiroPage(props: {
       {/* RF-101 · retorno do equipamento */}
       <section className="space-y-3">
         <div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Retorno dos equipamentos · {periodo.rotulo}</h2>
+          <Exportar relatorio="retorno-equipamentos" params={{ de: periodo.de, ate: periodo.ate }} />
+        </div>
           <p className="text-xs text-[var(--tinta-3)]">
             Receita das sessões realizadas com cada aparelho (dividida quando a sessão usa mais de
             um), menos o custo de uso. A última coluna diz quanto do preço de compra o período já
@@ -330,7 +346,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-97 · contas a receber com aging */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Contas a receber</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Contas a receber</h2>
+          <Exportar relatorio="cobrancas" params={{ ver: "abertas" }} />
+        </div>
         {receber.linhas.length === 0 ? (
           <Vazio>Nenhum recebimento pendente.</Vazio>
         ) : (
@@ -350,7 +369,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-94 · receita prevista × realizada, por forma de pagamento */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Receita prevista × realizada · {periodo.rotulo}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Receita prevista × realizada · {periodo.rotulo}</h2>
+          <Exportar relatorio="receita-forma" params={{ de: periodo.de, ate: periodo.ate }} />
+        </div>
         {porForma.length === 0 ? (
           <Vazio>Nenhuma cobrança vence nem foi paga neste período.</Vazio>
         ) : (
@@ -388,7 +410,10 @@ export default async function FinanceiroPage(props: {
 
       {/* RF-98 · comissões por profissional */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Comissões · {competencia}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Comissões · {competencia}</h2>
+          <Exportar relatorio="comissoes" params={{ competencia }} />
+        </div>
         {comissoes.length === 0 ? (
           <Vazio>Nenhuma comissão apurada nesta competência.</Vazio>
         ) : (

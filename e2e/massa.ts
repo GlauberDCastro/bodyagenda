@@ -306,6 +306,20 @@ export async function statusDasComissoes(m: Massa): Promise<string[]> {
   }
 }
 
+/** Quantos registros de auditoria um usuário de teste gerou. */
+export async function auditoriaDoUsuario(usuarioId: string): Promise<number> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select count(*)::int as n from auditoria where usuario_id = $1`,
+      [usuarioId],
+    );
+    return rows[0].n;
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {

@@ -11,6 +11,7 @@ import { LancarRecorrentes } from "./lancar-recorrentes";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, brl, brlExato } from "@/components/painel/indicadores";
 import { FormularioDespesa } from "./formulario-despesa";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Despesas fixas" };
 
@@ -50,6 +51,7 @@ export default async function DespesasPage(props: {
               className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm "
             />
           </form>
+          <Exportar relatorio="despesas" params={{ competencia }} />
           <FormularioDespesa competencia={competencia} />
         </div>
       </div>

@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
   agendamentosDoPaciente,
+  auditoriaDoUsuario,
   statusDasComissoes,
   cobrancasDePacote,
   inicioDoPaciente,
@@ -385,5 +386,49 @@ test.describe.serial("fluxos críticos", () => {
     await expect(celula).toContainText("atendimento(s)");
     await celula.click();
     await expect(page).toHaveURL(new RegExp(`dia=${DIA}&por=sala`));
+  });
+
+  test("exportação CSV e XLSX, auditoria registrada e sessão expirada", async ({
+    page,
+    playwright,
+  }) => {
+    await entrar(page, m.financeiro.email, m.financeiro.senha);
+
+    // RF-102 · CSV em português e XLSX de verdade, com a sessão de quem pede.
+    const csv = await page.request.get("/api/exportar/cobrancas?ver=pagas&formato=csv");
+    expect(csv.status()).toBe(200);
+    expect(csv.headers()["content-type"]).toContain("text/csv");
+    expect(await csv.text()).toContain("Paciente;Cobrança;Vencimento;Valor");
+
+    const xlsx = await page.request.get(
+      "/api/exportar/ocupacao?por=sala&de=2030-01-01&ate=2030-01-14&formato=xlsx",
+    );
+    expect(xlsx.status()).toBe(200);
+    expect(xlsx.headers()["content-disposition"]).toContain(".xlsx");
+    // XLSX é um zip: começa com "PK".
+    expect((await xlsx.body()).subarray(0, 2).toString()).toBe("PK");
+
+    const anonimo = await playwright.request.newContext({ baseURL: "http://localhost:3100" });
+    // Sem sessão, o proxy manda para o login antes de chegar à exportação.
+    const semLogin = await anonimo.get("/api/exportar/cobrancas?formato=csv", { maxRedirects: 0 });
+    expect(semLogin.status()).toBe(307);
+    expect(semLogin.headers()["location"]).toContain("/login");
+    await anonimo.dispose();
+
+    // RF-06 · o que a recepção fez pela tela ficou registrado.
+    expect(await auditoriaDoUsuario(m.usuarioId)).toBeGreaterThan(0);
+
+    // RF-05 · 9 h sem atividade: a sessão cai e o login avisa o porquê.
+    await page.context().addCookies([
+      {
+        name: "hd_ultima_atividade",
+        value: String(Date.now() - 9 * 60 * 60 * 1000),
+        domain: "localhost",
+        path: "/",
+      },
+    ]);
+    await page.goto("/agenda");
+    await expect(page).toHaveURL(/\/login\?.*expirada=1/);
+    await expect(page.getByText("depois de 8 horas sem uso")).toBeVisible();
   });
 });

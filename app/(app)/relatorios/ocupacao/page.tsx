@@ -1,58 +1,19 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase/server";
 import {
   carregarPainel,
   consolidar,
   hojeNaClinica,
   resolverPeriodo,
-  type Periodo,
 } from "@/lib/consultas/painel";
-import { faltasECancelamentos } from "@/lib/consultas/relatorios";
+import { faltasECancelamentos, janelasVagas } from "@/lib/consultas/relatorios";
 import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
 import { Cabecalho, Secao, Tabela, Td, Th, Tr } from "@/components/ui/primitivos";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, TabelaRecursos, brl, pct, horas } from "@/components/painel/indicadores";
 import type { TipoRecurso } from "@/lib/types/database";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Relatórios de ocupação" };
-
-interface Vaga {
-  inicio: string;
-  fim: string;
-  minutos: number;
-  recurso: string;
-}
-
-/**
- * RF-91 · janelas vagas por recurso, ordenadas por tamanho.
- * É insumo comercial direto: diz onde exatamente encaixar mais um paciente.
- */
-async function janelasVagas(
-  tipo: TipoRecurso,
-  recursos: { recurso_id: string; nome: string }[],
-  periodo: Periodo,
-): Promise<Vaga[]> {
-  const supabase = await createServerSupabase();
-
-  // RF-19a/91 · todos os recursos, sem teto fixo no código.
-  const porRecurso = await Promise.all(
-    recursos.map(async (r) => {
-      const { data } = await supabase.rpc("janelas_vagas", {
-        p_tipo: tipo,
-        p_id: r.recurso_id,
-        p_inicio: periodo.inicio.toISOString(),
-        p_fim: periodo.fim.toISOString(),
-        p_min_minutos: 30,
-      });
-      return (data ?? []).map((v) => ({
-        ...v,
-        recurso: r.nome,
-      }));
-    }),
-  );
-
-  return porRecurso.flat().sort((a, b) => b.minutos - a.minutos);
-}
 
 /** A tabela mostra as maiores; o total aparece no texto. */
 const VAGAS_EXIBIDAS = 100;
@@ -145,13 +106,19 @@ export default async function OcupacaoPage(props: {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Ocupação por recurso</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Ocupação por recurso</h2>
+          <Exportar relatorio="ocupacao" params={{ por: tipo, de: periodo.de, ate: periodo.ate }} />
+        </div>
         <TabelaRecursos linhas={painel.linhas} />
       </section>
 
       <section className="space-y-3">
         <div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Horários vagos</h2>
+          <Exportar relatorio="vagas" params={{ por: tipo, de: periodo.de, ate: periodo.ate }} />
+        </div>
           <p className="text-xs text-[var(--tinta-3)]">
             Janelas livres de 30 min ou mais, da maior para a menor. Cada uma é capacidade que a
             clínica paga e não usou.
@@ -202,6 +169,7 @@ export default async function OcupacaoPage(props: {
       {/* RF-92 · faltas e cancelamentos */}
       <Secao
         titulo="Faltas e cancelamentos"
+        acao={<Exportar relatorio="faltas" params={{ de: periodo.de, ate: periodo.ate }} />}
         descricao={`${ausencias.faltas} falta(s) · taxa de falta ${pct(ausencias.taxaFalta)} · ${ausencias.cancelamentos} cancelamento(s)`}
       >
         {ausencias.ranking.length === 0 ? (

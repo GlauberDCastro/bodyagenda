@@ -16,6 +16,7 @@ import { AvisoBanco, Aviso, Secao, Botao } from "@/components/ui/primitivos";
 import { Cartao, TabelaRecursos, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
 import { MapaCalor } from "@/components/painel/mapa-calor";
 import type { TipoRecurso } from "@/lib/types/database";
+import { Exportar } from "@/components/relatorios/exportar";
 
 export const metadata = { title: "Painel" };
 
@@ -225,6 +226,9 @@ export default async function PainelPage(props: {
 
       <Secao
         titulo="Por recurso"
+        acao={
+          <Exportar relatorio="ocupacao" params={{ por: tipo, de: periodo.de, ate: periodo.ate }} />
+        }
         descricao="Ocupação e receita por hora lado a lado — o cruzamento que a taxa sozinha esconde."
       >
         <TabelaRecursos

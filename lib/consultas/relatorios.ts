@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { StatusAgendamento, TipoRecurso } from "@/lib/types/database";
+import type { Periodo } from "@/lib/consultas/painel";
 
 export interface AtendimentoListado {
   id: string;
@@ -139,4 +140,42 @@ export async function serieOcupacao(tipo: TipoRecurso, de: string, ate: string) 
     capacidade: Number(d.capacidade_h),
     realizadas: Number(d.realizadas_h),
   }));
+}
+
+export interface Vaga {
+  inicio: string;
+  fim: string;
+  minutos: number;
+  recurso: string;
+}
+
+/**
+ * RF-91 · janelas vagas por recurso, ordenadas por tamanho.
+ * É insumo comercial direto: diz onde exatamente encaixar mais um paciente.
+ */
+export async function janelasVagas(
+  tipo: TipoRecurso,
+  recursos: { recurso_id: string; nome: string }[],
+  periodo: Periodo,
+): Promise<Vaga[]> {
+  const supabase = await createServerSupabase();
+
+  // RF-19a/91 · todos os recursos, sem teto fixo no código.
+  const porRecurso = await Promise.all(
+    recursos.map(async (r) => {
+      const { data } = await supabase.rpc("janelas_vagas", {
+        p_tipo: tipo,
+        p_id: r.recurso_id,
+        p_inicio: periodo.inicio.toISOString(),
+        p_fim: periodo.fim.toISOString(),
+        p_min_minutos: 30,
+      });
+      return (data ?? []).map((v) => ({
+        ...v,
+        recurso: r.nome,
+      }));
+    }),
+  );
+
+  return porRecurso.flat().sort((a, b) => b.minutos - a.minutos);
 }
