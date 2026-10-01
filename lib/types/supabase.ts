@@ -1322,6 +1322,16 @@ export type Database = {
           quantidade: number;
         }[];
       };
+      remarcar_trocando_recurso: {
+        Args: {
+          p_agendamento: string;
+          p_de: string;
+          p_inicio: string;
+          p_para: string;
+          p_tipo: Database["public"]["Enums"]["tipo_recurso"];
+        };
+        Returns: undefined;
+      };
       rentabilidade_procedimentos: {
         Args: { p_fim: string; p_inicio: string };
         Returns: {

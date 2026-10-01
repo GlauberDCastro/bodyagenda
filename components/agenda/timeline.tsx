@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { AgendamentoNaAgenda, ColunaRecurso } from "@/lib/consultas/agenda";
 import type { StatusAgendamento } from "@/lib/types/database";
-import { remarcar } from "@/lib/actions/agenda";
+import { remarcar, remarcarTrocandoRecurso } from "@/lib/actions/agenda";
 import {
   dentroDoExpedienteExibido,
   horarioLocal,
@@ -130,8 +130,9 @@ export function Timeline({
   };
 
   /**
-   * RF-49 · soltar o atendimento arrastado. Na visão por salas, a coluna de
-   * destino também troca a sala; nas outras, só o horário muda.
+   * RF-49 · soltar o atendimento arrastado. Outra coluna troca o recurso: a
+   * sala na visão por salas; nas outras, o aparelho ou profissional da coluna
+   * de origem pelo da coluna de destino.
    */
   const soltar = async (
     a: AgendamentoNaAgenda,
@@ -145,10 +146,18 @@ export function Timeline({
       setErro("Solte o atendimento dentro da faixa de horário da agenda.");
       return false;
     }
+    const origem = colunas[colunaIndice];
     const destino = colunas[colunaIndice + deltaColuna];
-    const novaSala = destino?.tipo === "sala" && deltaColuna !== 0 ? destino.id : undefined;
+    const novoInicio = horarioLocal(dia, inicioMin);
 
-    const r = await remarcar(a.id, horarioLocal(dia, inicioMin), novaSala);
+    const r =
+      deltaColuna !== 0 && destino && destino.tipo !== "sala"
+        ? await remarcarTrocandoRecurso(a.id, novoInicio, destino.tipo, origem.id, destino.id)
+        : await remarcar(
+            a.id,
+            novoInicio,
+            deltaColuna !== 0 && destino?.tipo === "sala" ? destino.id : undefined,
+          );
     setErro(r.erro ?? null);
     return !r.erro;
   };
@@ -273,10 +282,8 @@ export function Timeline({
                           podeArrastar(a.status)
                             ? {
                                 larguraColuna: LARGURA_COLUNA,
-                                // Trocar de coluna só faz sentido na visão por salas.
-                                colunasAntes: coluna.tipo === "sala" ? colunaIndice : 0,
-                                colunasDepois:
-                                  coluna.tipo === "sala" ? colunas.length - 1 - colunaIndice : 0,
+                                colunasAntes: colunaIndice,
+                                colunasDepois: colunas.length - 1 - colunaIndice,
                                 aoSoltar: (deltaMin, deltaColuna) =>
                                   soltar(a, colunaIndice, deltaMin, deltaColuna),
                               }

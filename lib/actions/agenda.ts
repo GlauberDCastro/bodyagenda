@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { agendamentoSchema, horarioDaClinica, mudancaStatusSchema } from "@/lib/schemas/agenda";
 import type { Resultado } from "./recursos";
+import type { TipoRecurso } from "@/lib/types/database";
 
 export interface ResultadoAgendamento extends Resultado {
   /** Detalhe do conflito, quando o banco recusou com 23P01 (RF-46). */
@@ -196,6 +197,40 @@ export async function remarcar(
     .from("agendamento")
     .update({ inicio, fim: fim.toISOString(), ...(novaSala ? { sala_id: novaSala } : {}) })
     .eq("id", id);
+
+  if (error) {
+    if (error.code === "23P01") {
+      return { erro: "O novo horário conflita com outro agendamento deste recurso." };
+    }
+    if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
+    if (error.code === "42501") return { erro: "Seu perfil não pode remarcar este atendimento." };
+    return { erro: error.message };
+  }
+
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+/**
+ * Arraste entre colunas na visão por equipamentos ou profissionais: troca o
+ * recurso da coluna de origem pelo de destino e muda o horário, numa
+ * transação só (migração 0027).
+ */
+export async function remarcarTrocandoRecurso(
+  id: string,
+  novoInicio: string,
+  tipo: Exclude<TipoRecurso, "sala">,
+  de: string,
+  para: string,
+): Promise<ResultadoAgendamento> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.rpc("remarcar_trocando_recurso", {
+    p_agendamento: id,
+    p_inicio: horarioDaClinica(novoInicio),
+    p_tipo: tipo,
+    p_de: de,
+    p_para: para,
+  });
 
   if (error) {
     if (error.code === "23P01") {

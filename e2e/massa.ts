@@ -20,6 +20,8 @@ export interface Massa {
   sala: string;
   salaId: string;
   procedimentoId: string;
+  /** Dois profissionais habilitados no procedimento, para trocar arrastando. */
+  profissionais: { id: string; nome: string }[];
 }
 
 function env(): Record<string, string> {
@@ -96,6 +98,24 @@ export async function criarMassa(): Promise<Massa> {
       `insert into procedimento (nome, duracao_min, valor_sessao) values ($1, 30, 300) returning id`,
       [procedimento],
     );
+    const profissionais: { id: string; nome: string }[] = [];
+    for (const letra of ["A", "B"]) {
+      const nome = `TESTE E2E Prof ${letra} ${sufixo}`;
+      const {
+        rows: [p],
+      } = await db.query(`insert into profissional (nome) values ($1) returning id`, [nome]);
+      await db.query(
+        `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
+        [p.id, proc.id],
+      );
+      await db.query(
+        `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+         select 'profissional', $1, d, '08:00', '18:00' from generate_series(1, 5) d`,
+        [p.id],
+      );
+      profissionais.push({ id: p.id, nome });
+    }
+
     const paciente = `Paciente E2E ${sufixo}`;
     await db.query(`insert into paciente (nome) values ($1)`, [paciente]);
 
@@ -109,6 +129,7 @@ export async function criarMassa(): Promise<Massa> {
       sala: `Sala ${sala.numero} — ${nomeSala}`,
       salaId: sala.id,
       procedimentoId: proc.id,
+      profissionais,
     };
     writeFileSync(ARQUIVO, JSON.stringify(massa));
     return massa;
@@ -150,6 +171,24 @@ export async function iniciosDosAgendamentos(m: Massa): Promise<string[]> {
   }
 }
 
+/** Profissionais do atendimento que começa nesse horário ("HH:MM"). */
+export async function profissionaisNoHorario(m: Massa, hhmm: string): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select p.nome from agendamento a
+         join agendamento_profissional ap on ap.agendamento_id = a.id
+         join profissional p on p.id = ap.profissional_id
+        where a.procedimento_id = $1
+          and to_char(a.inicio at time zone 'America/Sao_Paulo', 'HH24:MI') = $2`,
+      [m.procedimentoId, hhmm],
+    );
+    return rows.map((r) => r.nome);
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
@@ -170,7 +209,11 @@ export async function apagarMassa() {
   try {
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from paciente where nome = $1`, [m.paciente]);
-    await db.query(`delete from recurso_disponibilidade where recurso_id = $1`, [m.salaId]);
+    const profIds = (m.profissionais ?? []).map((p) => p.id);
+    await db.query(`delete from recurso_disponibilidade where recurso_id = any($1::uuid[])`, [
+      [m.salaId, ...profIds],
+    ]);
+    await db.query(`delete from profissional where id = any($1::uuid[])`, [profIds]);
     await db.query(`delete from recurso_bloqueio where recurso_id = $1`, [m.salaId]);
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);

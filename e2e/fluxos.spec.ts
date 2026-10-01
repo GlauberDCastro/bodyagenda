@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DIA, iniciosDosAgendamentos, lerMassa, statusDoAgendamento } from "./massa";
+import {
+  DIA,
+  iniciosDosAgendamentos,
+  lerMassa,
+  profissionaisNoHorario,
+  statusDoAgendamento,
+} from "./massa";
 import { agendar, entrar } from "./acoes";
 
 /** SPEC §8 · os fluxos que não podem quebrar no dia a dia da recepção. */
@@ -100,5 +106,43 @@ test.describe.serial("fluxos críticos", () => {
     await expect(
       page.getByRole("button", { name: /11:00/ }).filter({ hasText: m.paciente }),
     ).toBeVisible();
+  });
+
+  test("arrastar para outra coluna na visão por profissionais troca o profissional", async ({
+    page,
+  }) => {
+    const [a, b] = m.profissionais;
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}&por=profissional`);
+
+    // Clique na coluna do A às 14:00 já traz o A marcado.
+    const colunaA = page.locator(`[data-coluna="profissional-${a.id}"]`);
+    await colunaA.scrollIntoViewIfNeeded();
+    await colunaA.click({ position: { x: 80, y: 6 * PX_HORA + 5 } });
+    const dialogo = page.getByRole("dialog");
+    await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.paciente);
+    await dialogo.locator('select[name="paciente_id"]').selectOption({ label: m.paciente });
+    await dialogo
+      .locator('select[name="procedimento_id"]')
+      .selectOption({ label: `${m.procedimento} — 30 min` });
+    await dialogo.locator('select[name="sala_id"]').selectOption({ label: m.sala });
+    await dialogo.getByRole("button", { name: "Agendar" }).click();
+    await expect(dialogo).toBeHidden();
+    expect(await profissionaisNoHorario(m, "14:00")).toEqual([a.nome]);
+
+    // Arrasta da coluna do A para a do B, mesmo horário.
+    const bloco = colunaA.getByRole("button", { name: /14:00/ });
+    const caixa = (await bloco.boundingBox())!;
+    const colunaB = (await page.locator(`[data-coluna="profissional-${b.id}"]`).boundingBox())!;
+    const dx = colunaB.x - (await colunaA.boundingBox())!.x;
+    const x = caixa.x + caixa.width / 2;
+    const y = caixa.y + 8;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx / 2, y, { steps: 4 });
+    await page.mouse.move(x + dx, y, { steps: 4 });
+    await page.mouse.up();
+
+    await expect.poll(() => profissionaisNoHorario(m, "14:00")).toEqual([b.nome]);
   });
 });
