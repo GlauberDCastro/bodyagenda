@@ -25,13 +25,16 @@ export function CamposEquipamento({
   inicial?: Equipamento & { custo_hora?: number };
   aoConcluir: () => void;
 }) {
-  const [alocacao, setAlocacao] = useState<"fixo" | "movel">(inicial?.tipo_alocacao ?? "movel");
+  const [alocacao, setAlocacao] = useState<"fixo" | "movel">(
+    inicial?.tipo_alocacao ?? "movel",
+  );
 
   const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await salvarEquipamento(inicial?.id ?? null, anterior, formData);
     if (r.ok) aoConcluir();
     return r;
   }, {});
+
 
   const hoje = new Date().toISOString().slice(0, 10);
 
@@ -42,15 +45,15 @@ export function CamposEquipamento({
         erro={estado.campos?.modelo}
         dica="Agrupa as unidades. Os 4 Ultraformer compartilham o modelo 'Ultraformer'."
       >
-        <Input name="modelo" required placeholder="Ultraformer" defaultValue={inicial?.modelo} />
+        <Input name="modelo" required placeholder="Ultraformer"  defaultValue={inicial?.modelo} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Nome da unidade" erro={estado.campos?.nome}>
-          <Input name="nome" required placeholder="Ultraformer #1" defaultValue={inicial?.nome} />
+          <Input name="nome" required placeholder="Ultraformer #1"  defaultValue={inicial?.nome} />
         </Campo>
         <Campo label="Nº de série" erro={estado.campos?.numero_serie}>
-          <Input name="numero_serie" defaultValue={inicial?.numero_serie ?? ""} />
+          <Input name="numero_serie"  defaultValue={inicial?.numero_serie ?? ""} />
         </Campo>
       </div>
 
@@ -80,26 +83,14 @@ export function CamposEquipamento({
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Custo de aquisição" erro={estado.campos?.custo_aquisicao}>
-          <Input
-            name="custo_aquisicao"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={inicial?.custo_aquisicao ?? ""}
-          />
+          <Input name="custo_aquisicao" type="number" step="0.01" min="0"  defaultValue={inicial?.custo_aquisicao ?? ""} />
         </Campo>
         <Campo
           label="Custo por hora"
           erro={estado.campos?.custo_hora}
           dica="Entra no custo direto da sessão."
         >
-          <Input
-            name="custo_hora"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={inicial?.custo_hora ?? 0}
-          />
+          <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue={inicial?.custo_hora ?? 0} />
         </Campo>
       </div>
 
@@ -112,7 +103,7 @@ export function CamposEquipamento({
           <Input name="vigencia_inicio" type="date" defaultValue={hoje} required />
         </Campo>
         <Campo label="Vigência — fim" erro={estado.campos?.vigencia_fim}>
-          <Input name="vigencia_fim" type="date" defaultValue={inicial?.vigencia_fim ?? ""} />
+          <Input name="vigencia_fim" type="date"  defaultValue={inicial?.vigencia_fim ?? ""} />
         </Campo>
       </div>
 

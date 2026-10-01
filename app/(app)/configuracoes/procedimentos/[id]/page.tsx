@@ -144,8 +144,8 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
 
         {protocoloOrdenado.length === 0 ? (
           <Vazio>
-            Nenhuma região cadastrada. Sem ela, o procedimento vale para o corpo inteiro com uma
-            duração e um preço só.
+            Nenhuma região cadastrada. Sem ela, o procedimento vale para o corpo
+            inteiro com uma duração e um preço só.
           </Vazio>
         ) : (
           <div className="cartao overflow-hidden">

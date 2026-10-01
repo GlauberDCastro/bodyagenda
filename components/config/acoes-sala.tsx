@@ -11,7 +11,13 @@ import type { Procedimento, Sala } from "@/lib/types/database";
  * fronteira servidor→cliente. A página (servidor) passa só dados; este
  * componente monta o formulário.
  */
-export function AcoesSala({ sala, procedimentos }: { sala: Sala; procedimentos: Procedimento[] }) {
+export function AcoesSala({
+  sala,
+  procedimentos,
+}: {
+  sala: Sala;
+  procedimentos: Procedimento[];
+}) {
   return (
     <AcoesRecurso
       tipo="sala"

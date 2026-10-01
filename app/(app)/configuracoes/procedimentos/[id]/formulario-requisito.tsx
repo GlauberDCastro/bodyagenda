@@ -31,6 +31,7 @@ export function FormularioRequisito({
     return r;
   }, {});
 
+
   return (
     <GatilhoModal
       rotulo="Exigir equipamento"
@@ -40,35 +41,35 @@ export function FormularioRequisito({
       aoMudar={setAberto}
     >
       <form action={acao} className="space-y-4">
-        <input type="hidden" name="procedimento_id" value={procedimentoId} />
-        <input type="hidden" name="recurso_tipo" value="equipamento" />
+      <input type="hidden" name="procedimento_id" value={procedimentoId} />
+      <input type="hidden" name="recurso_tipo" value="equipamento" />
 
-        <Campo
-          label="Modelo do equipamento"
-          erro={estado.campos?.modelo}
-          dica="Qualquer unidade livre deste modelo serve."
-        >
-          <Select name="modelo" required>
-            <option value="">Selecione…</option>
-            {modelos.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </Select>
-        </Campo>
+      <Campo
+        label="Modelo do equipamento"
+        erro={estado.campos?.modelo}
+        dica="Qualquer unidade livre deste modelo serve."
+      >
+        <Select name="modelo" required>
+          <option value="">Selecione…</option>
+          {modelos.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </Select>
+      </Campo>
 
-        <Campo label="Quantidade" erro={estado.campos?.quantidade}>
-          <Input name="quantidade" type="number" min={1} defaultValue={1} required />
-        </Campo>
+      <Campo label="Quantidade" erro={estado.campos?.quantidade}>
+        <Input name="quantidade" type="number" min={1} defaultValue={1} required />
+      </Campo>
 
-        {estado.erro && !estado.campos && (
-          <p role="alert" className="text-sm text-[color:var(--status-critico)]">
-            {estado.erro}
-          </p>
-        )}
+      {estado.erro && !estado.campos && (
+        <p role="alert" className="text-sm text-[color:var(--status-critico)]">
+          {estado.erro}
+        </p>
+      )}
 
-        <AcoesModal aoCancelar={() => setAberto(false)}>
+      <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
       </form>

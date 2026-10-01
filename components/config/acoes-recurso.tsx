@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { excluirRecurso, inativarRecurso, reativarRecurso } from "@/lib/actions/recursos";
+import {
+  excluirRecurso,
+  inativarRecurso,
+  reativarRecurso,
+} from "@/lib/actions/recursos";
 import { Modal } from "@/components/ui/modal";
 import { Botao, Aviso } from "@/components/ui/primitivos";
 import type { TipoRecurso } from "@/lib/types/database";
@@ -79,9 +83,7 @@ export function AcoesRecurso({
   const [emUso, setEmUso] = useState(false);
   const [pendente, iniciar] = useTransition();
 
-  const rotuloTipo = { sala: "sala", equipamento: "equipamento", profissional: "profissional" }[
-    tipo
-  ];
+  const rotuloTipo = { sala: "sala", equipamento: "equipamento", profissional: "profissional" }[tipo];
 
   function excluir() {
     iniciar(async () => {
@@ -97,7 +99,9 @@ export function AcoesRecurso({
 
   function alternarAtivo() {
     iniciar(async () => {
-      const r = ativo ? await inativarRecurso(tipo, id, true) : await reativarRecurso(tipo, id);
+      const r = ativo
+        ? await inativarRecurso(tipo, id, true)
+        : await reativarRecurso(tipo, id);
       if (r.erro) setErro(r.erro);
       else {
         setConfirmando(false);
@@ -158,7 +162,11 @@ export function AcoesRecurso({
       </button>
 
       {formularioEdicao && (
-        <Modal aberto={editando} aoFechar={() => setEditando(false)} titulo={`Editar ${nome}`}>
+        <Modal
+          aberto={editando}
+          aoFechar={() => setEditando(false)}
+          titulo={`Editar ${nome}`}
+        >
           {formularioEdicao(() => setEditando(false))}
         </Modal>
       )}
@@ -178,8 +186,8 @@ export function AcoesRecurso({
                   <p className="font-semibold">Não dá para excluir</p>
                   <p className="mt-1">{erro}</p>
                   <p className="mt-2">
-                    Inativar mantém o histórico de ocupação e financeiro intacto e só impede novos
-                    agendamentos.
+                    Inativar mantém o histórico de ocupação e financeiro intacto e
+                    só impede novos agendamentos.
                   </p>
                 </>
               ) : (
@@ -190,8 +198,8 @@ export function AcoesRecurso({
 
           {!erro && (
             <p className="text-[13.5px] leading-relaxed text-[var(--tinta-2)]">
-              Esta ação não pode ser desfeita. Se {nome} já apareceu em algum agendamento, a
-              exclusão será recusada automaticamente.
+              Esta ação não pode ser desfeita. Se {nome} já apareceu em algum
+              agendamento, a exclusão será recusada automaticamente.
             </p>
           )}
 
@@ -209,7 +217,12 @@ export function AcoesRecurso({
                 {pendente ? "Inativando…" : "Inativar"}
               </Botao>
             ) : (
-              <Botao type="button" variante="perigo" onClick={excluir} disabled={pendente}>
+              <Botao
+                type="button"
+                variante="perigo"
+                onClick={excluir}
+                disabled={pendente}
+              >
                 {pendente ? "Excluindo…" : "Excluir definitivamente"}
               </Botao>
             )}

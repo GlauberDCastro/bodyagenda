@@ -42,30 +42,26 @@ export function CamposProfissional({
     return r;
   }, {});
 
+
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
     <form action={acao} className="space-y-4">
       <Campo label="Nome" erro={estado.campos?.nome}>
-        <Input name="nome" required defaultValue={inicial?.nome} />
+        <Input name="nome" required  defaultValue={inicial?.nome} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="CPF" erro={estado.campos?.cpf}>
-          <Input name="cpf" defaultValue={inicial?.cpf ?? ""} />
+          <Input name="cpf"  defaultValue={inicial?.cpf ?? ""} />
         </Campo>
         <Campo label="Especialidade" erro={estado.campos?.especialidade}>
-          <Input name="especialidade" defaultValue={inicial?.especialidade ?? ""} />
+          <Input name="especialidade"  defaultValue={inicial?.especialidade ?? ""} />
         </Campo>
       </div>
 
       <Campo label="Cor na agenda" erro={estado.campos?.cor_agenda}>
-        <Input
-          name="cor_agenda"
-          type="color"
-          defaultValue={inicial?.cor_agenda ?? "#64748b"}
-          className="h-10"
-        />
+        <Input name="cor_agenda" type="color" defaultValue={inicial?.cor_agenda ?? "#64748b"} className="h-10" />
       </Campo>
 
       <Campo
@@ -122,23 +118,12 @@ export function CamposProfissional({
         erro={estado.campos?.custo_hora}
         dica="Opcional. Entra no custo direto da sessão, separado da comissão."
       >
-        <Input
-          name="custo_hora"
-          type="number"
-          step="0.01"
-          min="0"
-          defaultValue={inicial?.custo_hora ?? 0}
-        />
+        <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue={inicial?.custo_hora ?? 0} />
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Admissão" erro={estado.campos?.vigencia_inicio}>
-          <Input
-            name="vigencia_inicio"
-            type="date"
-            defaultValue={inicial?.vigencia_inicio ?? hoje}
-            required
-          />
+          <Input name="vigencia_inicio" type="date" defaultValue={inicial?.vigencia_inicio ?? hoje} required />
         </Campo>
         <Campo label="Desligamento" erro={estado.campos?.vigencia_fim}>
           <Input name="vigencia_fim" type="date" defaultValue={inicial?.vigencia_fim ?? ""} />
@@ -158,7 +143,11 @@ export function CamposProfissional({
   );
 }
 
-export function FormularioProfissional({ procedimentos }: { procedimentos: Procedimento[] }) {
+export function FormularioProfissional({
+  procedimentos,
+}: {
+  procedimentos: Procedimento[];
+}) {
   const [aberto, setAberto] = useState(false);
   return (
     <GatilhoModal

@@ -42,18 +42,23 @@ function CamposUsuario({
 }) {
   const [perfil, setPerfil] = useState(inicial?.perfil ?? "recepcao");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
-    const r = await salvarUsuario(inicial?.id ?? null, anterior, formData);
-    if (r.ok) aoConcluir();
-    return r;
-  }, {});
+  const [estado, acao] = useActionState<Resultado, FormData>(
+    async (anterior, formData) => {
+      const r = await salvarUsuario(inicial?.id ?? null, anterior, formData);
+      if (r.ok) aoConcluir();
+      return r;
+    },
+    {},
+  );
 
   const descricao = PERFIS.find((p) => p.valor === perfil)?.descricao;
 
   // Um profissional só pode estar ligado a um login. Os já vinculados a OUTRO
   // usuário saem da lista — senão dois logins veriam a mesma agenda como
   // "sua", e a comissão apareceria para os dois.
-  const disponiveis = profissionais.filter((p) => !p.usuario_id || p.usuario_id === inicial?.id);
+  const disponiveis = profissionais.filter(
+    (p) => !p.usuario_id || p.usuario_id === inicial?.id,
+  );
   const vinculado = profissionais.find((p) => p.usuario_id === inicial?.id);
 
   return (
@@ -83,7 +88,12 @@ function CamposUsuario({
             : "Mínimo de 8 caracteres. Peça para trocar no primeiro acesso."
         }
       >
-        <Input name="senha" type="password" autoComplete="new-password" required={!inicial} />
+        <Input
+          name="senha"
+          type="password"
+          autoComplete="new-password"
+          required={!inicial}
+        />
       </Campo>
 
       <Campo label="Perfil" dica={descricao}>
@@ -126,7 +136,11 @@ function CamposUsuario({
   );
 }
 
-export function FormularioUsuario({ profissionais }: { profissionais: ProfissionalOpcao[] }) {
+export function FormularioUsuario({
+  profissionais,
+}: {
+  profissionais: ProfissionalOpcao[];
+}) {
   const [aberto, setAberto] = useState(false);
   return (
     <GatilhoModal
@@ -165,17 +179,7 @@ export function AcoesUsuario({
         title={`Editar ${usuario.nome}`}
         className={botao}
       >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4Z" />
         </svg>
       </button>
@@ -199,16 +203,7 @@ export function AcoesUsuario({
         }}
         className={botao}
       >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          aria-hidden
-        >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
           {usuario.ativo ? <path d="M9 6v12M15 6v12" /> : <path d="M5 12h14M13 6l6 6-6 6" />}
         </svg>
       </button>
@@ -231,5 +226,9 @@ export function AcoesUsuario({
 
 export function EtiquetaPerfil({ perfil }: { perfil: string }) {
   const tom = perfil === "admin" ? "marca" : "neutro";
-  return <Etiqueta tom={tom}>{PERFIS.find((p) => p.valor === perfil)?.rotulo ?? perfil}</Etiqueta>;
+  return (
+    <Etiqueta tom={tom}>
+      {PERFIS.find((p) => p.valor === perfil)?.rotulo ?? perfil}
+    </Etiqueta>
+  );
 }

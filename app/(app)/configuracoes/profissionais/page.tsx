@@ -44,9 +44,7 @@ export default async function ProfissionaisPage() {
                 <th className="px-4 py-2.5 font-medium">Login</th>
                 <th className="px-4 py-2.5 font-medium">Vigência</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
-                <th className="px-4 py-2.5 font-medium">
-                  <span className="sr-only">Ações</span>
-                </th>
+                <th className="px-4 py-2.5 font-medium"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
@@ -76,10 +74,7 @@ export default async function ProfissionaisPage() {
                     </Etiqueta>
                   </td>
                   <td className="px-4 py-2.5">
-                    <AcoesProfissional
-                      profissional={p}
-                      procedimentos={procedimentos.dados.filter((x) => x.ativo)}
-                    />
+                    <AcoesProfissional profissional={p} procedimentos={procedimentos.dados.filter((x) => x.ativo)} />
                   </td>
                 </tr>
               ))}

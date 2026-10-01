@@ -47,9 +47,7 @@ export default async function SalasPage() {
                 <th className="px-4 py-2.5 font-medium">Procedimento fixo</th>
                 <th className="px-4 py-2.5 font-medium">Vigência</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
-                <th className="px-4 py-2.5 font-medium">
-                  <span className="sr-only">Ações</span>
-                </th>
+                <th className="px-4 py-2.5 font-medium"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
