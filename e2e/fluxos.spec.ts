@@ -255,4 +255,34 @@ test.describe.serial("fluxos críticos", () => {
       .poll(() => cobrancasDePacote(m))
       .toEqual(["300.00 pago", "100.00 pago", "200.00 pendente", "300.00 pendente"]);
   });
+
+  test("formulário aplica as regras: aparelho, sala travada, habilitação e horário livre", async ({
+    page,
+  }) => {
+    const [a, b] = m.profissionais;
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}`);
+    await page.getByRole("button", { name: "Novo agendamento" }).click();
+    const dialogo = page.getByRole("dialog");
+
+    await dialogo.locator('select[name="procedimento_id"]').selectOption(m.procedimentoFixoId);
+
+    // RF-44: o aparelho exigido vem marcado. RF-45: ele é fixo, então a sala trava.
+    await expect(dialogo.locator(`input[name="equipamentos"][value="${m.equipamentoFixoId}"]`)).toBeChecked();
+    await expect(dialogo.locator('select[name="sala_id"]')).toBeDisabled();
+    await expect(dialogo.locator('select[name="sala_id"]')).toHaveValue(m.salaId);
+    await expect(dialogo).toContainText("fixo nesta sala");
+
+    // RF-23a: só a A é habilitada neste procedimento.
+    await expect(dialogo.getByText(a.nome)).toBeVisible();
+    await expect(dialogo.getByText(b.nome)).toHaveCount(0);
+
+    // RF-48: buscar horário livre e escolher o primeiro.
+    await dialogo.getByRole("button", { name: "Buscar horário livre" }).click();
+    const primeiro = dialogo.getByRole("button", { name: /^\d{2}:\d{2}$/ }).first();
+    await expect(primeiro).toBeVisible();
+    const hora = (await primeiro.textContent())!.trim();
+    await primeiro.click();
+    await expect(dialogo.locator('input[name="inicio"]')).toHaveValue(new RegExp(`T${hora}$`));
+  });
 });

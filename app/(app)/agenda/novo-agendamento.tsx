@@ -3,9 +3,14 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agenda";
-import { buscarPacientesAction, pacotesDoPacienteAction } from "@/lib/actions/busca";
+import {
+  buscarPacientesAction,
+  carenciaAction,
+  horariosLivresAction,
+  pacotesDoPacienteAction,
+} from "@/lib/actions/busca";
 import { cadastrarPacienteRapido } from "@/lib/actions/pacientes";
-import { Campo, Input, Select, Textarea, Botao } from "@/components/ui/primitivos";
+import { Aviso, Campo, Input, Select, Textarea, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import { useAgendamento, type PresetAgendamento } from "@/components/agenda/contexto-agendamento";
 import type { Sala, Equipamento, Profissional, Procedimento } from "@/lib/types/database";
@@ -32,6 +37,11 @@ interface Recursos {
   profissionais: Profissional[];
   procedimentos: Procedimento[];
   diaPadrao: string;
+  /** Habilitações (RF-23a) e aparelhos exigidos (RF-44) de cada procedimento. */
+  regras: {
+    habilitacoes: { profissional_id: string; procedimento_id: string }[];
+    requisitos: { procedimento_id: string; modelo: string | null; quantidade: number }[];
+  };
 }
 
 /**
@@ -60,6 +70,7 @@ function FormularioAgendamento({
   profissionais,
   procedimentos,
   diaPadrao,
+  regras,
   preset,
   aoConcluir,
 }: Recursos & { preset: PresetAgendamento; aoConcluir: () => void }) {
@@ -80,10 +91,79 @@ function FormularioAgendamento({
   const [pacoteId, setPacoteId] = useState("");
   const [procId, setProcId] = useState("");
 
-  const procedimento = procedimentos.find((p) => p.id === procId);
-  const sala = salas.find(
-    (s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === procId,
+  // Recursos controlados: o formulário aplica as regras do catálogo sozinho.
+  const [salaSel, setSalaSel] = useState(preset.sala_id ?? "");
+  const [equipSel, setEquipSel] = useState<string[]>(preset.equipamentos ?? []);
+  const [profSel, setProfSel] = useState<string[]>(preset.profissionais ?? []);
+  const [inicio, setInicio] = useState(preset.inicio ?? `${diaPadrao}T09:00`);
+  const [duracao, setDuracao] = useState("");
+  const [livres, setLivres] = useState<string[] | null>(null);
+  const [buscandoLivres, setBuscandoLivres] = useState(false);
+  const [carencia, setCarencia] = useState<{ ultima: string; dias: number; minimo: number } | null>(
+    null,
   );
+
+  const procedimento = procedimentos.find((p) => p.id === procId);
+  const salaDedicadaDe = (id: string) =>
+    salas.find((s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === id);
+  const salaDedicada = salaDedicadaDe(procId);
+  // RF-45 · aparelho fixo leva a sala junto.
+  const equipFixo = equipamentos.find(
+    (e) => equipSel.includes(e.id) && e.tipo_alocacao === "fixo" && e.sala_id,
+  );
+  const salaTravada = salaDedicada?.id ?? equipFixo?.sala_id ?? null;
+  const salaEfetiva = salaTravada ?? salaSel;
+
+  // RF-23a · só quem é habilitado no procedimento.
+  const habilitados = new Set(
+    regras.habilitacoes.filter((h) => h.procedimento_id === procId).map((h) => h.profissional_id),
+  );
+  const profissionaisVisiveis = procId
+    ? profissionais.filter((p) => habilitados.has(p.id))
+    : profissionais;
+
+  /** RF-44 / RF-20b · ao escolher o procedimento, marca os aparelhos que ele exige. */
+  function escolherProcedimento(id: string) {
+    setProcId(id);
+    setDuracao("");
+    setLivres(null);
+    const salaBase = salaDedicadaDe(id)?.id ?? salaSel;
+    const exigidos: string[] = [];
+    for (const r of regras.requisitos.filter((x) => x.procedimento_id === id && x.modelo)) {
+      const candidatos = equipamentos
+        .filter((e) => e.modelo === r.modelo && !exigidos.includes(e.id))
+        // Prefere o que já estava marcado e o que mora na sala escolhida.
+        .sort(
+          (a, b) =>
+            Number(equipSel.includes(b.id)) - Number(equipSel.includes(a.id)) ||
+            Number(b.sala_id === salaBase) - Number(a.sala_id === salaBase),
+        );
+      exigidos.push(...candidatos.slice(0, r.quantidade).map((e) => e.id));
+    }
+    if (exigidos.length > 0) setEquipSel(exigidos);
+    const hab = new Set(
+      regras.habilitacoes.filter((h) => h.procedimento_id === id).map((h) => h.profissional_id),
+    );
+    setProfSel((atual) => atual.filter((p) => hab.has(p)));
+  }
+
+  const alternar = (lista: string[], id: string) =>
+    lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
+
+  async function buscarLivres() {
+    setBuscandoLivres(true);
+    setLivres(
+      await horariosLivresAction({
+        procedimentoId: procId,
+        dia: inicio.slice(0, 10),
+        salaId: salaEfetiva,
+        equipamentos: equipSel,
+        profissionais: profSel,
+        duracaoMin: duracao ? Number(duracao) : null,
+      }),
+    );
+    setBuscandoLivres(false);
+  }
 
   const [estado, acao] = useActionState<ResultadoAgendamento, FormData>(
     async (anterior, formData) => {
@@ -110,11 +190,21 @@ function FormularioAgendamento({
     pacotesDoPacienteAction(pacienteId).then(setPacotes);
   }, [pacienteId]);
 
+  // RF-53 · carência: avisa, não bloqueia.
+  useEffect(() => {
+    if (!pacienteId || !procId || inicio.length < 16) return;
+    const t = setTimeout(async () => {
+      setCarencia(await carenciaAction(pacienteId, procId, inicio));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [pacienteId, procId, inicio]);
+
   // Listas derivadas na renderização em vez de zeradas dentro do efeito:
   // o resultado obsoleto simplesmente não é exibido, e não há um instante em
   // que a tela mostre o paciente anterior enquanto a nova busca não voltou.
   const pacientesVisiveis = termo.trim().length < 2 ? [] : pacientes;
   const pacotesVisiveis = pacienteId ? pacotes : [];
+  const carenciaVisivel = pacienteId && procId ? carencia : null;
 
   return (
     <form action={acao} className="space-y-4">
@@ -186,22 +276,36 @@ function FormularioAgendamento({
         )}
       </Campo>
 
-      <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
-        <Select
-          name="procedimento_id"
-          value={procId}
-          onChange={(e) => setProcId(e.target.value)}
-          required
-        >
-          <option value="">Selecione…</option>
-          {procedimentos.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nome} — {p.duracao_min} min
-              {p.buffer_min > 0 ? ` (+${p.buffer_min} preparo)` : ""}
-            </option>
-          ))}
-        </Select>
-      </Campo>
+      <div className="grid grid-cols-[1fr_8rem] gap-3">
+        <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
+          <Select
+            name="procedimento_id"
+            value={procId}
+            onChange={(e) => escolherProcedimento(e.target.value)}
+            required
+          >
+            <option value="">Selecione…</option>
+            {procedimentos.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome} — {p.duracao_min} min
+                {p.buffer_min > 0 ? ` (+${p.buffer_min} preparo)` : ""}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+        {/* RF-43 · vazio = a duração do procedimento. */}
+        <Campo label="Duração (min)" erro={estado.campos?.duracao_min}>
+          <Input
+            name="duracao_min"
+            type="number"
+            min={5}
+            step={5}
+            value={duracao}
+            placeholder={procedimento ? String(procedimento.duracao_min) : ""}
+            onChange={(e) => setDuracao(e.target.value)}
+          />
+        </Campo>
+      </div>
 
       {pacotesVisiveis.length > 0 && (
         <Campo label="Consumir de um pacote" dica="Deixe vazio para cobrar como sessão avulsa.">
@@ -248,21 +352,28 @@ function FormularioAgendamento({
           <Input
             name="inicio"
             type="datetime-local"
-            defaultValue={preset.inicio ?? `${diaPadrao}T09:00`}
+            value={inicio}
+            onChange={(e) => setInicio(e.target.value)}
             required
           />
         </Campo>
         <Campo
           label="Sala"
           erro={estado.campos?.sala_id}
-          dica={sala ? "Definida pela sala dedicada ao procedimento." : undefined}
+          dica={
+            salaDedicada
+              ? "Definida pela sala dedicada ao procedimento."
+              : equipFixo
+                ? `Definida pelo aparelho ${equipFixo.nome}, fixo nesta sala.`
+                : undefined
+          }
         >
-          {/* RF-45 · sala dedicada é escolhida automaticamente e travada. */}
           <Select
             name="sala_id"
             required
-            {...(sala ? { value: sala.id } : { defaultValue: preset.sala_id ?? "" })}
-            disabled={!!sala}
+            value={salaEfetiva}
+            onChange={(e) => setSalaSel(e.target.value)}
+            disabled={!!salaTravada}
           >
             <option value="">Selecione…</option>
             {salas.map((s) => (
@@ -271,9 +382,43 @@ function FormularioAgendamento({
               </option>
             ))}
           </Select>
-          {sala && <input type="hidden" name="sala_id" value={sala.id} />}
+          {salaTravada && <input type="hidden" name="sala_id" value={salaTravada} />}
         </Campo>
       </div>
+
+      {/* RF-48 · horários em que todos os recursos escolhidos estão livres. */}
+      <div className="space-y-2">
+        <Botao
+          type="button"
+          variante="secundario"
+          onClick={buscarLivres}
+          disabled={!procId || !salaEfetiva || buscandoLivres}
+        >
+          {buscandoLivres ? "Buscando…" : "Buscar horário livre"}
+        </Botao>
+        {!procId && (
+          <span className="ml-2 text-[12.5px] text-[var(--tinta-3)]">
+            Escolha o procedimento e a sala primeiro.
+          </span>
+        )}
+        {livres && (
+          <HorariosLivres
+            livres={livres}
+            aoEscolher={(v) => {
+              setInicio(v);
+              setLivres(null);
+            }}
+          />
+        )}
+      </div>
+
+      {carenciaVisivel && (
+        <Aviso>
+          A última sessão de {procedimento?.nome} deste paciente foi há {carenciaVisivel.dias}{" "}
+          dia(s); o intervalo mínimo é de {carenciaVisivel.minimo} dias. Dá para agendar mesmo
+          assim.
+        </Aviso>
+      )}
 
       <Campo label="Equipamentos" dica="Marque quantos a sessão usar ao mesmo tempo.">
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
@@ -283,7 +428,8 @@ function FormularioAgendamento({
                 type="checkbox"
                 name="equipamentos"
                 value={e.id}
-                defaultChecked={preset.equipamentos?.includes(e.id)}
+                checked={equipSel.includes(e.id)}
+                onChange={() => setEquipSel((l) => alternar(l, e.id))}
               />
               {e.nome}
               <span className="text-xs text-[var(--tinta-3)]">({e.modelo})</span>
@@ -292,18 +438,26 @@ function FormularioAgendamento({
         </div>
       </Campo>
 
-      <Campo label="Profissionais">
+      <Campo
+        label="Profissionais"
+        dica={procedimento ? `Só quem é habilitado em ${procedimento.nome}.` : undefined}
+      >
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
-          {profissionais.length === 0 && (
-            <p className="text-xs text-[var(--tinta-3)]">Nenhum profissional cadastrado.</p>
+          {profissionaisVisiveis.length === 0 && (
+            <p className="text-xs text-[var(--tinta-3)]">
+              {procId
+                ? "Nenhum profissional habilitado neste procedimento. Ajuste em Configurações › Profissionais."
+                : "Nenhum profissional cadastrado."}
+            </p>
           )}
-          {profissionais.map((p) => (
+          {profissionaisVisiveis.map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 name="profissionais"
                 value={p.id}
-                defaultChecked={preset.profissionais?.includes(p.id)}
+                checked={profSel.includes(p.id)}
+                onChange={() => setProfSel((l) => alternar(l, p.id))}
               />
               <span
                 aria-hidden
@@ -334,6 +488,68 @@ function FormularioAgendamento({
         <Salvar />
       </AcoesModal>
     </form>
+  );
+}
+
+const diaHora = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "short",
+  day: "2-digit",
+  month: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+const soHora = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+/** "2026-10-06T09:00" no horário da clínica, para o datetime-local. */
+const paraLocal = (iso: string) =>
+  new Intl.DateTimeFormat("sv-SE", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  })
+    .format(new Date(iso))
+    .replace(" ", "T");
+
+/** Horários livres agrupados por dia; clicar preenche o início. */
+function HorariosLivres({
+  livres,
+  aoEscolher,
+}: {
+  livres: string[];
+  aoEscolher: (local: string) => void;
+}) {
+  if (livres.length === 0) {
+    return (
+      <p className="text-[13px] text-[var(--tinta-3)]">
+        Nenhum horário livre nos próximos 7 dias com estes recursos.
+      </p>
+    );
+  }
+  const porDia = new Map<string, string[]>();
+  for (const iso of livres) {
+    const dia = diaHora.format(new Date(iso));
+    porDia.set(dia, [...(porDia.get(dia) ?? []), iso]);
+  }
+  return (
+    <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-[var(--traco)] p-2">
+      {[...porDia.entries()].map(([dia, horas]) => (
+        <div key={dia} className="flex flex-wrap items-center gap-1.5">
+          <span className="w-20 text-[12px] font-medium text-[var(--tinta-2)]">{dia}</span>
+          {horas.map((iso) => (
+            <button
+              key={iso}
+              type="button"
+              onClick={() => aoEscolher(paraLocal(iso))}
+              className="rounded-full border border-[var(--traco)] px-2.5 py-0.5 text-[12px] tabular-nums hover:border-[var(--marca)] hover:text-[var(--marca)]"
+            >
+              {soHora.format(new Date(iso))}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
 

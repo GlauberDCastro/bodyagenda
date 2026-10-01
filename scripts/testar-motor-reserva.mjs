@@ -289,6 +289,57 @@ try {
 }
 checar("CA-08 · horario cancelado volta a ficar disponivel", reagendou);
 
+console.log("\n-- RF-43 / RF-23a / RF-48 · agendamento inteligente (0029) --");
+const { rows: [longo] } = await cli.query(
+  `select criar_agendamento($1, $2, '2026-10-08T09:00:00-03:00'::timestamptz, $3,
+     '{}'::uuid[], '{}'::uuid[], p_duracao => 45) as id`,
+  [paciente.id, proc.id, sala.id],
+);
+const { rows: [dur] } = await cli.query(
+  `select extract(epoch from fim - inicio) / 60 as min from agendamento where id = $1`, [longo.id],
+);
+checar("RF-43 · duracao ajustada na hora de agendar", Number(dur.min) === 45, `veio ${dur.min}`);
+
+const { rows: [livres] } = await cli.query(
+  `select min(inicio) as primeiro from horarios_livres($1, '2026-10-08T09:00:00-03:00',
+     '2026-10-08T12:00:00-03:00', $2, p_duracao => 45)`,
+  [proc.id, sala.id],
+);
+checar("RF-48 · horario livre comeca depois do atendimento de 45 min",
+  new Date(livres.primeiro).toISOString() === "2026-10-08T12:45:00.000Z",
+  `veio ${livres.primeiro && new Date(livres.primeiro).toISOString()}`);
+
+const { rows: [prof] } = await cli.query(
+  `insert into profissional (nome) values ('TESTE motor prof') returning id`,
+);
+await cli.query(
+  `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+   select 'profissional', $1, d, '08:00', '18:00' from generate_series(1, 5) d`, [prof.id],
+);
+let naoHabilitado = false;
+try {
+  await cli.query("savepoint h1");
+  await cli.query(
+    `select criar_agendamento($1, $2, '2026-10-08T14:00:00-03:00'::timestamptz, $3,
+       '{}'::uuid[], array[$4]::uuid[])`,
+    [paciente.id, proc.id, sala.id, prof.id],
+  );
+} catch (e) {
+  naoHabilitado = e.code === "23514";
+  await cli.query("rollback to savepoint h1");
+}
+checar("RF-23a · profissional nao habilitado e recusado", naoHabilitado);
+await cli.query(
+  `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
+  [prof.id, proc.id],
+);
+const { rows: [hab] } = await cli.query(
+  `select criar_agendamento($1, $2, '2026-10-08T14:00:00-03:00'::timestamptz, $3,
+     '{}'::uuid[], array[$4]::uuid[]) as id`,
+  [paciente.id, proc.id, sala.id, prof.id],
+);
+checar("RF-23a · habilitado agenda normalmente", !!hab.id);
+
 await cli.query("rollback");
 await cli.end();
 

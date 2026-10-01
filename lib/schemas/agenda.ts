@@ -29,6 +29,11 @@ export const agendamentoSchema = z
       z.number().nonnegative().nullable(),
     ),
     observacoes: vazioParaNulo(z.string()),
+    /** RF-43 · vazio = a duração do procedimento. */
+    duracao_min: z.preprocess(
+      (v) => (v === "" || v === undefined ? null : Number(v)),
+      z.number().int().positive("Duração deve ser maior que zero").nullable(),
+    ),
   })
   .superRefine((d, ctx) => {
     // Avulso sem valor vira receita fantasma: a sessão acontece, ocupa a

@@ -105,6 +105,7 @@ export async function criarAgendamento(
     p_pacote: d.pacote_id ?? undefined,
     p_observacoes: d.observacoes ?? undefined,
     p_valor_avulso: d.valor_avulso ?? undefined,
+    p_duracao: d.duracao_min ?? undefined,
   });
 
   if (error) {
@@ -116,7 +117,7 @@ export async function criarAgendamento(
         .eq("id", d.procedimento_id)
         .single();
 
-      const minutos = (proc?.duracao_min ?? 0) + (proc?.buffer_min ?? 0);
+      const minutos = (d.duracao_min ?? proc?.duracao_min ?? 0) + (proc?.buffer_min ?? 0);
       const fim = new Date(new Date(d.inicio).getTime() + minutos * 60_000);
 
       return detalharConflito(supabase, {

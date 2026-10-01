@@ -90,6 +90,7 @@ export async function horariosLivres(params: {
   equipamentos?: string[];
   profissionais?: string[];
   passoMin?: number;
+  duracaoMin?: number | null;
 }): Promise<{ inicio: string; fim: string }[]> {
   const supabase = await createServerSupabase();
 
@@ -101,6 +102,7 @@ export async function horariosLivres(params: {
     p_equipamentos: params.equipamentos ?? [],
     p_profissionais: params.profissionais ?? [],
     p_passo_min: params.passoMin ?? 15,
+    p_duracao: params.duracaoMin ?? undefined,
   });
 
   if (error) return [];
@@ -137,4 +139,52 @@ export async function profissionaisHabilitados(procedimentoId: string) {
     .filter(
       (p): p is { id: string; nome: string; cor_agenda: string; ativo: boolean } => !!p?.ativo,
     );
+}
+
+/**
+ * Regras do catálogo que o formulário de agendamento aplica sozinho: quem é
+ * habilitado em cada procedimento (RF-23a) e que aparelho ele exige (RF-44).
+ */
+export async function regrasDoCatalogo(): Promise<{
+  habilitacoes: { profissional_id: string; procedimento_id: string }[];
+  requisitos: { procedimento_id: string; modelo: string | null; quantidade: number }[];
+}> {
+  const supabase = await createServerSupabase();
+  const [h, r] = await Promise.all([
+    supabase.from("profissional_habilitacao").select("profissional_id, procedimento_id"),
+    supabase
+      .from("procedimento_requisito")
+      .select("procedimento_id, modelo, quantidade")
+      .eq("recurso_tipo", "equipamento"),
+  ]);
+  return { habilitacoes: h.data ?? [], requisitos: r.data ?? [] };
+}
+
+/**
+ * RF-53 · carência entre sessões: a última sessão do mesmo procedimento,
+ * antes do horário pretendido, se ela estiver mais perto que o mínimo.
+ */
+export async function carenciaViolada(
+  pacienteId: string,
+  procedimentoId: string,
+  inicio: string,
+): Promise<{ ultima: string; dias: number; minimo: number } | null> {
+  const supabase = await createServerSupabase();
+  const [{ data: proc }, { data: ultimas }] = await Promise.all([
+    supabase.from("procedimento").select("intervalo_min_dias").eq("id", procedimentoId).single(),
+    supabase
+      .from("agendamento")
+      .select("inicio")
+      .eq("paciente_id", pacienteId)
+      .eq("procedimento_id", procedimentoId)
+      .not("status", "in", "(cancelado,falta)")
+      .lt("inicio", inicio)
+      .order("inicio", { ascending: false })
+      .limit(1),
+  ]);
+  const minimo = proc?.intervalo_min_dias ?? 0;
+  const ultima = ultimas?.[0]?.inicio;
+  if (!minimo || !ultima) return null;
+  const dias = Math.floor((new Date(inicio).getTime() - new Date(ultima).getTime()) / 86_400_000);
+  return dias < minimo ? { ultima, dias, minimo } : null;
 }

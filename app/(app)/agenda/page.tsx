@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { agendamentosDoPeriodo, type ColunaRecurso } from "@/lib/consultas/agenda";
+import {
+  agendamentosDoPeriodo,
+  regrasDoCatalogo,
+  type ColunaRecurso,
+} from "@/lib/consultas/agenda";
 import {
   listarSalas,
   listarEquipamentos,
@@ -51,13 +55,15 @@ export default async function AgendaPage(props: {
   const dias = semana ? diasDaSemana(dia) : [dia];
   const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
 
-  const [salas, equipamentos, profissionais, procedimentos, agendamentos] = await Promise.all([
-    listarSalas(),
-    listarEquipamentos(),
-    listarProfissionais(),
-    listarProcedimentos(),
-    agendamentosDoPeriodo(inicio, fim),
-  ]);
+  const [salas, equipamentos, profissionais, procedimentos, agendamentos, regras] =
+    await Promise.all([
+      listarSalas(),
+      listarEquipamentos(),
+      listarProfissionais(),
+      listarProcedimentos(),
+      agendamentosDoPeriodo(inicio, fim),
+      regrasDoCatalogo(),
+    ]);
 
   if (salas.semSchema) return <AvisoBanco />;
 
@@ -143,6 +149,7 @@ export default async function AgendaPage(props: {
             profissionais={profissionais.dados.filter((p) => p.ativo)}
             procedimentos={procedimentos.dados.filter((p) => p.ativo)}
             diaPadrao={dia}
+            regras={regras}
           />
         </header>
 

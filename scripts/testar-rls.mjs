@@ -159,6 +159,11 @@ async function criarMassa() {
        values ($1, 0, 'percentual', 10)`,
       [p.id],
     );
+    // RF-23a (0029): só atende quem é habilitado no procedimento.
+    await db.query(
+      `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
+      [p.id, m.proc.id],
+    );
   }
   for (const [tipo, id] of [["sala", m.sala.id], ["profissional", m.profMeu.id], ["profissional", m.profOutro.id]]) {
     await db.query(

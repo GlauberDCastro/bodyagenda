@@ -23,6 +23,10 @@ export interface Massa {
   sala: string;
   salaId: string;
   procedimentoId: string;
+  /** Exige um aparelho fixo na sala de teste; só a profissional A é habilitada. */
+  procedimentoFixo: string;
+  procedimentoFixoId: string;
+  equipamentoFixoId: string;
   /** Dois profissionais habilitados no procedimento, para trocar arrastando. */
   profissionais: { id: string; nome: string }[];
 }
@@ -119,6 +123,36 @@ export async function criarMassa(): Promise<Massa> {
       profissionais.push({ id: p.id, nome });
     }
 
+    // Procedimento que exige aparelho fixo: testa pré-seleção, sala travada e habilitação.
+    const procedimentoFixo = `TESTE E2E Fixo ${sufixo}`;
+    const {
+      rows: [procFixo],
+    } = await db.query(
+      `insert into procedimento (nome, duracao_min, valor_sessao) values ($1, 30, 200) returning id`,
+      [procedimentoFixo],
+    );
+    const {
+      rows: [equipFixo],
+    } = await db.query(
+      `insert into equipamento (nome, modelo, tipo_alocacao, sala_id)
+       values ($1, $1, 'fixo', $2) returning id`,
+      [`TESTE E2E aparelho ${sufixo}`, sala.id],
+    );
+    await db.query(
+      `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+       select 'equipamento', $1, d, '08:00', '18:00' from generate_series(1, 5) d`,
+      [equipFixo.id],
+    );
+    await db.query(
+      `insert into procedimento_requisito (procedimento_id, recurso_tipo, modelo, quantidade)
+       values ($1, 'equipamento', $2, 1)`,
+      [procFixo.id, `TESTE E2E aparelho ${sufixo}`],
+    );
+    await db.query(
+      `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
+      [profissionais[0].id, procFixo.id],
+    );
+
     const paciente = `Paciente E2E ${sufixo}`;
     const {
       rows: [pac],
@@ -137,6 +171,9 @@ export async function criarMassa(): Promise<Massa> {
       salaId: sala.id,
       procedimentoId: proc.id,
       profissionais,
+      procedimentoFixo,
+      procedimentoFixoId: procFixo.id,
+      equipamentoFixoId: equipFixo.id,
     };
     writeFileSync(ARQUIVO, JSON.stringify(massa));
     return massa;
@@ -281,6 +318,14 @@ export async function apagarMassa() {
     ]);
     await db.query(`delete from profissional where id = any($1::uuid[])`, [profIds]);
     await db.query(`delete from recurso_bloqueio where recurso_id = $1`, [m.salaId]);
+    // O aparelho fixo aponta para a sala: sai antes dela.
+    if (m.procedimentoFixoId) {
+      await db.query(`delete from procedimento where id = $1`, [m.procedimentoFixoId]);
+      await db.query(`delete from recurso_disponibilidade where recurso_id = $1`, [
+        m.equipamentoFixoId,
+      ]);
+      await db.query(`delete from equipamento where id = $1`, [m.equipamentoFixoId]);
+    }
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.

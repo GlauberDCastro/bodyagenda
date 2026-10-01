@@ -105,6 +105,11 @@ for (const [nome, tipo, valor] of [
      select 'profissional', $1, d, '08:00', '18:00' from generate_series(1,5) d`,
     [p.id],
   );
+  // RF-23a (0029): só atende quem é habilitado no procedimento.
+  await cli.query(
+    `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
+    [p.id, proc.id],
+  );
   profs.push(p.id);
 }
 

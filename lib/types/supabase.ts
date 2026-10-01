@@ -1090,37 +1090,23 @@ export type Database = {
         };
         Returns: string;
       };
-      criar_agendamento:
-        | {
-            Args: {
-              p_equipamentos?: string[];
-              p_inicio: string;
-              p_observacoes?: string;
-              p_paciente: string;
-              p_pacote?: string;
-              p_procedimento: string;
-              p_profissionais?: string[];
-              p_sala: string;
-              p_valor_avulso?: number;
-            };
-            Returns: string;
-          }
-        | {
-            Args: {
-              p_equipamentos?: string[];
-              p_inicio: string;
-              p_observacoes?: string;
-              p_paciente: string;
-              p_pacote?: string;
-              p_procedimento: string;
-              p_profissionais?: string[];
-              p_quantidade?: number;
-              p_regiao?: string;
-              p_sala: string;
-              p_valor_avulso?: number;
-            };
-            Returns: string;
-          };
+      criar_agendamento: {
+        Args: {
+          p_duracao?: number;
+          p_equipamentos?: string[];
+          p_inicio: string;
+          p_observacoes?: string;
+          p_paciente: string;
+          p_pacote?: string;
+          p_procedimento: string;
+          p_profissionais?: string[];
+          p_quantidade?: number;
+          p_regiao?: string;
+          p_sala: string;
+          p_valor_avulso?: number;
+        };
+        Returns: string;
+      };
       custo_direto_procedimento: { Args: { p_procedimento: string }; Returns: number };
       custo_direto_sessao: { Args: { p_agendamento: string }; Returns: number };
       cancelar_pacote: { Args: { p_pacote: string }; Returns: Json };
@@ -1230,6 +1216,7 @@ export type Database = {
           p_ate: string;
           p_de: string;
           p_equipamentos?: string[];
+          p_duracao?: number;
           p_passo_min?: number;
           p_procedimento: string;
           p_profissionais?: string[];
