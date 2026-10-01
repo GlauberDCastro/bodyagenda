@@ -8,12 +8,18 @@
  * Server Actions usam.
  *
  * Princípio P2 da spec: a autorização mora no RLS. Se este script passar com
- * a chave anônima escrevendo em algum lugar, a fronteira está furada.
+ * um perfil enxergando ou escrevendo fora da matriz da 0020, a fronteira está
+ * furada.
+ *
+ * Cria um usuário temporário por perfil (service_role) e uma massa própria
+ * (conexão direta), e apaga tudo no fim — inclusive se algo falhar no meio.
  */
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomBytes } from "node:crypto";
+import pg from "pg";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -31,6 +37,15 @@ const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!URL_SUPABASE || !ANON || !SERVICE_ROLE || !process.env.DATABASE_URL) {
+  console.error(
+    "Faltam variaveis: NEXT_PUBLIC_SUPABASE_URL, chave anon/publishable, " +
+      "SUPABASE_SERVICE_ROLE_KEY e DATABASE_URL.",
+  );
+  process.exit(1);
+}
 
 let passaram = 0;
 let falharam = 0;
@@ -43,17 +58,6 @@ function checar(rotulo, ok, detalhe = "") {
     falharam++;
     console.log(`  FALHOU  ${rotulo}${detalhe ? ` — ${detalhe}` : ""}`);
   }
-}
-
-/** Lê as credenciais do admin geradas por scripts/criar-admin.mjs. */
-function credenciaisAdmin() {
-  const arquivo = join(RAIZ, "supabase", ".admin-inicial.txt");
-  if (!existsSync(arquivo)) return null;
-  const texto = readFileSync(arquivo, "utf8");
-  return {
-    email: texto.match(/^e-mail:\s*(.+)$/m)?.[1]?.trim(),
-    senha: texto.match(/^senha:\s*(.+)$/m)?.[1]?.trim(),
-  };
 }
 
 async function api(caminho, { token, metodo = "GET", corpo } = {}) {
@@ -76,118 +80,296 @@ async function api(caminho, { token, metodo = "GET", corpo } = {}) {
   return { status: r.status, ok: r.ok, dados };
 }
 
-const cred = credenciaisAdmin();
-if (!cred?.email || !cred?.senha) {
-  console.error(
-    "supabase/.admin-inicial.txt nao encontrado. Rode scripts/criar-admin.mjs primeiro.",
-  );
-  process.exit(1);
+/** Quantas linhas o perfil enxerga. Erro conta como zero. */
+async function linhas(caminho, token) {
+  const r = await api(caminho, { token });
+  return r.ok && Array.isArray(r.dados) ? r.dados.length : 0;
 }
 
-// ── Anônimo: nao pode nada ───────────────────────────────────────────────────
-console.log("\n-- visitante sem sessao --");
+/** Escrita só "passou" se a API aceitou E devolveu a linha afetada. */
+const escreveu = (r) => r.ok && Array.isArray(r.dados) && r.dados.length > 0;
 
-const semSessao = await api("sala?select=id&limit=1");
-checar(
-  "anon NAO le salas",
-  semSessao.dados?.length === 0 || !semSessao.ok,
-  `status ${semSessao.status}, ${JSON.stringify(semSessao.dados)?.slice(0, 80)}`,
-);
-
-const anonEscreve = await api("paciente", {
-  metodo: "POST",
-  corpo: { nome: "Invasor" },
-});
-checar(
-  "anon NAO cria paciente",
-  !anonEscreve.ok,
-  `status ${anonEscreve.status}`,
-);
-
-const anonCustos = await api("procedimento_custo?select=id&limit=1");
-checar(
-  "anon NAO le a tabela de custos",
-  anonCustos.dados?.length === 0 || !anonCustos.ok,
-  `status ${anonCustos.status}`,
-);
-
-// ── Admin autenticado ────────────────────────────────────────────────────────
-console.log("\n-- admin autenticado --");
-
-const login = await fetch(`${URL_SUPABASE}/auth/v1/token?grant_type=password`, {
-  method: "POST",
-  headers: { apikey: ANON, "Content-Type": "application/json" },
-  body: JSON.stringify({ email: cred.email, password: cred.senha }),
-});
-const sessao = await login.json();
-const token = sessao.access_token;
-
-checar("login do admin funciona", !!token, `status ${login.status}`);
-if (!token) {
-  console.log(`\n${passaram} passaram, ${falharam} falharam`);
-  process.exit(1);
-}
-
-const perfil = await api(`usuario?select=perfil&id=eq.${sessao.user.id}`, { token });
-checar(
-  "perfil admin gravado em public.usuario",
-  perfil.dados?.[0]?.perfil === "admin",
-  JSON.stringify(perfil.dados),
-);
-
-const salas = await api("sala?select=id,numero&order=numero", { token });
-checar("admin le salas", (salas.dados?.length ?? 0) > 0, `${salas.dados?.length} sala(s)`);
-
-const custos = await api("procedimento_custo?select=id&limit=1", { token });
-checar("admin alcanca a tabela de custos", custos.ok, `status ${custos.status}`);
-
-// Escrita pelo mesmo caminho da Server Action: insere, confere, remove.
-const proc = await api("procedimento?select=id&nome=eq.Fotona", { token });
-const procId = proc.dados?.[0]?.id;
-
-const criado = await api("procedimento_custo", {
-  token,
-  metodo: "POST",
-  corpo: {
-    procedimento_id: procId,
-    tipo: "insumo",
-    descricao: "TESTE RLS — remover",
-    valor_unitario: 1,
-    quantidade: 1,
-  },
-});
-checar("admin CRIA custo via PostgREST sob RLS", criado.ok, `status ${criado.status}`);
-
-const idCriado = criado.dados?.[0]?.id;
-if (idCriado) {
-  const apagado = await api(`procedimento_custo?id=eq.${idCriado}`, {
-    token,
-    metodo: "DELETE",
+async function authAdmin(caminho, metodo = "GET", corpo) {
+  const r = await fetch(`${URL_SUPABASE}/auth/v1/admin/${caminho}`, {
+    method: metodo,
+    headers: {
+      apikey: SERVICE_ROLE,
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+      "Content-Type": "application/json",
+    },
+    body: corpo ? JSON.stringify(corpo) : undefined,
   });
-  checar("limpeza: custo de teste removido", apagado.ok, `status ${apagado.status}`);
+  return { ok: r.ok, status: r.status, dados: await r.json().catch(() => null) };
 }
 
-const reserva = await api("reserva", {
-  token,
-  metodo: "POST",
-  corpo: {
-    agendamento_id: "00000000-0000-4000-8000-000000000000",
-    recurso_tipo: "sala",
-    recurso_id: "00000000-0000-4000-8000-000000000000",
-    periodo: "[2026-10-01,2026-10-02)",
-  },
+const db = new pg.Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
-// `reserva` e derivada: nem o admin escreve nela direto, so o trigger.
-checar(
-  "nem o admin escreve em `reserva` direto (tabela derivada)",
-  !reserva.ok,
-  `status ${reserva.status}`,
-);
+await db.connect();
 
-await fetch(`${URL_SUPABASE}/auth/v1/logout`, {
-  method: "POST",
-  headers: { apikey: ANON, Authorization: `Bearer ${token}` },
-});
+const PERFIS = ["admin", "gestao", "financeiro", "recepcao", "profissional"];
+const sufixo = randomBytes(4).toString("hex");
+const usuarios = {};
+const m = {}; // massa
+
+async function criarUsuario(perfil) {
+  const email = `teste-rls-${perfil}-${sufixo}@exemplo.invalid`;
+  const senha = randomBytes(18).toString("base64url");
+  const criado = await authAdmin("users", "POST", { email, password: senha, email_confirm: true });
+  if (!criado.ok) throw new Error(`criar usuario ${perfil}: HTTP ${criado.status}`);
+  const id = criado.dados.id;
+  usuarios[perfil] = { id };
+  await db.query(
+    `insert into usuario (id, nome, email, perfil, ativo) values ($1, $2, $3, $4, true)`,
+    [id, `TESTE RLS ${perfil}`, email, perfil],
+  );
+  const login = await fetch(`${URL_SUPABASE}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: ANON, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: senha }),
+  });
+  usuarios[perfil].token = (await login.json()).access_token;
+}
+
+async function criarMassa() {
+  const q = async (sql, params) => (await db.query(sql, params)).rows[0];
+  m.sala = await q(
+    `insert into sala (numero, nome)
+     values ((select coalesce(max(numero), 0) + 900 from sala), 'TESTE RLS') returning id`,
+  );
+  m.proc = await q(
+    `insert into procedimento (nome, duracao_min, valor_sessao)
+     values ('TESTE RLS', 30, 100) returning id`,
+  );
+  await db.query(
+    `insert into procedimento_custo (procedimento_id, tipo, descricao, valor_unitario, quantidade)
+     values ($1, 'insumo', 'TESTE RLS', 10, 1)`,
+    [m.proc.id],
+  );
+  // Profissional "meu" (ligado ao usuário de perfil profissional) e "outro".
+  m.profMeu = await q(
+    `insert into profissional (nome, usuario_id) values ('TESTE RLS meu', $1) returning id`,
+    [usuarios.profissional.id],
+  );
+  m.profOutro = await q(`insert into profissional (nome) values ('TESTE RLS outro') returning id`);
+  for (const p of [m.profMeu, m.profOutro]) {
+    await db.query(
+      `insert into profissional_remuneracao (profissional_id, custo_hora, comissao_tipo, comissao_valor)
+       values ($1, 0, 'percentual', 10)`,
+      [p.id],
+    );
+  }
+  for (const [tipo, id] of [["sala", m.sala.id], ["profissional", m.profMeu.id], ["profissional", m.profOutro.id]]) {
+    await db.query(
+      `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+       select $1::tipo_recurso, $2, d, '08:00', '18:00' from generate_series(1, 5) d`,
+      [tipo, id],
+    );
+  }
+  m.pacMeu = await q(`insert into paciente (nome) values ('TESTE RLS paciente meu') returning id`);
+  m.pacOutro = await q(`insert into paciente (nome) values ('TESTE RLS paciente outro') returning id`);
+
+  // Segunda-feira 2030-01-07, um atendimento de cada profissional.
+  const agendar = async (paciente, prof, hora) => {
+    const ag = await q(
+      `insert into agendamento (paciente_id, procedimento_id, sala_id, inicio, fim)
+       values ($1, $2, $3, $4::timestamptz, $4::timestamptz + interval '30 min') returning id`,
+      [paciente.id, m.proc.id, m.sala.id, `2030-01-07T${hora}:00-03:00`],
+    );
+    await db.query(
+      `insert into agendamento_profissional (agendamento_id, profissional_id) values ($1, $2)`,
+      [ag.id, prof.id],
+    );
+    return ag;
+  };
+  m.agMeu = await agendar(m.pacMeu, m.profMeu, "09");
+  m.agOutro = await agendar(m.pacOutro, m.profOutro, "10");
+  // Realizar gera a comissão de cada um pelo trigger.
+  await db.query(`update agendamento set status = 'realizado' where id = any($1::uuid[])`, [
+    [m.agMeu.id, m.agOutro.id],
+  ]);
+  m.agPendente = await agendar(m.pacMeu, m.profMeu, "11");
+
+  m.receita = await q(
+    `insert into lancamento (tipo, origem_tipo, descricao, valor, vencimento)
+     values ('receita', 'outro', 'TESTE RLS', 100, '2030-01-07') returning id`,
+  );
+  m.despesa = await q(
+    `insert into lancamento (tipo, origem_tipo, descricao, valor, vencimento)
+     values ('despesa', 'outro', 'TESTE RLS', 50, '2030-01-07') returning id`,
+  );
+}
+
+async function apagarTudo() {
+  const ids = Object.values(usuarios).map((u) => u.id);
+  const del = (sql, p) => db.query(sql, p).catch((e) => console.log(`    (limpeza: ${e.message})`));
+  await del(`delete from lancamento where descricao = 'TESTE RLS'`);
+  if (m.proc) await del(`delete from agendamento where procedimento_id = $1`, [m.proc.id]);
+  await del(`delete from paciente where nome like 'TESTE RLS%'`);
+  await del(`delete from profissional where nome like 'TESTE RLS%'`);
+  await del(`delete from recurso_disponibilidade where recurso_id = $1`, [m.sala?.id]);
+  await del(`delete from procedimento where nome = 'TESTE RLS'`);
+  await del(`delete from sala where nome like 'TESTE RLS%'`);
+  await del(`delete from despesa_fixa where descricao = 'TESTE RLS'`);
+  // A auditoria referencia o usuário: as linhas geradas pelo teste saem junto.
+  await del(`delete from auditoria where usuario_id = any($1::uuid[])`, [ids]);
+  await del(`delete from usuario where id = any($1::uuid[])`, [ids]);
+  for (const id of ids) await authAdmin(`users/${id}`, "DELETE");
+}
+
+try {
+  for (const p of PERFIS) await criarUsuario(p);
+  await criarMassa();
+  const t = Object.fromEntries(PERFIS.map((p) => [p, usuarios[p].token]));
+
+  console.log("\n-- login de cada perfil --");
+  for (const p of PERFIS) checar(`login ${p}`, !!t[p]);
+
+  // ── Visitante sem sessão ──────────────────────────────────────────────────
+  console.log("\n-- visitante sem sessao --");
+  checar("anon NAO le salas", (await linhas("sala?select=id", null)) === 0);
+  checar("anon NAO le pacientes", (await linhas("paciente?select=id", null)) === 0);
+  checar("anon NAO le custos", (await linhas("procedimento_custo?select=id", null)) === 0);
+  checar(
+    "anon NAO cria paciente",
+    !escreveu(await api("paciente", { metodo: "POST", corpo: { nome: "TESTE RLS invasor" } })),
+  );
+  const anonComissao = await api("rpc/gerar_comissoes", {
+    metodo: "POST",
+    corpo: { p_agendamento: m.agPendente.id },
+  });
+  checar("anon NAO executa gerar_comissoes", !anonComissao.ok, `status ${anonComissao.status}`);
+
+  // ── Leitura: quem vê o quê ────────────────────────────────────────────────
+  // true = enxerga a massa; false = não enxerga nada da massa.
+  console.log("\n-- leitura por perfil --");
+  const filtroProc = `procedimento_id=eq.${m.proc.id}`;
+  const LEITURA = [
+    ["custo de procedimento", `procedimento_custo?select=id&${filtroProc}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false }],
+    ["remuneracao de OUTRO profissional", `profissional_remuneracao?select=profissional_id&profissional_id=eq.${m.profOutro.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false }],
+    ["comissao de OUTRO profissional", `comissao?select=id&profissional_id=eq.${m.profOutro.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false }],
+    ["lancamento de despesa", `lancamento?select=id&id=eq.${m.despesa.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false }],
+    ["lancamento de receita", `lancamento?select=id&id=eq.${m.receita.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: true, profissional: false }],
+    ["agendamento de OUTRO profissional", `agendamento?select=id&id=eq.${m.agOutro.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: true, profissional: false }],
+    ["paciente de OUTRO profissional", `paciente?select=id&id=eq.${m.pacOutro.id}`,
+      { admin: true, gestao: true, financeiro: true, recepcao: true, profissional: false }],
+    ["usuarios do sistema (alem de si)", `usuario?select=id&id=neq.__SELF__`,
+      { admin: true, gestao: true, financeiro: false, recepcao: false, profissional: false }],
+  ];
+  for (const [rotulo, caminho, esperado] of LEITURA) {
+    for (const p of PERFIS) {
+      const n = await linhas(caminho.replace("__SELF__", usuarios[p].id), t[p]);
+      checar(`${p} ${esperado[p] ? "VE" : "NAO ve"} ${rotulo}`, esperado[p] ? n > 0 : n === 0, `${n} linha(s)`);
+    }
+  }
+
+  console.log("\n-- profissional: so o que e dele --");
+  checar("profissional ve o proprio agendamento",
+    (await linhas(`agendamento?select=id&id=eq.${m.agMeu.id}`, t.profissional)) === 1);
+  checar("profissional ve o proprio paciente",
+    (await linhas(`paciente?select=id&id=eq.${m.pacMeu.id}`, t.profissional)) === 1);
+  checar("profissional ve a propria comissao",
+    (await linhas(`comissao?select=id&profissional_id=eq.${m.profMeu.id}`, t.profissional)) === 1);
+
+  // ── Escrita ───────────────────────────────────────────────────────────────
+  console.log("\n-- escrita por perfil --");
+  const ESCRITA = [
+    ["cria sala", { admin: true, gestao: true, financeiro: false, recepcao: false, profissional: false },
+      (tk) => api("sala", { token: tk, metodo: "POST",
+        corpo: { numero: 9000 + Math.floor(Math.random() * 999), nome: "TESTE RLS escrita" } })],
+    ["altera custo de procedimento", { admin: true, gestao: true, financeiro: false, recepcao: false, profissional: false },
+      (tk) => api(`procedimento_custo?${filtroProc}`, { token: tk, metodo: "PATCH", corpo: { quantidade: 1 } })],
+    ["cria paciente", { admin: true, gestao: false, financeiro: false, recepcao: true, profissional: false },
+      (tk) => api("paciente", { token: tk, metodo: "POST", corpo: { nome: "TESTE RLS escrita" } })],
+    ["remarca agendamento de outro", { admin: true, gestao: false, financeiro: false, recepcao: true, profissional: false },
+      (tk) => api(`agendamento?id=eq.${m.agOutro.id}`, { token: tk, metodo: "PATCH", corpo: { observacoes: "TESTE RLS" } })],
+    ["lanca despesa", { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false },
+      (tk) => api("lancamento", { token: tk, metodo: "POST",
+        corpo: { tipo: "despesa", origem_tipo: "outro", descricao: "TESTE RLS", valor: 1, vencimento: "2030-01-07" } })],
+    ["lanca recebimento", { admin: true, gestao: true, financeiro: true, recepcao: true, profissional: false },
+      (tk) => api("lancamento", { token: tk, metodo: "POST",
+        corpo: { tipo: "receita", origem_tipo: "outro", descricao: "TESTE RLS", valor: 1, vencimento: "2030-01-07" } })],
+    ["cadastra despesa fixa", { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false },
+      (tk) => api("despesa_fixa", { token: tk, metodo: "POST",
+        corpo: { descricao: "TESTE RLS", valor: 1, competencia: "2030-01" } })],
+  ];
+  for (const [rotulo, esperado, fazer] of ESCRITA) {
+    for (const p of PERFIS) {
+      const r = await fazer(t[p]);
+      const ok = escreveu(r);
+      checar(`${p} ${esperado[p] ? "PODE" : "NAO pode"} ${rotulo}`, ok === esperado[p], `status ${r.status}`);
+    }
+  }
+
+  // ── Escalonamento de privilégio ───────────────────────────────────────────
+  console.log("\n-- ninguem alem do admin concede acesso --");
+  for (const p of PERFIS.filter((x) => x !== "admin")) {
+    await api(`usuario?id=eq.${usuarios[p].id}`, { token: t[p], metodo: "PATCH", corpo: { perfil: "admin" } });
+    const { rows } = await db.query(`select perfil from usuario where id = $1`, [usuarios[p].id]);
+    checar(`${p} NAO se promove a admin`, rows[0].perfil === p, `ficou ${rows[0].perfil}`);
+  }
+
+  // ── Tabela derivada e funções internas ────────────────────────────────────
+  console.log("\n-- reserva e funcoes internas --");
+  const reserva = await api("reserva", {
+    token: t.admin,
+    metodo: "POST",
+    corpo: {
+      agendamento_id: m.agPendente.id,
+      recurso_tipo: "sala",
+      recurso_id: m.sala.id,
+      periodo: "[2030-01-08 10:00,2030-01-08 11:00)",
+    },
+  });
+  checar("nem o admin escreve em `reserva` direto (tabela derivada)", !escreveu(reserva),
+    `status ${reserva.status}`);
+
+  // RN-06: comissão só nasce de sessão realizada, nem chamando a função direto.
+  await api("rpc/gerar_comissoes", {
+    token: t.profissional,
+    metodo: "POST",
+    corpo: { p_agendamento: m.agPendente.id },
+  });
+  const { rows: [pend] } = await db.query(
+    `select count(*)::int as n from comissao where agendamento_id = $1`, [m.agPendente.id],
+  );
+  checar("gerar_comissoes direto NAO cria comissao de sessao nao realizada", pend.n === 0,
+    `${pend.n} comissao(oes)`);
+
+  // Comissão paga não pode ter o valor recalculado por baixo.
+  await db.query(
+    `update comissao set status = 'paga', valor = 7 where agendamento_id = $1`, [m.agMeu.id],
+  );
+  await api("rpc/gerar_comissoes", {
+    token: t.profissional,
+    metodo: "POST",
+    corpo: { p_agendamento: m.agMeu.id },
+  });
+  const { rows: [paga] } = await db.query(
+    `select valor from comissao where agendamento_id = $1`, [m.agMeu.id],
+  );
+  checar("comissao paga NAO e recalculada", Number(paga.valor) === 7, `valor ${paga.valor}`);
+} catch (e) {
+  falharam++;
+  console.log(`\n  ERRO  ${e.message}`);
+} finally {
+  await apagarTudo();
+  const { rows: [sobra] } = await db.query(
+    `select (select count(*) from usuario where email like 'teste-rls-%')
+          + (select count(*) from sala where nome like 'TESTE RLS%')
+          + (select count(*) from paciente where nome like 'TESTE RLS%')
+          + (select count(*) from lancamento where descricao = 'TESTE RLS') as n`,
+  );
+  checar("limpeza: nenhum registro de teste sobrou", Number(sobra.n) === 0, `${sobra.n} sobra(s)`);
+  await db.end();
+}
 
 console.log(`\n${passaram} passaram, ${falharam} falharam`);
 process.exit(falharam > 0 ? 1 : 0);
