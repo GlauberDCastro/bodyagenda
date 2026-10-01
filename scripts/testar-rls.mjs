@@ -290,13 +290,13 @@ try {
       (tk) => api("paciente", { token: tk, metodo: "POST", corpo: { nome: "TESTE RLS escrita" } })],
     ["remarca agendamento de outro", { admin: true, gestao: false, financeiro: false, recepcao: true, profissional: false },
       (tk) => api(`agendamento?id=eq.${m.agOutro.id}`, { token: tk, metodo: "PATCH", corpo: { observacoes: "TESTE RLS" } })],
-    ["lanca despesa", { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false },
+    ["lanca despesa", { admin: true, gestao: false, financeiro: true, recepcao: false, profissional: false },
       (tk) => api("lancamento", { token: tk, metodo: "POST",
         corpo: { tipo: "despesa", origem_tipo: "outro", descricao: "TESTE RLS", valor: 1, vencimento: "2030-01-07" } })],
-    ["lanca recebimento", { admin: true, gestao: true, financeiro: true, recepcao: true, profissional: false },
+    ["lanca recebimento", { admin: true, gestao: false, financeiro: true, recepcao: true, profissional: false },
       (tk) => api("lancamento", { token: tk, metodo: "POST",
         corpo: { tipo: "receita", origem_tipo: "outro", descricao: "TESTE RLS", valor: 1, vencimento: "2030-01-07" } })],
-    ["cadastra despesa fixa", { admin: true, gestao: true, financeiro: true, recepcao: false, profissional: false },
+    ["cadastra despesa fixa", { admin: true, gestao: false, financeiro: true, recepcao: false, profissional: false },
       (tk) => api("despesa_fixa", { token: tk, metodo: "POST",
         corpo: { descricao: "TESTE RLS", valor: 1, competencia: "2030-01" } })],
   ];
@@ -306,6 +306,23 @@ try {
       const ok = escreveu(r);
       checar(`${p} ${esperado[p] ? "PODE" : "NAO pode"} ${rotulo}`, ok === esperado[p], `status ${r.status}`);
     }
+  }
+
+  console.log("\n-- profissional: no proprio agendamento, so o status --");
+  const meuStatus = await api(`agendamento?id=eq.${m.agPendente.id}`, {
+    token: t.profissional, metodo: "PATCH", corpo: { status: "confirmado" },
+  });
+  checar("profissional PODE mudar o status do proprio atendimento", escreveu(meuStatus),
+    `status ${meuStatus.status}`);
+  for (const [rotulo, corpo] of [
+    ["valor", { valor_avulso: 1 }],
+    ["horario", { inicio: "2030-01-07T15:00:00-03:00", fim: "2030-01-07T15:30:00-03:00" }],
+    ["paciente", { paciente_id: m.pacOutro.id }],
+  ]) {
+    const r = await api(`agendamento?id=eq.${m.agPendente.id}`, {
+      token: t.profissional, metodo: "PATCH", corpo,
+    });
+    checar(`profissional NAO muda o ${rotulo} do proprio atendimento`, !escreveu(r), `status ${r.status}`);
   }
 
   // ── Escalonamento de privilégio ───────────────────────────────────────────
