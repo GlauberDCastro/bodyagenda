@@ -361,4 +361,29 @@ test.describe.serial("fluxos críticos", () => {
     await page.getByRole("button", { name: "Lançar 1 recorrente(s)" }).click();
     await expect(page.getByRole("cell", { name: "TESTE E2E aluguel" })).toBeVisible();
   });
+
+  test("painel: série por dia, números clicáveis, atalhos e visão mês", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto("/?por=sala&de=2030-01-01&ate=2030-01-14");
+    await expect(page.getByText("Ocupação efetiva por dia")).toBeVisible();
+    await page.screenshot({ path: "test-results/painel-serie.png", fullPage: true });
+
+    // RF-77 · o cartão leva à lista que o compõe.
+    await page.getByRole("link", { name: /Ocupação efetiva/ }).first().click();
+    await expect(page).toHaveURL(/\/relatorios\/atendimentos\?.*status=realizado/);
+    await expect(page.getByRole("link", { name: m.paciente }).first()).toBeVisible();
+
+    // RF-72 · atalho de período.
+    await page.goto("/relatorios/ocupacao");
+    await page.getByRole("link", { name: "Este mês" }).click();
+    await expect(page).toHaveURL(/de=\d{4}-\d{2}-01/);
+    await expect(page.getByText("Faltas e cancelamentos")).toBeVisible();
+
+    // RF-40 · visão mês: o dia com atendimentos leva à visão do dia.
+    await page.goto(`/agenda?dia=${DIA}&por=mes`);
+    const celula = page.getByRole("link", { name: new RegExp(`^${DIA}: [1-9]`) });
+    await expect(celula).toContainText("atendimento(s)");
+    await celula.click();
+    await expect(page).toHaveURL(new RegExp(`dia=${DIA}&por=sala`));
+  });
 });

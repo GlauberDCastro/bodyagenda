@@ -15,6 +15,7 @@ import { AvisoBanco } from "@/components/ui/primitivos";
 import { NovoAgendamento } from "./novo-agendamento";
 import { ProvedorAgendamento } from "@/components/agenda/contexto-agendamento";
 import { FiltroRecurso } from "@/components/agenda/filtro-recurso";
+import { AgendaMes, semanasDoMes } from "@/components/agenda/mes";
 import type { ColunaGrade } from "@/components/agenda/timeline";
 import { diasDaSemana, somarDias } from "@/lib/grade-agenda";
 
@@ -44,6 +45,7 @@ const VISOES = [
   { chave: "equipamento", rotulo: "Equipamentos" },
   { chave: "profissional", rotulo: "Profissionais" },
   { chave: "semana", rotulo: "Semana" },
+  { chave: "mes", rotulo: "Mês" },
 ] as const;
 
 export default async function AgendaPage(props: {
@@ -51,8 +53,9 @@ export default async function AgendaPage(props: {
 }) {
   const { dia = hojeNaClinica(), por = "sala", recurso = "" } = await props.searchParams;
   const semana = por === "semana";
+  const mes = por === "mes";
   const hoje = hojeNaClinica();
-  const dias = semana ? diasDaSemana(dia) : [dia];
+  const dias = mes ? semanasDoMes(dia).flat() : semana ? diasDaSemana(dia) : [dia];
   const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
 
   const [salas, equipamentos, profissionais, procedimentos, agendamentos, regras] =
@@ -123,8 +126,13 @@ export default async function AgendaPage(props: {
 
   const passo = semana ? 7 : 1;
   const comFiltro = semana && recurso ? `&recurso=${recurso}` : "";
-  const diaAnterior = somarDias(dia, -passo);
-  const diaSeguinte = somarDias(dia, passo);
+  // No mês, as setas trocam de mês (dia 1 do mês vizinho).
+  const mesVizinho = (delta: number) => {
+    const [a, m] = dia.split("-").map(Number);
+    return new Date(Date.UTC(a, m - 1 + delta, 1)).toISOString().slice(0, 10);
+  };
+  const diaAnterior = mes ? mesVizinho(-1) : somarDias(dia, -passo);
+  const diaSeguinte = mes ? mesVizinho(1) : somarDias(dia, passo);
 
   const realizados = agendamentos.filter((a) => a.status === "realizado").length;
   const faltas = agendamentos.filter((a) => a.status === "falta").length;
@@ -205,7 +213,11 @@ export default async function AgendaPage(props: {
           {semana && <FiltroRecurso dia={dia} valor={recurso} recursos={todosRecursos} />}
         </div>
 
-        <Timeline colunas={colunas} agendamentos={agendamentos} semana={semana} />
+        {mes ? (
+          <AgendaMes dia={dia} hoje={hoje} agendamentos={agendamentos} />
+        ) : (
+          <Timeline colunas={colunas} agendamentos={agendamentos} semana={semana} />
+        )}
       </div>
     </ProvedorAgendamento>
   );

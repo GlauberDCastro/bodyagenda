@@ -7,7 +7,9 @@ import {
   comissoesDaCompetencia,
   competenciaAtual,
 } from "@/lib/consultas/financeiro";
-import { resolverPeriodo } from "@/lib/consultas/painel";
+import { hojeNaClinica, resolverPeriodo } from "@/lib/consultas/painel";
+import { pacotesPendentes, retornoEquipamentos } from "@/lib/consultas/relatorios";
+import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
 import { receitaPorForma } from "@/lib/consultas/caixa";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
@@ -23,14 +25,17 @@ export default async function FinanceiroPage(props: {
   const diaLocal = (d: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
 
-  const [rent, passivo, resultado, receber, comissoes, porForma] = await Promise.all([
-    rentabilidade(periodo.inicio, periodo.fim),
-    passivoEntrega(),
-    dre(competencia),
-    contasAReceber(),
-    comissoesDaCompetencia(competencia),
-    receitaPorForma(diaLocal(periodo.inicio), diaLocal(new Date(periodo.fim.getTime() - 1))),
-  ]);
+  const [rent, passivo, resultado, receber, comissoes, porForma, pendentes, retorno] =
+    await Promise.all([
+      rentabilidade(periodo.inicio, periodo.fim),
+      passivoEntrega(),
+      dre(competencia),
+      contasAReceber(),
+      comissoesDaCompetencia(competencia),
+      receitaPorForma(diaLocal(periodo.inicio), diaLocal(new Date(periodo.fim.getTime() - 1))),
+      pacotesPendentes(),
+      retornoEquipamentos(periodo.inicio, periodo.fim),
+    ]);
   const prevista = porForma.reduce((t, f) => t + f.prevista, 0);
   const realizada = porForma.reduce((t, f) => t + f.realizada, 0);
 
@@ -52,6 +57,14 @@ export default async function FinanceiroPage(props: {
           ← Painel
         </Link>
       </header>
+
+      <SeletorPeriodo
+        caminho="/relatorios/financeiro"
+        de={periodo.de}
+        ate={periodo.ate}
+        hoje={hojeNaClinica()}
+        manter={{ competencia }}
+      />
 
       {/* RF-99 · DRE simplificado */}
       <section className="space-y-3">
@@ -208,6 +221,110 @@ export default async function FinanceiroPage(props: {
               </table>
             </div>
           </>
+        )}
+      </section>
+
+      {/* RF-66 · pacotes com sessões a entregar, por paciente */}
+      {pendentes.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold">Pacotes com sessões a entregar</h2>
+          <div className="cartao overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[var(--traco)] text-left">
+                <tr className="text-[var(--tinta-3)]">
+                  <th className="px-4 py-2.5 font-medium">Paciente</th>
+                  <th className="px-4 py-2.5 font-medium">Procedimento</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Realizadas</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Agendadas</th>
+                  <th className="px-4 py-2.5 text-right font-medium">A entregar</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Valor devido</th>
+                  <th className="px-4 py-2.5 font-medium">Validade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendentes.map((p) => (
+                  <tr key={p.pacote_id} className="border-b border-[var(--traco)] last:border-0">
+                    <td className="px-4 py-2.5 font-medium">
+                      <Link href={`/pacientes/${p.paciente_id}`} className="hover:underline">
+                        {p.paciente}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-[var(--tinta-2)]">{p.procedimento}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {p.realizadas} de {p.sessoes}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">{p.agendadas}</td>
+                    <td className="px-4 py-2.5 text-right font-medium tabular-nums">{p.pendentes}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(Number(p.valor_devido))}
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">
+                      {p.validade
+                        ? `${p.validade.slice(8, 10)}/${p.validade.slice(5, 7)}/${p.validade.slice(0, 4)}`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* RF-101 · retorno do equipamento */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold">Retorno dos equipamentos · {periodo.rotulo}</h2>
+          <p className="text-xs text-[var(--tinta-3)]">
+            Receita das sessões realizadas com cada aparelho (dividida quando a sessão usa mais de
+            um), menos o custo de uso. A última coluna diz quanto do preço de compra o período já
+            pagou.
+          </p>
+        </div>
+        {retorno.length === 0 ? (
+          <Vazio>Nenhum equipamento ativo.</Vazio>
+        ) : (
+          <div className="cartao overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[var(--traco)] text-left">
+                <tr className="text-[var(--tinta-3)]">
+                  <th className="px-4 py-2.5 font-medium">Aparelho</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Sessões</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Receita</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Custo de uso</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Margem</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Custo de aquisição</th>
+                  <th className="px-4 py-2.5 text-right font-medium">% da compra no período</th>
+                </tr>
+              </thead>
+              <tbody>
+                {retorno.map((r) => (
+                  <tr key={r.equipamento_id} className="border-b border-[var(--traco)] last:border-0">
+                    <td className="px-4 py-2.5 font-medium">
+                      {r.nome}
+                      <span className="block text-[11.5px] font-normal text-[var(--tinta-3)]">
+                        {r.modelo}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">{r.sessoes}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(Number(r.receita))}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(Number(r.custo_uso))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                      {brl.format(Number(r.margem))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {r.custo_aquisicao ? brl.format(Number(r.custo_aquisicao)) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {r.pct_aquisicao === null ? "—" : pct(Number(r.pct_aquisicao))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 

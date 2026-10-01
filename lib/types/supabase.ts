@@ -1289,6 +1289,21 @@ export type Database = {
           taxa_efetiva: number;
         }[];
       };
+      pacotes_pendentes: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          pacote_id: string;
+          paciente_id: string;
+          paciente: string;
+          procedimento: string;
+          sessoes: number;
+          realizadas: number;
+          agendadas: number;
+          pendentes: number;
+          valor_devido: number;
+          validade: string | null;
+        }[];
+      };
       painel_ocupacao: {
         Args: {
           p_fim: string;
@@ -1365,6 +1380,21 @@ export type Database = {
         };
         Returns: undefined;
       };
+      retorno_equipamentos: {
+        Args: { p_fim: string; p_inicio: string };
+        Returns: {
+          equipamento_id: string;
+          nome: string;
+          modelo: string;
+          sessoes: number;
+          horas: number;
+          receita: number;
+          custo_uso: number;
+          margem: number;
+          custo_aquisicao: number | null;
+          pct_aquisicao: number | null;
+        }[];
+      };
       rentabilidade_procedimentos: {
         Args: { p_fim: string; p_inicio: string };
         Returns: {
@@ -1381,6 +1411,10 @@ export type Database = {
         }[];
       };
       reservas_suspensas: { Args: Record<PropertyKey, never>; Returns: boolean };
+      serie_ocupacao: {
+        Args: { p_fim: string; p_inicio: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
+        Returns: { dia: string; capacidade_h: number; realizadas_h: number }[];
+      };
       tz_clinica: { Args: Record<PropertyKey, never>; Returns: string };
       ve_financeiro: { Args: Record<PropertyKey, never>; Returns: boolean };
     };

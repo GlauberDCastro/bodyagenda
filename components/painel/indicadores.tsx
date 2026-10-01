@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LinhaPainel } from "@/lib/consultas/painel";
 import { Etiqueta, Tabela, Cabecalho, Th, Tr, Td } from "@/components/ui/primitivos";
@@ -95,6 +96,7 @@ export function Cartao({
   destaque,
   serie,
   icone,
+  href,
 }: {
   rotulo: string;
   valor: string;
@@ -102,6 +104,8 @@ export function Cartao({
   destaque?: "neutro" | "atencao" | "bom";
   serie?: number[];
   icone?: ReactNode;
+  /** RF-77 · o número leva à lista que o compõe. */
+  href?: string;
 }) {
   const cor =
     destaque === "atencao"
@@ -110,8 +114,12 @@ export function Cartao({
         ? "var(--status-bom)"
         : undefined;
 
-  return (
-    <div className="cartao flex flex-col gap-3 p-4">
+  const conteudo = (
+    <div
+      className={`cartao flex h-full flex-col gap-3 p-4 ${
+        href ? "transition-shadow hover:shadow-[var(--sombra-3)]" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className="grid size-8 place-items-center rounded-full bg-[var(--superficie-2)] text-[var(--tinta-2)]">
           {icone ?? <PontoIcone />}
@@ -130,6 +138,14 @@ export function Cartao({
         {apoio && <p className="mt-1 text-[12px] leading-snug text-[var(--tinta-3)]">{apoio}</p>}
       </div>
     </div>
+  );
+
+  return href ? (
+    <Link href={href} className="block rounded-[var(--r-lg)]">
+      {conteudo}
+    </Link>
+  ) : (
+    conteudo
   );
 }
 
@@ -182,7 +198,17 @@ export function BarraOcupacao({
   );
 }
 
-export function TabelaRecursos({ linhas }: { linhas: LinhaPainel[] }) {
+export function TabelaRecursos({
+  linhas,
+  hrefRecurso,
+  porModelo = false,
+}: {
+  linhas: LinhaPainel[];
+  /** RF-77 · leva à lista de atendimentos do recurso. */
+  hrefRecurso?: (l: LinhaPainel) => string;
+  /** RF-21c · equipamentos: subtotal por modelo quando há mais de uma unidade. */
+  porModelo?: boolean;
+}) {
   if (linhas.length === 0) {
     return (
       <div className="rounded-[var(--r-lg)] border border-dashed border-[var(--traco-forte)] p-10 text-center text-[13.5px] text-[var(--tinta-3)]">
@@ -192,8 +218,36 @@ export function TabelaRecursos({ linhas }: { linhas: LinhaPainel[] }) {
   }
 
   const ordenadas = [...linhas].sort(
-    (a, b) => (Number(b.taxa_efetiva) || 0) - (Number(a.taxa_efetiva) || 0),
+    (a, b) =>
+      (porModelo ? a.agrupador.localeCompare(b.agrupador) : 0) ||
+      (Number(b.taxa_efetiva) || 0) - (Number(a.taxa_efetiva) || 0),
   );
+  const unidadesPorModelo = new Map<string, LinhaPainel[]>();
+  for (const l of ordenadas) {
+    unidadesPorModelo.set(l.agrupador, [...(unidadesPorModelo.get(l.agrupador) ?? []), l]);
+  }
+  /** Linha consolidada do modelo, após a última unidade dele. */
+  const subtotal = (modelo: string) => {
+    const g = unidadesPorModelo.get(modelo) ?? [];
+    const t = consolidarLinhas(g);
+    return (
+      <tr key={`modelo-${modelo}`} className="border-b border-[var(--traco)] bg-[var(--superficie-2)]">
+        <td className="px-4 py-2.5 font-medium">
+          {modelo} · {g.length} unidades
+        </td>
+        <td className="px-4 py-2.5 text-[11.5px] tabular-nums text-[var(--tinta-3)]">
+          {horas(t.realizadas)} de {horas(t.capacidade)}
+        </td>
+        <td className="px-4 py-2.5 text-right font-medium tabular-nums">{pct(t.taxa)}</td>
+        <td className="px-4 py-2.5 text-right tabular-nums">{horas(t.capacidade - t.realizadas)}</td>
+        <td className="px-4 py-2.5 text-right tabular-nums">{t.atendimentos}</td>
+        <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(t.receita)}</td>
+        <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+          {t.capacidade > 0 ? brl.format(t.receita / t.capacidade) : "—"}
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <Tabela>
@@ -207,10 +261,21 @@ export function TabelaRecursos({ linhas }: { linhas: LinhaPainel[] }) {
         <Th alinhar="right">R$/hora disp.</Th>
       </Cabecalho>
       <tbody>
-        {ordenadas.map((l) => (
+        {ordenadas.flatMap((l, i) => {
+          const fimDoModelo =
+            porModelo &&
+            ordenadas[i + 1]?.agrupador !== l.agrupador &&
+            (unidadesPorModelo.get(l.agrupador)?.length ?? 0) > 1;
+          return [
           <Tr key={l.recurso_id}>
             <Td forte>
-              {l.nome}
+              {hrefRecurso ? (
+                <Link href={hrefRecurso(l)} className="hover:underline">
+                  {l.nome}
+                </Link>
+              ) : (
+                l.nome
+              )}
               <span className="mt-0.5 block text-[11.5px] font-normal text-[var(--tinta-3)]">
                 {l.agrupador}
               </span>
@@ -239,11 +304,27 @@ export function TabelaRecursos({ linhas }: { linhas: LinhaPainel[] }) {
             <Td alinhar="right" forte>
               {l.receita_por_hora === null ? "—" : brl.format(Number(l.receita_por_hora))}
             </Td>
-          </Tr>
-        ))}
+          </Tr>,
+          ...(fimDoModelo ? [subtotal(l.agrupador)] : []),
+          ];
+        })}
       </tbody>
     </Tabela>
   );
 }
 
 export { Etiqueta };
+
+/** Soma de um grupo de linhas do painel, com a taxa sobre os totais. */
+function consolidarLinhas(linhas: LinhaPainel[]) {
+  const soma = (f: (l: LinhaPainel) => number) => linhas.reduce((t, l) => t + f(l), 0);
+  const capacidade = soma((l) => Number(l.capacidade_h));
+  const realizadas = soma((l) => Number(l.realizadas_h));
+  return {
+    capacidade,
+    realizadas,
+    taxa: capacidade > 0 ? realizadas / capacidade : null,
+    atendimentos: soma((l) => l.atendimentos),
+    receita: soma((l) => Number(l.receita)),
+  };
+}

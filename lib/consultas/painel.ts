@@ -21,6 +21,9 @@ export interface Periodo {
   inicio: Date;
   fim: Date;
   rotulo: string;
+  /** "2026-10-01" e "2026-10-31": o mesmo período em dias da clínica. */
+  de: string;
+  ate: string;
 }
 
 const TZ = "America/Sao_Paulo";
@@ -42,17 +45,24 @@ export function resolverPeriodo(de?: string, ate?: string): Periodo {
   const hoje = hojeNaClinica();
 
   if (de && ate) {
-    return { inicio: instante(de), fim: instante(ate, true), rotulo: `${de} a ${ate}` };
+    const br = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+    return {
+      inicio: instante(de),
+      fim: instante(ate, true),
+      rotulo: de === ate ? br(de) : `${br(de)} a ${br(ate)}`,
+      de,
+      ate,
+    };
   }
 
-  const agora = new Date(`${hoje}T12:00:00-03:00`);
-  const primeiroDoMes = new Date(agora);
-  primeiroDoMes.setDate(1);
-
+  // Padrão: o mês corrente até hoje.
+  const inicioMes = `${hoje.slice(0, 7)}-01`;
   return {
-    inicio: instante(new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(primeiroDoMes)),
+    inicio: instante(inicioMes),
     fim: instante(hoje, true),
     rotulo: "Mês corrente",
+    de: inicioMes,
+    ate: hoje,
   };
 }
 

@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
+import { SerieComparativa } from "@/components/painel/serie-comparativa";
+import { serieOcupacao as serieDiaria } from "@/lib/consultas/relatorios";
+import { periodoAnterior } from "@/lib/periodos";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   carregarPainel,
@@ -58,15 +62,24 @@ export default async function PainelPage(props: {
     .eq("id", user?.id ?? "")
     .maybeSingle();
 
-  const [painel, calor, gargalosLista] = await Promise.all([
+  const anterior = periodoAnterior(periodo.de, periodo.ate);
+  const [painel, calor, gargalosLista, serieAtual, serieAnterior] = await Promise.all([
     carregarPainel(tipo, periodo),
     mapaDeCalor(tipo, periodo),
     gargalos(periodo),
+    serieDiaria(tipo, periodo.de, periodo.ate),
+    serieDiaria(tipo, anterior.de, anterior.ate),
   ]);
+  const comoTaxa = (s: Awaited<ReturnType<typeof serieDiaria>>) =>
+    s.map((d) => ({ dia: d.dia, taxa: d.capacidade > 0 ? d.realizadas / d.capacidade : null }));
 
   if (painel.semSchema) return <AvisoBanco />;
 
   const total = consolidar(painel.linhas);
+  // RF-77 · cada número leva à lista de atendimentos que o compõe.
+  const lista = (status: string) =>
+    `/relatorios/atendimentos?${new URLSearchParams({ de: periodo.de, ate: periodo.ate, status })}`;
+
   const qs = (extra: Record<string, string>) =>
     new URLSearchParams({
       por,
@@ -132,49 +145,39 @@ export default async function PainelPage(props: {
           ))}
         </nav>
 
-        <form
-          method="get"
-          className="flex items-center gap-1.5 rounded-full bg-[var(--superficie)] px-3 py-1.5 shadow-[var(--sombra-1)]"
-        >
-          <input type="hidden" name="por" value={por} />
-          <input
-            type="date"
-            name="de"
-            defaultValue={de ?? ""}
-            aria-label="Início do período"
-            className="bg-transparent text-[13px] text-[var(--tinta-1)] outline-none"
-          />
-          <span className="text-[var(--tinta-3)]">→</span>
-          <input
-            type="date"
-            name="ate"
-            defaultValue={ate ?? hojeNaClinica()}
-            aria-label="Fim do período"
-            className="bg-transparent text-[13px] text-[var(--tinta-1)] outline-none"
-          />
-        </form>
+        <SeletorPeriodo
+          caminho="/"
+          de={periodo.de}
+          ate={periodo.ate}
+          hoje={hojeNaClinica()}
+          manter={{ por }}
+        />
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Cartao
+          href={lista("realizado")}
           rotulo="Ocupação efetiva"
           valor={pct(total.taxaEfetiva)}
           apoio={`Agendada ${pct(total.taxaAgendada)} · ${horas(total.realizadas)} de ${horas(total.capacidade)}`}
           serie={serieOcupacao}
         />
         <Cartao
+          href={`/relatorios/ocupacao?${new URLSearchParams({ por: tipo, de: periodo.de, ate: periodo.ate })}`}
           rotulo="Horas ociosas"
           valor={horas(total.ociosidade)}
           apoio="Capacidade instalada não utilizada"
           destaque={total.ociosidade > total.realizadas ? "atencao" : "neutro"}
         />
         <Cartao
+          href={lista("falta")}
           rotulo="Taxa de no-show"
           valor={pct(total.taxaNoShow)}
           apoio={`${total.faltas} falta(s) em ${total.atendimentos + total.faltas} sessões`}
           destaque={(total.taxaNoShow ?? 0) > 0.1 ? "atencao" : "neutro"}
         />
         <Cartao
+          href={lista("realizado")}
           rotulo="Receita por hora disponível"
           valor={total.receitaPorHora === null ? "—" : brlExato.format(total.receitaPorHora)}
           apoio={`${brl.format(total.receita)} no período`}
@@ -208,11 +211,35 @@ export default async function PainelPage(props: {
         </Secao>
       )}
 
+      {/* RF-75 · série temporal contra o período anterior */}
+      {serieAtual.length > 1 && (
+        <Secao
+          titulo="Ocupação efetiva por dia"
+          descricao={`Comparada com ${anterior.de.slice(8, 10)}/${anterior.de.slice(5, 7)} a ${anterior.ate.slice(8, 10)}/${anterior.ate.slice(5, 7)}, o período anterior de mesmo tamanho.`}
+        >
+          <div className="cartao p-5">
+            <SerieComparativa atual={comoTaxa(serieAtual)} anterior={comoTaxa(serieAnterior)} />
+          </div>
+        </Secao>
+      )}
+
       <Secao
         titulo="Por recurso"
         descricao="Ocupação e receita por hora lado a lado — o cruzamento que a taxa sozinha esconde."
       >
-        <TabelaRecursos linhas={painel.linhas} />
+        <TabelaRecursos
+          linhas={painel.linhas}
+          porModelo={tipo === "equipamento"}
+          hrefRecurso={(l) =>
+            `/relatorios/atendimentos?${new URLSearchParams({
+              de: periodo.de,
+              ate: periodo.ate,
+              tipo,
+              recurso: l.recurso_id,
+              nome: l.nome,
+            })}`
+          }
+        />
       </Secao>
 
       <Secao titulo="Quando a clínica está cheia">
