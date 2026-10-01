@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   alternarAtivoProcedimento,
+  duplicarProcedimento,
   removerCusto,
   removerRequisito,
 } from "@/lib/actions/procedimentos";
@@ -90,6 +92,22 @@ export function AtivarProcedimento({ id, ativo }: { id: string; ativo: boolean }
       rotulo={ativo ? "Inativar" : "Reativar"}
       pendenteRotulo={ativo ? "Inativando…" : "Reativando…"}
       aoClicar={() => alternarAtivoProcedimento(id, !ativo)}
+    />
+  );
+}
+
+/** RF-19b · duplica e abre a cópia (inativa) para ajustar. */
+export function DuplicarProcedimento({ id }: { id: string }) {
+  const router = useRouter();
+  return (
+    <BotaoAcao
+      rotulo="Duplicar"
+      pendenteRotulo="Duplicando…"
+      aoClicar={async () => {
+        const r = await duplicarProcedimento(id);
+        if (r.id) router.push(`/configuracoes/procedimentos/${r.id}`);
+        return r;
+      }}
     />
   );
 }

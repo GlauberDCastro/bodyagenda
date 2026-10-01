@@ -207,6 +207,12 @@ export default async function PainelPage(props: {
                 procedimentos diferentes, com {horas(Number(g.horas_livres))} livres no período.
                 Cada sessão de um procedimento desloca a de outro.
               </p>
+              {/* RF-78 · o custo do gargalo em pedidos que não couberam. */}
+              {g.recusas > 0 && (
+                <p className="mt-1 font-medium">
+                  {g.recusas} agendamento(s) recusado(s) no período por falta de unidade livre.
+                </p>
+              )}
             </Aviso>
           ))}
         </Secao>

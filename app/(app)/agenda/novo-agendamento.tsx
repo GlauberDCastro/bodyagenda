@@ -40,7 +40,13 @@ interface Recursos {
   /** Habilitações (RF-23a) e aparelhos exigidos (RF-44) de cada procedimento. */
   regras: {
     habilitacoes: { profissional_id: string; procedimento_id: string }[];
-    requisitos: { procedimento_id: string; modelo: string | null; quantidade: number }[];
+    requisitos: {
+      procedimento_id: string;
+      recurso_tipo: string;
+      recurso_id: string | null;
+      modelo: string | null;
+      quantidade: number;
+    }[];
   };
 }
 
@@ -118,6 +124,10 @@ function FormularioAgendamento({
   const habilitados = new Set(
     regras.habilitacoes.filter((h) => h.procedimento_id === procId).map((h) => h.profissional_id),
   );
+  // RF-33 · quantos profissionais o procedimento exige atendendo juntos.
+  const profissionaisExigidos = regras.requisitos.find(
+    (x) => x.procedimento_id === procId && x.recurso_tipo === "profissional",
+  )?.quantidade;
   const profissionaisVisiveis = procId
     ? profissionais.filter((p) => habilitados.has(p.id))
     : profissionais;
@@ -129,7 +139,14 @@ function FormularioAgendamento({
     setLivres(null);
     const salaBase = salaDedicadaDe(id)?.id ?? salaSel;
     const exigidos: string[] = [];
-    for (const r of regras.requisitos.filter((x) => x.procedimento_id === id && x.modelo)) {
+    // RF-33 · sala exigida já vem escolhida (a dedicada continua mandando).
+    const salaExigida = regras.requisitos.find(
+      (x) => x.procedimento_id === id && x.recurso_tipo === "sala" && x.recurso_id,
+    );
+    if (salaExigida?.recurso_id && !salaDedicadaDe(id)) setSalaSel(salaExigida.recurso_id);
+    for (const r of regras.requisitos.filter(
+      (x) => x.procedimento_id === id && x.recurso_tipo === "equipamento" && x.modelo,
+    )) {
       const candidatos = equipamentos
         .filter((e) => e.modelo === r.modelo && !exigidos.includes(e.id))
         // Prefere o que já estava marcado e o que mora na sala escolhida.
@@ -440,7 +457,13 @@ function FormularioAgendamento({
 
       <Campo
         label="Profissionais"
-        dica={procedimento ? `Só quem é habilitado em ${procedimento.nome}.` : undefined}
+        dica={
+          procedimento
+            ? `Só quem é habilitado em ${procedimento.nome}.${
+                profissionaisExigidos ? ` Exige ${profissionaisExigidos} no atendimento.` : ""
+              }`
+            : undefined
+        }
       >
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
           {profissionaisVisiveis.length === 0 && (

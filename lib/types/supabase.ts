@@ -171,6 +171,42 @@ export type Database = {
           },
         ];
       };
+      agendamento_recusa: {
+        Row: {
+          codigo: string;
+          criado_em: string;
+          equipamentos: string[];
+          id: number;
+          inicio: string;
+          procedimento_id: string | null;
+          profissionais: string[];
+          sala_id: string | null;
+          usuario_id: string | null;
+        };
+        Insert: {
+          codigo: string;
+          criado_em?: string;
+          equipamentos?: string[];
+          id?: number;
+          inicio: string;
+          procedimento_id?: string | null;
+          profissionais?: string[];
+          sala_id?: string | null;
+          usuario_id?: string | null;
+        };
+        Update: {
+          codigo?: string;
+          criado_em?: string;
+          equipamentos?: string[];
+          id?: number;
+          inicio?: string;
+          procedimento_id?: string | null;
+          profissionais?: string[];
+          sala_id?: string | null;
+          usuario_id?: string | null;
+        };
+        Relationships: [];
+      };
       agendamento_regiao: {
         Row: {
           agendamento_id: string;
@@ -1208,6 +1244,7 @@ export type Database = {
           procedimentos: number;
           taxa_media: number;
           unidades: number;
+          recusas: number;
         }[];
       };
       gerar_comissoes: { Args: { p_agendamento: string }; Returns: undefined };

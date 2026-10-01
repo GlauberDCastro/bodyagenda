@@ -24,12 +24,34 @@ const custoSchema = z.object({
   quantidade: z.coerce.number().positive("Quantidade deve ser maior que zero"),
 });
 
-const requisitoSchema = z.object({
-  procedimento_id: z.uuid(),
-  recurso_tipo: z.enum(["sala", "equipamento", "profissional"]),
-  modelo: z.string().min(1, "Informe o modelo do equipamento"),
-  quantidade: z.coerce.number().int().positive().default(1),
-});
+// RF-33 · aparelho por modelo, sala específica ou N profissionais.
+const requisitoSchema = z
+  .object({
+    procedimento_id: z.uuid(),
+    recurso_tipo: z.enum(["sala", "equipamento", "profissional"]),
+    modelo: z.string().nullish().transform((v) => v || null),
+    recurso_id: z
+      .string()
+      .nullish()
+      .transform((v) => v || null),
+    quantidade: z.coerce.number().int().positive().default(1),
+    obrigatorio: z.preprocess((v) => v === "on" || v === true, z.boolean()),
+  })
+  .superRefine((d, ctx) => {
+    if (d.recurso_tipo === "equipamento" && !d.modelo) {
+      ctx.addIssue({ code: "custom", path: ["modelo"], message: "Informe o modelo do equipamento" });
+    }
+    if (d.recurso_tipo === "sala" && !d.recurso_id) {
+      ctx.addIssue({ code: "custom", path: ["recurso_id"], message: "Escolha a sala" });
+    }
+  })
+  .transform((d) => ({
+    ...d,
+    // Cada tipo guarda só o seu alvo.
+    modelo: d.recurso_tipo === "equipamento" ? d.modelo : null,
+    recurso_id: d.recurso_tipo === "sala" ? d.recurso_id : null,
+    quantidade: d.recurso_tipo === "sala" ? 1 : d.quantidade,
+  }));
 
 function validacao(issues: { path: PropertyKey[]; message: string }[]): Resultado {
   const campos: Record<string, string> = {};
@@ -124,4 +146,62 @@ export async function alternarAtivoProcedimento(id: string, ativo: boolean): Pro
   revalidatePath(`/configuracoes/procedimentos/${id}`);
   revalidatePath("/agenda");
   return { ok: true };
+}
+
+/**
+ * RF-19b · cria uma variação do procedimento sem refazer o cadastro: copia
+ * custos, requisitos, regiões e quem é habilitado. A cópia nasce inativa,
+ * para não aparecer na agenda antes de ser revisada.
+ */
+export async function duplicarProcedimento(id: string): Promise<Resultado & { id?: string }> {
+  const supabase = await createServerSupabase();
+  const [{ data: origem, error }, { data: custos }, { data: requisitos }, { data: regioes }, { data: habilitacoes }] =
+    await Promise.all([
+      supabase
+        .from("procedimento")
+        .select(
+          "nome, descricao, duracao_min, buffer_min, sessoes_padrao, valor_sessao, intervalo_min_dias, valor_tabela",
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("procedimento_custo")
+        .select("tipo, descricao, valor_unitario, quantidade")
+        .eq("procedimento_id", id),
+      supabase
+        .from("procedimento_requisito")
+        .select("recurso_tipo, recurso_id, modelo, quantidade, obrigatorio")
+        .eq("procedimento_id", id),
+      supabase
+        .from("procedimento_regiao")
+        .select(
+          "regiao_id, duracao_min, sessoes_padrao, valor_sessao, intervalo_min_dias, unidade, quantidade_padrao, observacoes, ativo, valor_tabela",
+        )
+        .eq("procedimento_id", id),
+      supabase.from("profissional_habilitacao").select("profissional_id").eq("procedimento_id", id),
+    ]);
+  if (error) return erroDeBanco(error);
+
+  const { data: copia, error: erroInsert } = await supabase
+    .from("procedimento")
+    .insert({ ...origem, nome: `${origem.nome} (cópia)`, ativo: false })
+    .select("id")
+    .single();
+  if (erroInsert) return erroDeBanco(erroInsert);
+
+  const comNovo = <T extends object>(linhas: T[] | null) =>
+    (linhas ?? []).map((l) => ({ ...l, procedimento_id: copia.id }));
+  for (const [tabela, linhas] of [
+    ["procedimento_custo", comNovo(custos)],
+    ["procedimento_requisito", comNovo(requisitos)],
+    ["procedimento_regiao", comNovo(regioes)],
+    ["profissional_habilitacao", comNovo(habilitacoes)],
+  ] as const) {
+    if (linhas.length === 0) continue;
+    const { error: e } = await supabase.from(tabela).insert(linhas as never);
+    if (e) return erroDeBanco(e);
+  }
+
+  revalidatePath("/configuracoes/procedimentos");
+  return { ok: true, id: copia.id };
 }

@@ -152,15 +152,20 @@ export async function profissionaisHabilitados(procedimentoId: string) {
  */
 export async function regrasDoCatalogo(): Promise<{
   habilitacoes: { profissional_id: string; procedimento_id: string }[];
-  requisitos: { procedimento_id: string; modelo: string | null; quantidade: number }[];
+  requisitos: {
+    procedimento_id: string;
+    recurso_tipo: string;
+    recurso_id: string | null;
+    modelo: string | null;
+    quantidade: number;
+  }[];
 }> {
   const supabase = await createServerSupabase();
   const [h, r] = await Promise.all([
     supabase.from("profissional_habilitacao").select("profissional_id, procedimento_id"),
     supabase
       .from("procedimento_requisito")
-      .select("procedimento_id, modelo, quantidade")
-      .eq("recurso_tipo", "equipamento"),
+      .select("procedimento_id, recurso_tipo, recurso_id, modelo, quantidade"),
   ]);
   return { habilitacoes: h.data ?? [], requisitos: r.data ?? [] };
 }

@@ -320,6 +320,20 @@ export async function auditoriaDoUsuario(usuarioId: string): Promise<number> {
   }
 }
 
+/** Agendamentos recusados (conflito ou fora da janela) com o procedimento da massa. */
+export async function recusasDoProcedimento(procedimentoId: string): Promise<number> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select count(*)::int as n from agendamento_recusa where procedimento_id = $1`,
+      [procedimentoId],
+    );
+    return rows[0].n;
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
@@ -375,6 +389,8 @@ export async function apagarMassa() {
     await db.query(`delete from sala where nome like $1 || ' (cópia)%'`, [m.procedimento]);
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
+    // Cópias feitas pelo teste de duplicar procedimento.
+    await db.query(`delete from procedimento where nome like $1 || ' (cópia)%'`, [m.procedimento]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.
     await db.query(`delete from despesa_fixa where descricao like 'TESTE E2E%'`);
     const ids = [m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId].filter(Boolean);

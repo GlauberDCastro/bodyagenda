@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
   agendamentosDoPaciente,
+  recusasDoProcedimento,
   auditoriaDoUsuario,
   statusDasComissoes,
   cobrancasDePacote,
@@ -414,6 +415,9 @@ test.describe.serial("fluxos críticos", () => {
     expect(semLogin.status()).toBe(307);
     expect(semLogin.headers()["location"]).toContain("/login");
     await anonimo.dispose();
+
+    // RF-78 · o conflito e o bloqueio dos testes anteriores viraram recusas registradas.
+    expect(await recusasDoProcedimento(m.procedimentoId)).toBeGreaterThan(0);
 
     // RF-06 · o que a recepção fez pela tela ficou registrado.
     expect(await auditoriaDoUsuario(m.usuarioId)).toBeGreaterThan(0);

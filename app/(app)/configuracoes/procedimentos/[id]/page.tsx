@@ -8,7 +8,12 @@ import { Cartao, brlExato, pct } from "@/components/painel/indicadores";
 import { FormularioCusto } from "./formulario-custo";
 import { FormularioRequisito } from "./formulario-requisito";
 import { FormularioProcedimento } from "../formulario-procedimento";
-import { AtivarProcedimento, RemoverCusto, RemoverRequisito } from "./acoes-catalogo";
+import {
+  AtivarProcedimento,
+  DuplicarProcedimento,
+  RemoverCusto,
+  RemoverRequisito,
+} from "./acoes-catalogo";
 import {
   FormularioRegiao,
   AcoesProtocolo,
@@ -41,6 +46,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
     { data: custos },
     { data: requisitos },
     { data: modelos },
+    { data: salasAtivas },
     { data: regioes },
     { data: protocolos },
   ] = await Promise.all([
@@ -48,6 +54,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
     supabase.from("procedimento_custo").select("*").eq("procedimento_id", id),
     supabase.from("procedimento_requisito").select("*").eq("procedimento_id", id),
     supabase.from("equipamento").select("modelo").eq("ativo", true),
+    supabase.from("sala").select("id, numero, nome").eq("ativo", true).order("numero"),
     supabase.from("regiao").select("id, nome, grupo").eq("ativo", true).order("ordem"),
     supabase
       .from("procedimento_regiao")
@@ -93,6 +100,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
             </Etiqueta>
           </div>
           <div className="flex items-center gap-2">
+            <DuplicarProcedimento id={proc.id} />
             <AtivarProcedimento id={proc.id} ativo={proc.ativo} />
             <FormularioProcedimento inicial={proc} custos={linhasCusto} />
           </div>
@@ -301,10 +309,15 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
           <div>
             <h2 className="text-sm font-semibold">Recursos exigidos</h2>
             <p className="text-xs text-[var(--tinta-3)]">
-              Por modelo, não por unidade: o sistema acha sozinho qual aparelho está livre.
+              Aparelho por modelo (o sistema acha a unidade livre), sala específica ou quantos
+              profissionais atendem juntos.
             </p>
           </div>
-          <FormularioRequisito procedimentoId={id} modelos={modelosUnicos} />
+          <FormularioRequisito
+            procedimentoId={id}
+            modelos={modelosUnicos}
+            salas={salasAtivas ?? []}
+          />
         </div>
 
         {(requisitos ?? []).length === 0 ? (
@@ -320,9 +333,22 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                 className="flex items-center justify-between rounded-lg border border-[var(--traco)] px-4 py-2.5 text-sm "
               >
                 <span>
-                  <span className="font-medium">{r.modelo ?? r.recurso_id}</span>
+                  <span className="font-medium">
+                    {r.recurso_tipo === "sala"
+                      ? (() => {
+                          const sala = (salasAtivas ?? []).find((x) => x.id === r.recurso_id);
+                          return sala ? `Sala ${sala.numero} — ${sala.nome}` : "Sala";
+                        })()
+                      : r.recurso_tipo === "profissional"
+                        ? `${r.quantidade} profissional(is)`
+                        : r.modelo}
+                  </span>
                   <span className="ml-2 text-[var(--tinta-3)]">
-                    {r.quantidade} unidade(s) · {r.recurso_tipo}
+                    {r.recurso_tipo === "equipamento"
+                      ? `${r.quantidade} unidade(s) · aparelho`
+                      : r.recurso_tipo === "sala"
+                        ? "sala"
+                        : "atendendo juntos"}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">

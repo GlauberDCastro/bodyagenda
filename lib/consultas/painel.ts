@@ -150,6 +150,8 @@ export interface Gargalo {
   procedimentos: number;
   taxa_media: number;
   horas_livres: number;
+  /** RF-78 · agendamentos recusados por falta de unidade livre do modelo. */
+  recusas: number;
 }
 
 /** RF-78 · modelos que atendem vários procedimentos e estão saturados. */

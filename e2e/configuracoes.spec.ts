@@ -112,4 +112,40 @@ test.describe.serial("configurações", () => {
     await page.getByRole("button", { name: "Reativar" }).click();
     await expect(page.getByText("Ativo", { exact: true })).toBeVisible();
   });
+
+  test("procedimento exige 2 profissionais: agendar com 1 é recusado com explicação", async ({
+    page,
+  }) => {
+    await entrar(page, m.gestao.email, m.gestao.senha);
+    await page.goto(`/configuracoes/procedimentos/${m.procedimentoFixoId}`);
+    await page.getByRole("button", { name: "Exigir recurso" }).click();
+    let dialogo = page.getByRole("dialog");
+    await dialogo.locator('select[name="recurso_tipo"]').selectOption("profissional");
+    await dialogo.locator('input[name="quantidade"]').fill("2");
+    await dialogo.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByText("2 profissional(is)")).toBeVisible();
+
+    await page.context().clearCookies();
+    await entrar(page, m.email, m.senha);
+    await page.goto("/agenda?dia=2030-01-10");
+    await page.getByRole("button", { name: "Novo agendamento" }).click();
+    dialogo = page.getByRole("dialog");
+    await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.paciente);
+    await dialogo.locator('select[name="paciente_id"]').selectOption({ label: m.paciente });
+    await dialogo.locator('select[name="procedimento_id"]').selectOption(m.procedimentoFixoId);
+    await expect(dialogo).toContainText("Exige 2 no atendimento");
+    await dialogo.getByLabel(m.profissionais[0].nome).check();
+    await dialogo.locator('input[name="inicio"]').fill("2030-01-10T10:00");
+    await dialogo.getByRole("button", { name: "Agendar" }).click();
+    await expect(dialogo.getByRole("alert")).toContainText("exige 2 profissional(is)");
+  });
+
+  test("duplicar procedimento abre a cópia inativa", async ({ page }) => {
+    await entrar(page, m.gestao.email, m.gestao.senha);
+    await page.goto(`/configuracoes/procedimentos/${m.procedimentoId}`);
+    await page.getByRole("button", { name: "Duplicar" }).click();
+    await expect(page.getByRole("heading", { name: `${m.procedimento} (cópia)` })).toBeVisible();
+    await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
+  });
 });

@@ -73,6 +73,48 @@ function mensagemDeJanela(mensagem: string): string {
     : mensagem;
 }
 
+/**
+ * RF-33 · requisitos obrigatórios do procedimento: aparelho por modelo, sala
+ * específica ou N profissionais. Devolve o que falta, em português, ou null.
+ * Requisito opcional só pré-seleciona no formulário; não barra aqui.
+ */
+async function requisitoObrigatorioFaltando(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  d: { procedimento_id: string; sala_id: string; equipamentos: string[]; profissionais: string[] },
+): Promise<string | null> {
+  const { data: requisitos } = await supabase
+    .from("procedimento_requisito")
+    .select("recurso_tipo, recurso_id, modelo, quantidade")
+    .eq("procedimento_id", d.procedimento_id)
+    .eq("obrigatorio", true);
+  if (!requisitos?.length) return null;
+
+  const { data: escolhidos } = d.equipamentos.length
+    ? await supabase.from("equipamento").select("modelo").in("id", d.equipamentos)
+    : { data: [] as { modelo: string }[] };
+
+  for (const r of requisitos) {
+    if (r.recurso_tipo === "equipamento" && r.modelo) {
+      const n = (escolhidos ?? []).filter((e) => e.modelo === r.modelo).length;
+      if (n < r.quantidade) {
+        return `Este procedimento exige ${r.quantidade} aparelho(s) ${r.modelo}. Marque ${r.quantidade === 1 ? "um" : r.quantidade} em Equipamentos.`;
+      }
+    }
+    if (r.recurso_tipo === "sala" && r.recurso_id && r.recurso_id !== d.sala_id) {
+      const { data: sala } = await supabase
+        .from("sala")
+        .select("numero, nome")
+        .eq("id", r.recurso_id)
+        .maybeSingle();
+      return `Este procedimento só pode ser feito na ${sala ? `Sala ${sala.numero} — ${sala.nome}` : "sala exigida"}.`;
+    }
+    if (r.recurso_tipo === "profissional" && d.profissionais.length < r.quantidade) {
+      return `Este procedimento exige ${r.quantidade} profissional(is) no atendimento.`;
+    }
+  }
+  return null;
+}
+
 export async function criarAgendamento(
   _anterior: ResultadoAgendamento,
   formData: FormData,
@@ -92,6 +134,9 @@ export async function criarAgendamento(
   const d = parsed.data;
   const supabase = await createServerSupabase();
 
+  const faltando = await requisitoObrigatorioFaltando(supabase, d);
+  if (faltando) return { erro: faltando };
+
   // RPC transacional: agendamento + equipamentos + profissionais numa chamada
   // só. Três inserts do lado do Next deixariam janela para um agendamento
   // existir sem seus recursos (SPEC §6.1).
@@ -109,6 +154,17 @@ export async function criarAgendamento(
   });
 
   if (error) {
+    // RF-78 · recusa registrada: é a demanda que o gargalo fez a clínica perder.
+    if (error.code === "23P01" || error.code === "23514") {
+      await supabase.from("agendamento_recusa").insert({
+        procedimento_id: d.procedimento_id,
+        inicio: d.inicio,
+        sala_id: d.sala_id,
+        equipamentos: d.equipamentos,
+        profissionais: d.profissionais,
+        codigo: error.code,
+      });
+    }
     if (error.code === "23P01") {
       // Precisa do fim para consultar o conflito; recalcula pela duração.
       const { data: proc } = await supabase

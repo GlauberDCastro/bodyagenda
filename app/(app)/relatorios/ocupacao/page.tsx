@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   carregarPainel,
   consolidar,
+  gargalos,
   hojeNaClinica,
   resolverPeriodo,
 } from "@/lib/consultas/painel";
@@ -25,9 +26,11 @@ const dataHora = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export default async function OcupacaoPage(props: {
-  searchParams: Promise<{ por?: string; de?: string; ate?: string }>;
+  searchParams: Promise<{ por?: string; de?: string; ate?: string; limiar?: string }>;
 }) {
-  const { por = "sala", de, ate } = await props.searchParams;
+  const { por = "sala", de, ate, limiar: limiarTexto } = await props.searchParams;
+  // RF-78 · a partir de que ocupação um modelo conta como gargalo.
+  const limiar = [0.5, 0.6, 0.75, 0.9].find((v) => String(v) === limiarTexto) ?? 0.75;
   const tipo = (
     ["sala", "equipamento", "profissional"].includes(por) ? por : "sala"
   ) as TipoRecurso;
@@ -35,9 +38,10 @@ export default async function OcupacaoPage(props: {
 
   const painel = await carregarPainel(tipo, periodo);
   const total = consolidar(painel.linhas);
-  const [vagas, ausencias] = await Promise.all([
+  const [vagas, ausencias, listaGargalos] = await Promise.all([
     janelasVagas(tipo, painel.linhas, periodo),
     faltasECancelamentos(periodo.inicio, periodo.fim),
+    gargalos(periodo, limiar),
   ]);
   const horasVagas = vagas.reduce((t, v) => t + v.minutos, 0) / 60;
 
@@ -165,6 +169,66 @@ export default async function OcupacaoPage(props: {
           </div>
         )}
       </section>
+
+      {/* RF-78 · gargalos: modelo que atende vários procedimentos e está saturado */}
+      <Secao
+        titulo="Gargalos de equipamento"
+        descricao="Modelo que atende mais de um procedimento com ocupação agendada acima do limite. Recusas são agendamentos que não couberam por falta de unidade livre."
+        acao={
+          <form method="get" className="flex items-center gap-2 text-[13px]">
+            <input type="hidden" name="por" value={tipo} />
+            <input type="hidden" name="de" value={periodo.de} />
+            <input type="hidden" name="ate" value={periodo.ate} />
+            <label htmlFor="limiar" className="text-[var(--tinta-3)]">
+              Limite
+            </label>
+            <select
+              id="limiar"
+              name="limiar"
+              defaultValue={String(limiar)}
+              className="rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-2 py-1"
+            >
+              {[0.5, 0.6, 0.75, 0.9].map((v) => (
+                <option key={v} value={v}>
+                  {Math.round(v * 100)}%
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="text-[var(--tinta-2)] hover:text-[var(--tinta-1)]">
+              Aplicar
+            </button>
+          </form>
+        }
+      >
+        {listaGargalos.length === 0 ? (
+          <Vazio>Nenhum modelo acima de {Math.round(limiar * 100)}% no período.</Vazio>
+        ) : (
+          <Tabela>
+            <Cabecalho>
+              <Th>Modelo</Th>
+              <Th alinhar="right">Unidades</Th>
+              <Th alinhar="right">Procedimentos</Th>
+              <Th alinhar="right">Ocupação</Th>
+              <Th alinhar="right">Horas livres</Th>
+              <Th alinhar="right">Recusas</Th>
+            </Cabecalho>
+            <tbody>
+              {listaGargalos.map((g) => (
+                <Tr key={g.modelo}>
+                  <Td forte>{g.modelo}</Td>
+                  <Td alinhar="right">{g.unidades}</Td>
+                  <Td alinhar="right">{g.procedimentos}</Td>
+                  <Td alinhar="right">{pct(Number(g.taxa_media))}</Td>
+                  <Td alinhar="right">{horas(Number(g.horas_livres))}</Td>
+                  <Td alinhar="right" forte>
+                    {g.recusas}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Tabela>
+        )}
+      </Secao>
 
       {/* RF-92 · faltas e cancelamentos */}
       <Secao
