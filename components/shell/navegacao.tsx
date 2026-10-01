@@ -31,6 +31,7 @@ const ICONES = {
   agenda:
     "M8 3v3m8-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
   pacientes: "M16 19v-2a4 4 0 0 0-8 0v2M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
+  recebimentos: "M3 7h18v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Zm0 3h18M7 15h3",
   financeiro: "M3 7h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Zm0 0 2.5-3h13L21 7M8 12h8",
   relatorios: "M5 20V10m7 10V4m7 16v-7",
   configuracoes: "M4 6h9m4 0h3M15 4v4M4 12h3m4 0h9M9 10v4M4 18h11m4 0h1M17 16v4",
@@ -49,6 +50,7 @@ const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
       { href: "/", rotulo: "Painel", icone: "painel" },
       { href: "/agenda", rotulo: "Agenda", icone: "agenda" },
       { href: "/pacientes", rotulo: "Pacientes", icone: "pacientes" },
+      { href: "/recebimentos", rotulo: "Recebimentos", icone: "recebimentos" },
     ],
   },
   {

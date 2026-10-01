@@ -92,30 +92,47 @@ export async function inativarPaciente(id: string): Promise<Resultado> {
 export async function venderPacote(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = pacoteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return erroDeValidacao(parsed.error.issues);
+  const d = parsed.data;
 
+  // RF-80 · pacote e parcelas numa transação só (migração 0028).
   const supabase = await createServerSupabase();
-  const { data: sessao } = await supabase.auth.getUser();
-
-  const { error } = await supabase.from("pacote").insert({
-    ...parsed.data,
-    vendido_por: sessao.user?.id ?? null,
+  const { error } = await supabase.rpc("vender_pacote", {
+    p_paciente: d.paciente_id,
+    p_procedimento: d.procedimento_id,
+    p_sessoes: d.quantidade_sessoes,
+    p_valor_total: d.valor_total,
+    p_desconto: d.desconto,
+    p_validade: d.validade,
+    p_regiao: null,
+    p_parcelas: d.parcelas,
+    p_primeiro_vencimento: d.primeiro_vencimento,
+    p_forma: d.forma_pagamento,
+    p_primeira_paga: d.primeira_paga,
   });
 
   if (error) return erroDeBanco(error);
-  revalidatePath(`/pacientes/${parsed.data.paciente_id}`);
+  revalidatePath(`/pacientes/${d.paciente_id}`);
+  revalidatePath("/recebimentos");
   return { ok: true };
 }
 
 /**
  * RF-65 · cancelar pacote com saldo.
  *
- * Não cancela os agendamentos já marcados — decisão deliberada: remarcar ou
- * cancelar sessão é ato da recepção com o paciente, não efeito colateral.
+ * Cancela as parcelas em aberto e apura pago × consumido (migração 0028):
+ * pago a mais vira estorno a devolver, pago a menos vira saldo a cobrar.
+ * Não cancela os agendamentos já marcados — remarcar ou cancelar sessão é ato
+ * da recepção com o paciente, não efeito colateral.
  */
-export async function cancelarPacote(id: string, pacienteId: string): Promise<Resultado> {
+export async function cancelarPacote(
+  id: string,
+  pacienteId: string,
+): Promise<Resultado & { saldo?: number; pago?: number; consumido?: number }> {
   const supabase = await createServerSupabase();
-  const { error } = await supabase.from("pacote").update({ status: "cancelado" }).eq("id", id);
+  const { data, error } = await supabase.rpc("cancelar_pacote", { p_pacote: id });
   if (error) return erroDeBanco(error);
+  const r = data as { saldo: number; pago: number; consumido: number };
   revalidatePath(`/pacientes/${pacienteId}`);
-  return { ok: true };
+  revalidatePath("/recebimentos");
+  return { ok: true, saldo: Number(r.saldo), pago: Number(r.pago), consumido: Number(r.consumido) };
 }

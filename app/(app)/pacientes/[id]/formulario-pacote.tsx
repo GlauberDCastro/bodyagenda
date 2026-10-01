@@ -7,6 +7,7 @@ import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento } from "@/lib/types/database";
+import { FORMAS_PAGAMENTO } from "@/lib/schemas/pacientes";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -31,6 +32,7 @@ export function FormularioPacote({
   const [sessoes, setSessoes] = useState(1);
   const [valor, setValor] = useState(0);
   const [desconto, setDesconto] = useState(0);
+  const [parcelas, setParcelas] = useState(1);
 
   const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await venderPacote(anterior, formData);
@@ -52,6 +54,10 @@ export function FormularioPacote({
 
   const liquido = Math.max(0, valor - desconto);
   const porSessao = sessoes > 0 ? liquido / sessoes : 0;
+  const porParcela = parcelas > 0 ? liquido / parcelas : 0;
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+    new Date(),
+  );
 
   return (
     <GatilhoModal
@@ -131,6 +137,46 @@ export function FormularioPacote({
           </p>
         )}
       </div>
+
+      {/* RF-80 · a venda já gera as cobranças: o caixa nasce aqui. */}
+      <fieldset className="space-y-3 rounded-[var(--r-md)] border border-[var(--traco)] p-3">
+        <legend className="px-1 text-[13px] font-medium">Pagamento</legend>
+        <div className="grid grid-cols-3 gap-3">
+          <Campo label="Forma">
+            <Select name="forma_pagamento" defaultValue="Pix">
+              {FORMAS_PAGAMENTO.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </Select>
+          </Campo>
+          <Campo label="Parcelas" erro={estado.campos?.parcelas}>
+            <Input
+              name="parcelas"
+              type="number"
+              min={1}
+              max={24}
+              value={parcelas}
+              onChange={(e) => setParcelas(Number(e.target.value))}
+              required
+            />
+          </Campo>
+          <Campo label="1º vencimento" erro={estado.campos?.primeiro_vencimento}>
+            <Input name="primeiro_vencimento" type="date" defaultValue={hoje} required />
+          </Campo>
+        </div>
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" name="primeira_paga" defaultChecked />
+          {parcelas > 1 ? "1ª parcela paga agora" : "Pago agora"}
+        </label>
+        <p className="text-[12.5px] text-[var(--tinta-3)]">
+          {parcelas > 1
+            ? `${parcelas}× de ${brl.format(porParcela)}, vencendo todo mês a partir do 1º vencimento.`
+            : `${brl.format(liquido)} à vista.`}{" "}
+          As cobranças aparecem em Recebimentos.
+        </p>
+      </fieldset>
 
       <Campo
         label="Validade"

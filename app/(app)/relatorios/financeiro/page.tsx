@@ -8,6 +8,7 @@ import {
   competenciaAtual,
 } from "@/lib/consultas/financeiro";
 import { resolverPeriodo } from "@/lib/consultas/painel";
+import { receitaPorForma } from "@/lib/consultas/caixa";
 import { Vazio } from "@/components/ui/primitivos";
 import { Cartao, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
 
@@ -19,13 +20,19 @@ export default async function FinanceiroPage(props: {
   const { de, ate, competencia = competenciaAtual() } = await props.searchParams;
   const periodo = resolverPeriodo(de, ate);
 
-  const [rent, passivo, resultado, receber, comissoes] = await Promise.all([
+  const diaLocal = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
+
+  const [rent, passivo, resultado, receber, comissoes, porForma] = await Promise.all([
     rentabilidade(periodo.inicio, periodo.fim),
     passivoEntrega(),
     dre(competencia),
     contasAReceber(),
     comissoesDaCompetencia(competencia),
+    receitaPorForma(diaLocal(periodo.inicio), diaLocal(new Date(periodo.fim.getTime() - 1))),
   ]);
+  const prevista = porForma.reduce((t, f) => t + f.prevista, 0);
+  const realizada = porForma.reduce((t, f) => t + f.realizada, 0);
 
   const comRealizacao = rent.filter((r) => r.sessoes > 0);
   const totalPassivo = passivo.reduce((t, p) => t + Number(p.valor_devido), 0);
@@ -220,6 +227,44 @@ export default async function FinanceiroPage(props: {
                 destaque={a.faixa === "60+ dias" && a.valor > 0 ? "atencao" : "neutro"}
               />
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* RF-94 · receita prevista × realizada, por forma de pagamento */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Receita prevista × realizada · {periodo.rotulo}</h2>
+        {porForma.length === 0 ? (
+          <Vazio>Nenhuma cobrança vence nem foi paga neste período.</Vazio>
+        ) : (
+          <div className="cartao overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[var(--traco)] text-left">
+                <tr className="text-[var(--tinta-3)]">
+                  <th className="px-4 py-2.5 font-medium">Forma de pagamento</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Prevista (vencendo)</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Realizada (recebida)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porForma.map((f) => (
+                  <tr key={f.forma} className="border-b border-[var(--traco)] last:border-0">
+                    <td className="px-4 py-2.5 font-medium">{f.forma}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(f.prevista)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {brl.format(f.realizada)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-[var(--superficie-2)] font-medium">
+                  <td className="px-4 py-2.5">Total</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(prevista)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{brl.format(realizada)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         )}
       </section>

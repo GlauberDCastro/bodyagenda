@@ -1123,8 +1123,54 @@ export type Database = {
           };
       custo_direto_procedimento: { Args: { p_procedimento: string }; Returns: number };
       custo_direto_sessao: { Args: { p_agendamento: string }; Returns: number };
+      cancelar_pacote: { Args: { p_pacote: string }; Returns: Json };
+      cobrancas: {
+        Args: { p_paciente?: string };
+        Returns: {
+          id: string;
+          tipo: Database["public"]["Enums"]["tipo_lancamento"];
+          origem_tipo: string;
+          origem_id: string | null;
+          categoria: string | null;
+          descricao: string | null;
+          valor: number;
+          vencimento: string;
+          data_pagamento: string | null;
+          forma_pagamento: string | null;
+          status: Database["public"]["Enums"]["status_lancamento"];
+          parcela_num: number | null;
+          parcela_total: number | null;
+          paciente_id: string | null;
+          paciente_nome: string | null;
+        }[];
+      };
       custo_hora_estrutura: { Args: { p_competencia: string }; Returns: number };
       definir_horarios: { Args: { p_janelas: Json; p_recursos: Json }; Returns: number };
+      marcar_atrasados: { Args: Record<PropertyKey, never>; Returns: number };
+      receita_periodo: {
+        Args: { p_de: string; p_ate: string };
+        Returns: { forma: string; prevista: number; realizada: number }[];
+      };
+      registrar_recebimento: {
+        Args: { p_data: string; p_forma: string; p_lancamento: string; p_valor: number };
+        Returns: string;
+      };
+      vender_pacote: {
+        Args: {
+          p_desconto: number;
+          p_forma: string;
+          p_paciente: string;
+          p_parcelas: number;
+          p_primeira_paga: boolean;
+          p_primeiro_vencimento: string;
+          p_procedimento: string;
+          p_regiao: string | null;
+          p_sessoes: number;
+          p_validade: string | null;
+          p_valor_total: number;
+        };
+        Returns: string;
+      };
       detalhar_conflito: {
         Args: {
           p_equipamentos?: string[];

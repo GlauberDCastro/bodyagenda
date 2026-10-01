@@ -205,6 +205,14 @@ async function apagarTudo() {
   const ids = Object.values(usuarios).map((u) => u.id);
   const del = (sql, p) => db.query(sql, p).catch((e) => console.log(`    (limpeza: ${e.message})`));
   await del(`delete from lancamento where descricao = 'TESTE RLS'`);
+  if (m.proc) {
+    await del(
+      `delete from lancamento where origem_tipo = 'pacote'
+          and origem_id in (select id from pacote where procedimento_id = $1)`,
+      [m.proc.id],
+    );
+    await del(`delete from pacote where procedimento_id = $1`, [m.proc.id]);
+  }
   if (m.proc) await del(`delete from agendamento where procedimento_id = $1`, [m.proc.id]);
   await del(`delete from paciente where nome like 'TESTE RLS%'`);
   await del(`delete from profissional where nome like 'TESTE RLS%'`);
@@ -323,6 +331,52 @@ try {
       token: t.profissional, metodo: "PATCH", corpo,
     });
     checar(`profissional NAO muda o ${rotulo} do proprio atendimento`, !escreveu(r), `status ${r.status}`);
+  }
+
+  // ── Caixa (0028) ──────────────────────────────────────────────────────────
+  console.log("\n-- caixa: venda e recebimento --");
+  const venda = await api("rpc/vender_pacote", {
+    token: t.recepcao,
+    metodo: "POST",
+    corpo: {
+      p_paciente: m.pacOutro.id,
+      p_procedimento: m.proc.id,
+      p_sessoes: 2,
+      p_valor_total: 200,
+      p_desconto: 0,
+      p_validade: null,
+      p_regiao: null,
+      p_parcelas: 2,
+      p_primeiro_vencimento: "2030-01-07",
+      p_forma: "Pix",
+      p_primeira_paga: false,
+    },
+  });
+  checar("recepcao vende pacote com parcelas", venda.ok, `status ${venda.status}`);
+  const { rows: parcelasRls } = await db.query(
+    `select id from lancamento where origem_tipo = 'pacote' and origem_id = $1 order by parcela_num`,
+    [venda.dados],
+  );
+  checar("venda gerou as 2 parcelas", parcelasRls.length === 2, `${parcelasRls.length}`);
+  for (const [perfil, pode] of [
+    ["gestao", false],
+    ["profissional", false],
+    ["financeiro", true],
+    ["recepcao", true],
+  ]) {
+    const alvo = perfil === "recepcao" ? parcelasRls[1]?.id : parcelasRls[0]?.id;
+    if (perfil === "financeiro" || perfil === "recepcao" || !pode) {
+      const r = await api("rpc/registrar_recebimento", {
+        token: t[perfil],
+        metodo: "POST",
+        corpo: { p_lancamento: alvo, p_valor: 10, p_data: "2030-01-07", p_forma: "Pix" },
+      });
+      checar(
+        `${perfil} ${pode ? "PODE" : "NAO pode"} registrar recebimento`,
+        r.ok === pode,
+        `status ${r.status}`,
+      );
+    }
   }
 
   // ── Escalonamento de privilégio ───────────────────────────────────────────

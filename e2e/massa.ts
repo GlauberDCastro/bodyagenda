@@ -16,6 +16,7 @@ export interface Massa {
   /** Gestão: configura horários e bloqueios, que a recepção não pode. */
   gestao: { email: string; senha: string; usuarioId: string };
   paciente: string;
+  pacienteId: string;
   /** Nome que NÃO existe no banco: o E2E o cadastra pelo agendamento. */
   pacienteNovo: string;
   procedimento: string;
@@ -119,7 +120,9 @@ export async function criarMassa(): Promise<Massa> {
     }
 
     const paciente = `Paciente E2E ${sufixo}`;
-    await db.query(`insert into paciente (nome) values ($1)`, [paciente]);
+    const {
+      rows: [pac],
+    } = await db.query(`insert into paciente (nome) values ($1) returning id`, [paciente]);
 
     const massa: Massa = {
       email,
@@ -127,6 +130,7 @@ export async function criarMassa(): Promise<Massa> {
       usuarioId,
       gestao,
       paciente,
+      pacienteId: pac.id,
       pacienteNovo: `Paciente Novo E2E ${sufixo}`,
       procedimento,
       sala: `Sala ${sala.numero} — ${nomeSala}`,
@@ -222,6 +226,23 @@ export async function inicioDoPaciente(nome: string): Promise<string | null> {
   }
 }
 
+/** Cobranças de pacote do paciente da massa: "valor status" por linha. */
+export async function cobrancasDePacote(m: Massa): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select l.valor::text || ' ' || l.status as c from lancamento l
+         join pacote p on p.id = l.origem_id
+        where l.origem_tipo = 'pacote' and p.paciente_id = $1
+        order by l.parcela_num, l.status::text`,
+      [m.pacienteId],
+    );
+    return rows.map((r) => r.c);
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
@@ -240,7 +261,17 @@ export async function apagarMassa() {
   const m = lerMassa();
   const db = await conectar();
   try {
+    // Cobrança aponta para a origem sem chave estrangeira: sai antes dela.
+    await db.query(
+      `delete from lancamento
+        where (origem_tipo = 'agendamento'
+               and origem_id in (select id from agendamento where procedimento_id = $1))
+           or (origem_tipo = 'pacote'
+               and origem_id in (select id from pacote where procedimento_id = $1))`,
+      [m.procedimentoId],
+    );
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
+    await db.query(`delete from pacote where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from paciente where nome = any($1::text[])`, [
       [m.paciente, m.pacienteNovo].filter(Boolean),
     ]);

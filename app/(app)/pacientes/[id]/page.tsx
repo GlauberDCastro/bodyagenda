@@ -9,6 +9,9 @@ import { listarProcedimentos } from "@/lib/consultas/recursos";
 import { formatarCpf } from "@/lib/domain/cpf";
 import { Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioPacote } from "./formulario-pacote";
+import { cobrancas, diasDeAtraso, emAberto } from "@/lib/consultas/caixa";
+import { TabelaCobrancas } from "@/components/financeiro/tabela-cobrancas";
+import { CancelarPacote } from "@/components/financeiro/cancelar-pacote";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataHora = new Intl.DateTimeFormat("pt-BR", {
@@ -29,12 +32,25 @@ const TOM_STATUS: Record<string, "neutro" | "bom" | "atencao"> = {
 export default async function PacientePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
 
-  const [paciente, pacotes, agendamentos, procedimentos] = await Promise.all([
+  const [paciente, pacotes, agendamentos, procedimentos, financeiro] = await Promise.all([
     buscarPaciente(id),
     pacotesDoPaciente(id),
     agendamentosDoPaciente(id),
     listarProcedimentos(),
+    cobrancas(id),
   ]);
+
+  // RF-13 · situação financeira na ficha.
+  const abertas = financeiro.filter(emAberto);
+  const emAtraso = abertas.filter((c) => diasDeAtraso(c.vencimento) > 0);
+  const totalAberto = abertas.reduce((t, c) => t + Number(c.valor), 0);
+  const totalAtraso = emAtraso.reduce((t, c) => t + Number(c.valor), 0);
+  const totalPago = financeiro
+    .filter((c) => c.status === "pago")
+    .reduce((t, c) => t + Number(c.valor), 0);
+  const cobrancasVisiveis = [...financeiro]
+    .filter((c) => c.status !== "cancelado")
+    .sort((a, b) => b.vencimento.localeCompare(a.vencimento));
 
   if (!paciente) notFound();
 
@@ -53,9 +69,14 @@ export default async function PacientePage(props: { params: Promise<{ id: string
             .filter(Boolean)
             .join(" · ") || "Sem dados de contato"}
         </p>
-        {!paciente.consentimento_lgpd && (
-          <Etiqueta tom="atencao">Consentimento LGPD pendente</Etiqueta>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {!paciente.consentimento_lgpd && (
+            <Etiqueta tom="atencao">Consentimento LGPD pendente</Etiqueta>
+          )}
+          {totalAtraso > 0 && (
+            <Etiqueta tom="critico">Em atraso: {brl.format(totalAtraso)}</Etiqueta>
+          )}
+        </div>
       </header>
 
       {paciente.observacoes && (
@@ -104,12 +125,34 @@ export default async function PacientePage(props: { params: Promise<{ id: string
                           : "Sem saldo"
                         : p.status}
                     </Etiqueta>
+                    {p.status === "ativo" && (
+                      <CancelarPacote
+                        pacoteId={p.id}
+                        pacienteId={paciente.id}
+                        nome={p.procedimento?.nome ?? "pacote"}
+                      />
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Financeiro</h2>
+          <p className="text-[13px] text-[var(--tinta-3)]">
+            Pago {brl.format(totalPago)} · em aberto {brl.format(totalAberto)}
+            {totalAtraso > 0 && ` · atrasado ${brl.format(totalAtraso)}`}
+          </p>
+        </div>
+        <TabelaCobrancas
+          cobrancas={cobrancasVisiveis}
+          mostrarPaciente={false}
+          vazio="Nenhuma cobrança para este paciente."
+        />
       </section>
 
       <section className="space-y-3">

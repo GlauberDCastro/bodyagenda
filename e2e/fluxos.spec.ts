@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
   agendamentosDoPaciente,
+  cobrancasDePacote,
   inicioDoPaciente,
   iniciosDosAgendamentos,
   lerMassa,
@@ -221,5 +222,37 @@ test.describe.serial("fluxos críticos", () => {
     // Quarta está livre.
     await arrastarDias(2);
     await expect.poll(() => inicioDoPaciente(m.pacienteNovo)).toBe("2030-01-09 16:00");
+  });
+
+  test("caixa: vender pacote em 3 parcelas e receber parte de uma", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/pacientes/${m.pacienteId}`);
+    await page.getByRole("button", { name: "Vender pacote" }).click();
+    const venda = page.getByRole("dialog");
+    await venda.locator('select[name="procedimento_id"]').selectOption(m.procedimentoId);
+    await venda.locator('input[name="quantidade_sessoes"]').fill("3");
+    await venda.locator('input[name="valor_total"]').fill("900");
+    await venda.locator('input[name="parcelas"]').fill("3");
+    await expect(venda).toContainText("3× de R$");
+    await venda.getByRole("button", { name: "Vender pacote" }).click();
+    await expect(venda).toBeHidden();
+    expect(await cobrancasDePacote(m)).toEqual([
+      "300.00 pago",
+      "300.00 pendente",
+      "300.00 pendente",
+    ]);
+
+    // Na tela de Recebimentos, recebe R$ 100 da 2ª parcela.
+    await page.goto("/recebimentos?ver=abertas");
+    const linha = page.getByRole("row", { name: new RegExp(`${m.paciente}.*2/3`) });
+    await linha.getByRole("button", { name: "Receber" }).click();
+    const receber = page.getByRole("dialog");
+    await receber.locator('input[name="valor"]').fill("100");
+    await expect(receber).toContainText("continuam em aberto");
+    await receber.getByRole("button", { name: "Registrar recebimento" }).click();
+    await expect(receber).toBeHidden();
+    await expect
+      .poll(() => cobrancasDePacote(m))
+      .toEqual(["300.00 pago", "100.00 pago", "200.00 pendente", "300.00 pendente"]);
   });
 });

@@ -231,6 +231,155 @@ checar("procedimento aparece com 1 sessao realizada", fotona && fotona.sessoes =
 checar("margem por procedimento bate com margem_sessao",
   fotona && q(fotona.margem) === 809.05, `veio ${fotona?.margem}`);
 
+console.log("\n-- caixa · avulsa realizada gera cobranca --");
+const { rows: cobAvulsa } = await cli.query(
+  `select valor from lancamento where origem_tipo = 'agendamento' and origem_id = $1
+     and status <> 'cancelado'`,
+  [ag.id],
+);
+checar(
+  "uma cobranca por atendimento avulso realizado, mesmo apos ida e volta",
+  cobAvulsa.length === 1 && q(cobAvulsa[0].valor) === 999,
+  JSON.stringify(cobAvulsa),
+);
+
+console.log("\n-- RF-80 · venda de pacote com parcelas --");
+const {
+  rows: [vp],
+} = await cli.query(
+  `select vender_pacote($1, $2, 4, 1000, 0, null, null, 3, '2026-10-10', 'Pix', true) as id`,
+  [pac.id, procPacote.id],
+);
+const { rows: parcelas } = await cli.query(
+  `select valor, vencimento::text as venc, status, parcela_num from lancamento
+    where origem_tipo = 'pacote' and origem_id = $1 order by parcela_num`,
+  [vp.id],
+);
+checar("3 parcelas geradas", parcelas.length === 3, `veio ${parcelas.length}`);
+checar(
+  "parcelas somam o liquido, centavos na ultima",
+  parcelas.map((x) => q(x.valor)).join(",") === "333.33,333.33,333.34",
+  parcelas.map((x) => x.valor).join(","),
+);
+checar(
+  "vencimentos mensais a partir do primeiro",
+  parcelas.map((x) => x.venc).join(",") === "2026-10-10,2026-11-10,2026-12-10",
+  parcelas.map((x) => x.venc).join(","),
+);
+checar(
+  "primeira parcela paga na hora",
+  parcelas[0].status === "pago" && parcelas[1].status === "pendente",
+);
+
+console.log("\n-- RF-81 · recebimento parcial --");
+const {
+  rows: [p2],
+} = await cli.query(`select id from lancamento where origem_id = $1 and parcela_num = 2`, [vp.id]);
+const {
+  rows: [resto],
+} = await cli.query(`select registrar_recebimento($1, 100, '2026-11-05', 'Dinheiro') as id`, [
+  p2.id,
+]);
+const {
+  rows: [pago2],
+} = await cli.query(`select valor, status, forma_pagamento from lancamento where id = $1`, [p2.id]);
+const {
+  rows: [aberto2],
+} = await cli.query(`select valor, status from lancamento where id = $1`, [resto.id]);
+checar(
+  "parte paga fica paga com a forma informada",
+  q(pago2.valor) === 100 && pago2.status === "pago" && pago2.forma_pagamento === "Dinheiro",
+  JSON.stringify(pago2),
+);
+checar(
+  "restante vira cobranca em aberto",
+  q(aberto2.valor) === 233.33 && aberto2.status === "pendente",
+  JSON.stringify(aberto2),
+);
+let recusou = false;
+try {
+  await cli.query("savepoint rp");
+  await cli.query(`select registrar_recebimento($1, 50, '2026-11-05', 'Pix')`, [p2.id]);
+} catch (e) {
+  recusou = e.code === "23514";
+  await cli.query("rollback to savepoint rp");
+}
+checar("parcela ja paga nao recebe de novo", recusou);
+
+console.log("\n-- RF-82 · atrasados --");
+const {
+  rows: [velho],
+} = await cli.query(
+  `insert into lancamento (tipo, origem_tipo, origem_id, descricao, valor, vencimento)
+   values ('receita', 'pacote', $1, 'TESTE vencido', 10, '2020-01-01') returning id`,
+  [vp.id],
+);
+await cli.query("select marcar_atrasados()");
+const {
+  rows: [vel],
+} = await cli.query(`select status from lancamento where id = $1`, [velho.id]);
+checar("pendente vencido vira atrasado", vel.status === "atrasado", vel.status);
+
+console.log("\n-- RF-64 · pacote concluido --");
+const {
+  rows: [pc2],
+} = await cli.query(
+  `select vender_pacote($1, $2, 2, 400, 0, null, null, 1, '2026-10-10', 'Pix', false) as id`,
+  [pac.id, procPacote.id],
+);
+const ags = [];
+for (const h of ["10:00", "11:00"]) {
+  const {
+    rows: [a],
+  } = await cli.query(
+    `select criar_agendamento($1, $2, $3::timestamptz, $4, '{}'::uuid[], '{}'::uuid[], $5) as id`,
+    [pac.id, procPacote.id, `2026-10-14T${h}:00-03:00`, sala.id, pc2.id],
+  );
+  ags.push(a.id);
+}
+await cli.query(`update agendamento set status = 'realizado' where id = $1`, [ags[0]]);
+let {
+  rows: [st],
+} = await cli.query(`select status from pacote where id = $1`, [pc2.id]);
+checar("com sessao pendente, pacote segue ativo", st.status === "ativo", st.status);
+await cli.query(`update agendamento set status = 'realizado' where id = $1`, [ags[1]]);
+({
+  rows: [st],
+} = await cli.query(`select status from pacote where id = $1`, [pc2.id]));
+checar("ultima sessao realizada conclui o pacote", st.status === "concluido", st.status);
+await cli.query(`update agendamento set status = 'agendado' where id = $1`, [ags[1]]);
+({
+  rows: [st],
+} = await cli.query(`select status from pacote where id = $1`, [pc2.id]));
+checar("desfazer o realizado reabre o pacote", st.status === "ativo", st.status);
+
+console.log("\n-- RF-65 · cancelar pacote --");
+// cancelar_pacote checa o perfil: simula o admin real da clinica.
+const {
+  rows: [adm],
+} = await cli.query(`select id from usuario where perfil = 'admin' and ativo limit 1`);
+await cli.query(`select set_config('request.jwt.claims', $1, true)`, [
+  JSON.stringify({ sub: adm.id }),
+]);
+const {
+  rows: [canc],
+} = await cli.query(`select cancelar_pacote($1) as r`, [pc2.id]);
+// 400 em 2 sessoes, 1 realizada (200 consumido), nada pago -> deve 200
+checar("saldo = pago - consumido", q(canc.r.saldo) === -200, JSON.stringify(canc.r));
+const {
+  rows: [pend],
+} = await cli.query(
+  `select count(*) filter (where status = 'cancelado')::int as canceladas,
+          count(*) filter (where descricao like 'Saldo%' and status = 'pendente')::int as saldo
+     from lancamento where origem_id = $1`,
+  [pc2.id],
+);
+checar(
+  "parcelas em aberto canceladas e saldo devido lancado",
+  pend.canceladas === 1 && pend.saldo === 1,
+  JSON.stringify(pend),
+);
+
 await cli.query("rollback");
 await cli.end();
 
