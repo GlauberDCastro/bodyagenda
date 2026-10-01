@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { salvarSala, type Resultado } from "@/lib/actions/recursos";
-import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
+import { Campo, Input, Textarea, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento, Sala } from "@/lib/types/database";
 
@@ -57,6 +57,11 @@ export function CamposSala({
           <Input name="nome" required placeholder="Sala 1" defaultValue={inicial?.nome} />
         </Campo>
       </div>
+
+      {/* RF-20 · o que a recepção precisa saber da sala (andar, maca, observações). */}
+      <Campo label="Descrição" erro={estado.campos?.descricao}>
+        <Textarea name="descricao" rows={2} defaultValue={inicial?.descricao ?? ""} />
+      </Campo>
 
       <Campo
         label="Alocação"

@@ -326,6 +326,13 @@ export async function apagarMassa() {
       ]);
       await db.query(`delete from equipamento where id = $1`, [m.equipamentoFixoId]);
     }
+    // Cópias feitas pelo teste de duplicar têm o nome da sala + " (cópia)".
+    await db.query(
+      `delete from recurso_disponibilidade where recurso_id in
+         (select id from sala where nome like $1 || ' (cópia)%')`,
+      [m.procedimento],
+    );
+    await db.query(`delete from sala where nome like $1 || ' (cópia)%'`, [m.procedimento]);
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.

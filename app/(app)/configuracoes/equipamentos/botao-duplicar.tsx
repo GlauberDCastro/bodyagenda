@@ -1,13 +1,28 @@
 "use client";
 
 import { useTransition, useState } from "react";
-import { duplicarEquipamento } from "@/lib/actions/recursos";
+import { duplicarEquipamento, duplicarProfissional, duplicarSala } from "@/lib/actions/recursos";
+import type { TipoRecurso } from "@/lib/types/database";
+
+const DUPLICAR: Record<TipoRecurso, (id: string) => ReturnType<typeof duplicarSala>> = {
+  sala: duplicarSala,
+  equipamento: duplicarEquipamento,
+  profissional: duplicarProfissional,
+};
 
 /**
  * RF-19b · cadastrar o 5º Ultraformer copiando atributos e disponibilidade da
  * unidade existente, em vez de refazer as janelas de atendimento uma a uma.
  */
-export function BotaoDuplicar({ id, nome }: { id: string; nome: string }) {
+export function BotaoDuplicar({
+  id,
+  nome,
+  tipo = "equipamento",
+}: {
+  id: string;
+  nome: string;
+  tipo?: TipoRecurso;
+}) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
 
@@ -17,11 +32,11 @@ export function BotaoDuplicar({ id, nome }: { id: string; nome: string }) {
       <button
         type="button"
         disabled={pendente}
-        title={`Duplicar ${nome} com a mesma agenda de disponibilidade`}
+        title={`Duplicar ${nome} com o mesmo horário de atendimento`}
         onClick={() =>
           iniciar(async () => {
             setErro(null);
-            const r = await duplicarEquipamento(id);
+            const r = await DUPLICAR[tipo](id);
             if (r.erro) setErro(r.erro);
           })
         }

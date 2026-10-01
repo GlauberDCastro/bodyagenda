@@ -164,6 +164,99 @@ export async function duplicarEquipamento(id: string): Promise<Resultado> {
   return { ok: true };
 }
 
+/** Copia as janelas de disponibilidade de um recurso para outro (RF-19b). */
+async function copiarDisponibilidade(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  tipo: TipoRecurso,
+  de: string,
+  para: string,
+) {
+  const { data: janelas } = await supabase
+    .from("recurso_disponibilidade")
+    .select("dia_semana, hora_inicio, hora_fim")
+    .eq("recurso_tipo", tipo)
+    .eq("recurso_id", de);
+  if (!janelas?.length) return null;
+  const { error } = await supabase
+    .from("recurso_disponibilidade")
+    .insert(janelas.map((j) => ({ ...j, recurso_tipo: tipo, recurso_id: para })));
+  return error;
+}
+
+/** RF-19b · a 2ª sala de depilação nasce da 1ª, com o mesmo horário. */
+export async function duplicarSala(id: string): Promise<Resultado> {
+  const supabase = await createServerSupabase();
+  const [{ data: origem, error }, { data: maior }] = await Promise.all([
+    supabase
+      .from("sala")
+      .select("nome, descricao, tipo_alocacao, procedimento_fixo_id, vigencia_inicio, vigencia_fim, ativo")
+      .eq("id", id)
+      .single(),
+    supabase.from("sala").select("numero").order("numero", { ascending: false }).limit(1).single(),
+  ]);
+  if (error) return erroDeBanco(error);
+
+  const { data: copia, error: erroInsert } = await supabase
+    .from("sala")
+    // O número é identidade da sala: a cópia ganha o próximo livre.
+    .insert({ ...origem, numero: (maior?.numero ?? 0) + 1, nome: `${origem.nome} (cópia)` })
+    .select("id")
+    .single();
+  if (erroInsert) return erroDeBanco(erroInsert);
+
+  const erroJanelas = await copiarDisponibilidade(supabase, "sala", id, copia.id);
+  if (erroJanelas) return erroDeBanco(erroJanelas);
+  revalidarConfig();
+  return { ok: true };
+}
+
+/**
+ * RF-19b · profissional nova com a mesma especialidade, habilitações,
+ * remuneração e horário. CPF e login não se copiam: são da pessoa.
+ */
+export async function duplicarProfissional(id: string): Promise<Resultado> {
+  const supabase = await createServerSupabase();
+  const [{ data: origem, error }, { data: remuneracao }, { data: habilitacoes }] =
+    await Promise.all([
+      supabase
+        .from("profissional")
+        .select("nome, especialidade, cor_agenda, vigencia_inicio, vigencia_fim, ativo")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("profissional_remuneracao")
+        .select("custo_hora, comissao_tipo, comissao_valor")
+        .eq("profissional_id", id)
+        .maybeSingle(),
+      supabase.from("profissional_habilitacao").select("procedimento_id").eq("profissional_id", id),
+    ]);
+  if (error) return erroDeBanco(error);
+
+  const { data: copia, error: erroInsert } = await supabase
+    .from("profissional")
+    .insert({ ...origem, nome: `${origem.nome} (cópia)` })
+    .select("id")
+    .single();
+  if (erroInsert) return erroDeBanco(erroInsert);
+
+  if (remuneracao) {
+    const { error: e } = await supabase
+      .from("profissional_remuneracao")
+      .insert({ ...remuneracao, profissional_id: copia.id });
+    if (e) return erroDeBanco(e);
+  }
+  if (habilitacoes?.length) {
+    const { error: e } = await supabase
+      .from("profissional_habilitacao")
+      .insert(habilitacoes.map((h) => ({ ...h, profissional_id: copia.id })));
+    if (e) return erroDeBanco(e);
+  }
+  const erroJanelas = await copiarDisponibilidade(supabase, "profissional", id, copia.id);
+  if (erroJanelas) return erroDeBanco(erroJanelas);
+  revalidarConfig();
+  return { ok: true };
+}
+
 // ── Profissionais ────────────────────────────────────────────────────────────
 
 export async function salvarProfissional(
@@ -230,7 +323,8 @@ export async function inativarRecurso(
     .eq("recurso_tipo", tipo)
     .eq("recurso_id", id)
     .eq("ativo", true)
-    .gte("periodo", new Date().toISOString());
+    // Em andamento ou adiante: tudo que sobrepõe "de agora em diante".
+    .overlaps("periodo", `[${new Date().toISOString()},infinity)`);
 
   if (count && count > 0 && !confirmado) {
     return {

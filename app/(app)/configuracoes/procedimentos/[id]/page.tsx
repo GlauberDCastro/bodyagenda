@@ -7,6 +7,8 @@ import { ROTULO_UNIDADE } from "@/lib/constantes";
 import { Cartao, brlExato, pct } from "@/components/painel/indicadores";
 import { FormularioCusto } from "./formulario-custo";
 import { FormularioRequisito } from "./formulario-requisito";
+import { FormularioProcedimento } from "../formulario-procedimento";
+import { AtivarProcedimento, RemoverCusto, RemoverRequisito } from "./acoes-catalogo";
 import {
   FormularioRegiao,
   AcoesProtocolo,
@@ -83,11 +85,17 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
         >
           ← Procedimentos
         </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">{proc.nome}</h1>
-          <Etiqueta tom={proc.ativo ? "bom" : "neutro"}>
-            {proc.ativo ? "Ativo" : "Inativo"}
-          </Etiqueta>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold tracking-tight">{proc.nome}</h1>
+            <Etiqueta tom={proc.ativo ? "bom" : "neutro"}>
+              {proc.ativo ? "Ativo" : "Inativo"}
+            </Etiqueta>
+          </div>
+          <div className="flex items-center gap-2">
+            <AtivarProcedimento id={proc.id} ativo={proc.ativo} />
+            <FormularioProcedimento inicial={proc} custos={linhasCusto} />
+          </div>
         </div>
         <p className="text-sm text-[var(--tinta-3)]">
           {proc.duracao_min} min
@@ -245,6 +253,9 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                   <th className="px-4 py-2.5 text-right font-medium">Unitário</th>
                   <th className="px-4 py-2.5 text-right font-medium">Qtd</th>
                   <th className="px-4 py-2.5 text-right font-medium">Total</th>
+                  <th className="px-4 py-2.5">
+                    <span className="sr-only">Ações</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -261,6 +272,9 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {brlExato.format(Number(c.valor_unitario) * Number(c.quantidade))}
                     </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <RemoverCusto id={c.id} procedimentoId={id} descricao={c.descricao} />
+                    </td>
                   </tr>
                 ))}
                 <tr className="bg-[var(--superficie-2)] font-medium ">
@@ -270,6 +284,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {brlExato.format(margem.custoInsumos)}
                   </td>
+                  <td />
                 </tr>
               </tbody>
             </table>
@@ -310,7 +325,14 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                     {r.quantidade} unidade(s) · {r.recurso_tipo}
                   </span>
                 </span>
-                <Etiqueta>{r.obrigatorio ? "Obrigatório" : "Opcional"}</Etiqueta>
+                <span className="flex items-center gap-2">
+                  <Etiqueta>{r.obrigatorio ? "Obrigatório" : "Opcional"}</Etiqueta>
+                  <RemoverRequisito
+                    id={r.id}
+                    procedimentoId={id}
+                    modelo={r.modelo ?? "recurso"}
+                  />
+                </span>
               </li>
             ))}
           </ul>

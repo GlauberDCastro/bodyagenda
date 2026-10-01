@@ -2,6 +2,7 @@ import { listarSalas, listarProcedimentos } from "@/lib/consultas/recursos";
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioSala } from "./formulario-sala";
 import { AcoesSala } from "@/components/config/acoes-sala";
+import { BotaoDuplicar } from "../equipamentos/botao-duplicar";
 
 export const metadata = { title: "Salas" };
 
@@ -73,7 +74,10 @@ export default async function SalasPage() {
                     </Etiqueta>
                   </td>
                   <td className="px-4 py-2.5">
-                    <AcoesSala sala={sala} procedimentos={procedimentos.dados} />
+                    <div className="flex items-center justify-end gap-1">
+                      <BotaoDuplicar id={sala.id} nome={`Sala ${sala.numero}`} tipo="sala" />
+                      <AcoesSala sala={sala} procedimentos={procedimentos.dados} />
+                    </div>
                   </td>
                 </tr>
               ))}

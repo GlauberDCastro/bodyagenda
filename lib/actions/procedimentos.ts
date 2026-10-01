@@ -62,6 +62,7 @@ export async function salvarProcedimento(
 
   if (error) return erroDeBanco(error);
   revalidatePath("/configuracoes/procedimentos");
+  if (id) revalidatePath(`/configuracoes/procedimentos/${id}`);
   return { ok: true };
 }
 
@@ -120,5 +121,7 @@ export async function alternarAtivoProcedimento(id: string, ativo: boolean): Pro
   const { error } = await supabase.from("procedimento").update({ ativo }).eq("id", id);
   if (error) return erroDeBanco(error);
   revalidatePath("/configuracoes/procedimentos");
+  revalidatePath(`/configuracoes/procedimentos/${id}`);
+  revalidatePath("/agenda");
   return { ok: true };
 }

@@ -81,6 +81,8 @@ export function AcoesRecurso({
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [emUso, setEmUso] = useState(false);
+  /** RF-27 · agendamentos futuros que continuam marcados se inativar. */
+  const [futuros, setFuturos] = useState<number | null>(null);
   const [pendente, iniciar] = useTransition();
 
   const rotuloTipo = { sala: "sala", equipamento: "equipamento", profissional: "profissional" }[tipo];
@@ -97,14 +99,22 @@ export function AcoesRecurso({
     });
   }
 
-  function alternarAtivo() {
+  function alternarAtivo(confirmado = false) {
     iniciar(async () => {
       const r = ativo
-        ? await inativarRecurso(tipo, id, true)
+        ? await inativarRecurso(tipo, id, confirmado)
         : await reativarRecurso(tipo, id);
+      // RF-27 · antes de inativar, mostra quantos atendimentos já estão marcados.
+      const qtdFuturos = "agendamentosFuturos" in r ? Number(r.agendamentosFuturos ?? 0) : 0;
+      if (qtdFuturos > 0 && !confirmado) {
+        setConfirmando(false);
+        setFuturos(qtdFuturos);
+        return;
+      }
       if (r.erro) setErro(r.erro);
       else {
         setConfirmando(false);
+        setFuturos(null);
       }
     });
   }
@@ -138,7 +148,7 @@ export function AcoesRecurso({
 
       <button
         type="button"
-        onClick={alternarAtivo}
+        onClick={() => alternarAtivo()}
         disabled={pendente}
         title={ativo ? `Inativar ${nome}` : `Reativar ${nome}`}
         aria-label={ativo ? `Inativar ${nome}` : `Reativar ${nome}`}
@@ -170,6 +180,33 @@ export function AcoesRecurso({
           {formularioEdicao(() => setEditando(false))}
         </Modal>
       )}
+
+      <Modal
+        aberto={futuros !== null}
+        aoFechar={() => setFuturos(null)}
+        titulo={`Inativar ${nome}?`}
+        largura="max-w-md"
+      >
+        <div className="space-y-4">
+          <Aviso>
+            {nome} tem <strong>{futuros} atendimento(s) futuro(s)</strong> marcado(s). Inativar
+            não os cancela nem remarca: eles continuam na agenda e precisam ser remanejados pela
+            recepção. Novos agendamentos deixam de ser aceitos.
+          </Aviso>
+          <div className="flex justify-end gap-2 border-t border-[var(--traco)] pt-4">
+            <button
+              type="button"
+              onClick={() => setFuturos(null)}
+              className="rounded-full px-4 py-2.5 text-[13.5px] font-medium text-[var(--tinta-2)] transition-colors hover:bg-[var(--superficie-2)]"
+            >
+              Cancelar
+            </button>
+            <Botao type="button" onClick={() => alternarAtivo(true)} disabled={pendente}>
+              {pendente ? "Inativando…" : "Inativar mesmo assim"}
+            </Botao>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         aberto={confirmando}
@@ -213,7 +250,7 @@ export function AcoesRecurso({
             </button>
 
             {emUso ? (
-              <Botao type="button" onClick={alternarAtivo} disabled={pendente}>
+              <Botao type="button" onClick={() => alternarAtivo()} disabled={pendente}>
                 {pendente ? "Inativando…" : "Inativar"}
               </Botao>
             ) : (

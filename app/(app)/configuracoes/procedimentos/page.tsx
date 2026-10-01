@@ -8,7 +8,10 @@ import { FormularioProcedimento } from "./formulario-procedimento";
 
 export const metadata = { title: "Procedimentos" };
 
-export default async function ProcedimentosPage() {
+export default async function ProcedimentosPage(props: {
+  searchParams: Promise<{ ordem?: string }>;
+}) {
+  const { ordem = "hora" } = await props.searchParams;
   const procedimentos = await listarProcedimentos();
   if (procedimentos.semSchema) return <AvisoBanco />;
 
@@ -110,15 +113,36 @@ export default async function ProcedimentosPage() {
                 <th className="px-4 py-2.5 text-right font-medium">Sessões</th>
                 <th className="px-4 py-2.5 text-right font-medium">Valor</th>
                 <th className="px-4 py-2.5 text-right font-medium">Custo</th>
-                <th className="px-4 py-2.5 text-right font-medium">Margem</th>
-                <th className="px-4 py-2.5 text-right font-medium">Margem/hora</th>
+                <th className="px-4 py-2.5 text-right font-medium">
+                  <Link
+                    href="?ordem=margem"
+                    aria-current={ordem === "margem" ? "true" : undefined}
+                    className={ordem === "margem" ? "text-[var(--tinta-1)] underline" : "hover:underline"}
+                  >
+                    Margem{ordem === "margem" ? " ↓" : ""}
+                  </Link>
+                </th>
+                <th className="px-4 py-2.5 text-right font-medium">
+                  <Link
+                    href="?ordem=hora"
+                    aria-current={ordem !== "margem" ? "true" : undefined}
+                    className={ordem !== "margem" ? "text-[var(--tinta-1)] underline" : "hover:underline"}
+                  >
+                    Margem/hora{ordem !== "margem" ? " ↓" : ""}
+                  </Link>
+                </th>
                 <th className="px-4 py-2.5 text-right font-medium">Equipe</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
               </tr>
             </thead>
             <tbody>
               {[...linhas]
-                .sort((a, b) => (b.margem.margemPorHora ?? 0) - (a.margem.margemPorHora ?? 0))
+                // RF-35 · ranking por margem ou por margem/hora (padrão).
+                .sort((a, b) =>
+                  ordem === "margem"
+                    ? b.margem.margem - a.margem.margem
+                    : (b.margem.margemPorHora ?? 0) - (a.margem.margemPorHora ?? 0),
+                )
                 .map((p) => (
                   <tr key={p.id} className="border-b border-[var(--traco)] last:border-0 ">
                     <td className="px-4 py-2.5">

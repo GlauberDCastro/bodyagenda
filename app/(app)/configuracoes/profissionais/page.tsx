@@ -2,6 +2,7 @@ import { listarProfissionais, listarProcedimentos } from "@/lib/consultas/recurs
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioProfissional } from "./formulario-profissional";
 import { AcoesProfissional } from "@/components/config/acoes-profissional";
+import { BotaoDuplicar } from "../equipamentos/botao-duplicar";
 
 export const metadata = { title: "Profissionais" };
 
@@ -74,7 +75,10 @@ export default async function ProfissionaisPage() {
                     </Etiqueta>
                   </td>
                   <td className="px-4 py-2.5">
-                    <AcoesProfissional profissional={p} procedimentos={procedimentos.dados.filter((x) => x.ativo)} />
+                    <div className="flex items-center justify-end gap-1">
+                      <BotaoDuplicar id={p.id} nome={p.nome} tipo="profissional" />
+                      <AcoesProfissional profissional={p} procedimentos={procedimentos.dados.filter((x) => x.ativo)} />
+                    </div>
                   </td>
                 </tr>
               ))}

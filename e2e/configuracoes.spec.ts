@@ -66,4 +66,50 @@ test.describe.serial("configurações", () => {
     const agendamento = await agendar(page, m, DIA_BLOQUEADO);
     await expect(agendamento.getByRole("alert")).toContainText("bloqueado");
   });
+
+  test("horário com duas faixas no dia (pausa de almoço)", async ({ page }) => {
+    await entrar(page, m.gestao.email, m.gestao.senha);
+    await page.goto("/configuracoes/horarios");
+    await page.getByRole("button", { name: `Editar horário de ${m.sala}` }).click();
+    const dialogo = page.getByRole("dialog");
+    await dialogo.getByLabel("Fim Qui", { exact: true }).fill("12:00");
+    // "+ faixa" de quinta: Seg, Ter, Qua e Qui estão abertos, então é o 4º.
+    await dialogo.getByRole("button", { name: "+ faixa" }).nth(3).click();
+    await dialogo.getByLabel("Início Qui faixa 2").fill("13:00");
+    await dialogo.getByLabel("Fim Qui faixa 2").fill("18:00");
+    await dialogo.getByRole("button", { name: "Salvar horário" }).click();
+    await expect(dialogo).toBeHidden();
+    // .first(): a sala também aparece na tabela de bloqueios, mais abaixo.
+    await expect(page.getByRole("row", { name: new RegExp(m.sala) }).first()).toContainText(
+      "Qui 08:00–12:00, 13:00–18:00",
+    );
+  });
+
+  test("duplicar sala copia o horário", async ({ page }) => {
+    await entrar(page, m.gestao.email, m.gestao.senha);
+    await page.goto("/configuracoes/salas");
+    await page.getByRole("button", { name: "Duplicar" }).last().click();
+    // A sala de teste é a de número mais alto: a cópia vira a última linha.
+    await expect(page.getByText(`${m.procedimento} (cópia)`)).toBeVisible();
+    await page.goto("/configuracoes/horarios");
+    await expect(
+      page.getByRole("row", { name: new RegExp(`${m.procedimento} \\(cópia\\)`) }).first(),
+    ).toContainText("Qui 08:00–12:00, 13:00–18:00");
+  });
+
+  test("procedimento: editar valor, inativar e reativar", async ({ page }) => {
+    await entrar(page, m.gestao.email, m.gestao.senha);
+    await page.goto(`/configuracoes/procedimentos/${m.procedimentoId}`);
+    await page.getByRole("button", { name: "Editar" }).click();
+    const dialogo = page.getByRole("dialog");
+    await dialogo.locator('input[name="valor_sessao"]').fill("350");
+    await dialogo.getByRole("button", { name: "Salvar procedimento" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByText("R$ 350,00 por sessão")).toBeVisible();
+
+    await page.getByRole("button", { name: "Inativar" }).click();
+    await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Reativar" }).click();
+    await expect(page.getByText("Ativo", { exact: true })).toBeVisible();
+  });
 });

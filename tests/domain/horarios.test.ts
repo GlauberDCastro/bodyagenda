@@ -68,6 +68,29 @@ describe("semana ⇄ janelas", () => {
   });
 });
 
+describe("várias faixas no mesmo dia (RF-24)", () => {
+  const almoco: Janela[] = [1, 2, 3, 4, 5].flatMap((dia) => [
+    { dia, inicio: "08:00", fim: "12:00" },
+    { dia, inicio: "13:00", fim: "18:00" },
+  ]);
+
+  it("resume as faixas do dia juntas", () => {
+    expect(resumirHorario(almoco)).toBe("Seg–Sex 08:00–12:00, 13:00–18:00");
+  });
+
+  it("ida e volta preserva as duas faixas", () => {
+    expect(janelasDaSemana(semanaDasJanelas(almoco))).toEqual(almoco);
+  });
+
+  it("recusa faixas que se sobrepõem no mesmo dia", () => {
+    const semana = semanaDasJanelas([
+      { dia: 1, inicio: "08:00", fim: "12:00" },
+      { dia: 1, inicio: "11:00", fim: "18:00" },
+    ]);
+    expect(validarSemana(semana)).toMatch(/Seg.*sobrep/);
+  });
+});
+
 describe("validarSemana", () => {
   it("recusa fim antes do início", () => {
     const semana = semanaDasJanelas([{ dia: 1, inicio: "18:00", fim: "08:00" }]);
