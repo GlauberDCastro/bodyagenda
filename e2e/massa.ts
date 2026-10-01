@@ -207,6 +207,21 @@ export async function agendamentosDoPaciente(nome: string): Promise<number> {
   }
 }
 
+/** "2030-01-09 16:00" do atendimento do paciente, no horário da clínica. */
+export async function inicioDoPaciente(nome: string): Promise<string | null> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select to_char(a.inicio at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as i
+         from agendamento a join paciente p on p.id = a.paciente_id where p.nome = $1`,
+      [nome],
+    );
+    return rows[0]?.i ?? null;
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {

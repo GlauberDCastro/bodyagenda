@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
   agendamentosDoPaciente,
+  inicioDoPaciente,
   iniciosDosAgendamentos,
   lerMassa,
   profissionaisNoHorario,
@@ -167,5 +168,58 @@ test.describe.serial("fluxos críticos", () => {
     await dialogo.getByRole("button", { name: "Agendar" }).click();
     await expect(dialogo).toBeHidden();
     expect(await agendamentosDoPaciente(m.pacienteNovo)).toBe(1);
+  });
+
+  test("arrastar no horário vazio escolhe o intervalo, como no Google Calendar", async ({
+    page,
+  }) => {
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}`);
+    const coluna = page.locator(`[data-coluna="sala-${m.salaId}"]`);
+    await coluna.scrollIntoViewIfNeeded();
+    const caixa = (await coluna.boundingBox())!;
+    const x = caixa.x + caixa.width / 2;
+    await page.mouse.move(x, caixa.y + 5 * PX_HORA + 5); // 13:00
+    await page.mouse.down();
+    await page.mouse.move(x, caixa.y + 6 * PX_HORA + 20, { steps: 6 }); // faixa das 14:15
+    await expect(coluna).toContainText("13:00 – 14:30");
+    await page.mouse.up();
+
+    const dialogo = page.getByRole("dialog");
+    await expect(dialogo.locator('input[name="inicio"]')).toHaveValue(`${DIA}T13:00`);
+    await expect(dialogo).toContainText("Marcado na agenda: 13:00–14:30");
+    await expect(dialogo.locator('select[name="sala_id"]')).toHaveValue(m.salaId);
+  });
+
+  test("na semana, arrastar para outro dia reagenda; dia bloqueado recusa", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}&por=semana&recurso=sala:${m.salaId}`);
+    const bloco = page.getByRole("button", { name: /16:00/ }).filter({ hasText: m.pacienteNovo });
+    await bloco.scrollIntoViewIfNeeded();
+
+    const larguraDia =
+      (await page.locator('[data-coluna="2030-01-08"]').boundingBox())!.x -
+      (await page.locator(`[data-coluna="${DIA}"]`).boundingBox())!.x;
+
+    const arrastarDias = async (n: number) => {
+      const c = (await bloco.boundingBox())!;
+      const x = c.x + c.width / 2;
+      const y = c.y + 8;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + (larguraDia * n) / 2, y, { steps: 4 });
+      await page.mouse.move(x + larguraDia * n, y, { steps: 4 });
+      await page.mouse.up();
+    };
+
+    // Terça está bloqueada pelo teste de configurações: volta e explica.
+    await arrastarDias(1);
+    // Filtra pelo texto: o Next tem o próprio role=alert (anunciador de rota).
+    await expect(page.getByRole("alert").filter({ hasText: "bloqueado" })).toBeVisible();
+    expect(await inicioDoPaciente(m.pacienteNovo)).toBe(`${DIA} 16:00`);
+
+    // Quarta está livre.
+    await arrastarDias(2);
+    await expect.poll(() => inicioDoPaciente(m.pacienteNovo)).toBe("2030-01-09 16:00");
   });
 });

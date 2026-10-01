@@ -10,6 +10,9 @@ import { Timeline } from "@/components/agenda/timeline";
 import { AvisoBanco } from "@/components/ui/primitivos";
 import { NovoAgendamento } from "./novo-agendamento";
 import { ProvedorAgendamento } from "@/components/agenda/contexto-agendamento";
+import { FiltroRecurso } from "@/components/agenda/filtro-recurso";
+import type { ColunaGrade } from "@/components/agenda/timeline";
+import { diasDaSemana, somarDias } from "@/lib/grade-agenda";
 
 export const metadata = { title: "Agenda" };
 
@@ -20,24 +23,33 @@ function hojeNaClinica(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
 }
 
-/** Limites do dia local convertidos para instantes absolutos. */
-function limitesDoDia(dia: string): { inicio: Date; fim: Date } {
-  const inicio = new Date(`${dia}T00:00:00-03:00`);
-  const fim = new Date(inicio.getTime() + 24 * 3_600_000);
+/** Limites dos dias locais convertidos para instantes absolutos. */
+function limites(primeiro: string, ultimo: string): { inicio: Date; fim: Date } {
+  const inicio = new Date(`${primeiro}T00:00:00-03:00`);
+  const fim = new Date(new Date(`${ultimo}T00:00:00-03:00`).getTime() + 24 * 3_600_000);
   return { inicio, fim };
 }
+
+const SEMANA_CURTA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+/** "Seg 05/10" */
+const rotuloDia = (dia: string) =>
+  `${SEMANA_CURTA[new Date(`${dia}T12:00:00Z`).getUTCDay()]} ${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 
 const VISOES = [
   { chave: "sala", rotulo: "Salas" },
   { chave: "equipamento", rotulo: "Equipamentos" },
   { chave: "profissional", rotulo: "Profissionais" },
+  { chave: "semana", rotulo: "Semana" },
 ] as const;
 
 export default async function AgendaPage(props: {
-  searchParams: Promise<{ dia?: string; por?: string }>;
+  searchParams: Promise<{ dia?: string; por?: string; recurso?: string }>;
 }) {
-  const { dia = hojeNaClinica(), por = "sala" } = await props.searchParams;
-  const { inicio, fim } = limitesDoDia(dia);
+  const { dia = hojeNaClinica(), por = "sala", recurso = "" } = await props.searchParams;
+  const semana = por === "semana";
+  const hoje = hojeNaClinica();
+  const dias = semana ? diasDaSemana(dia) : [dia];
+  const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
 
   const [salas, equipamentos, profissionais, procedimentos, agendamentos] = await Promise.all([
     listarSalas(),
@@ -49,8 +61,8 @@ export default async function AgendaPage(props: {
 
   if (salas.semSchema) return <AvisoBanco />;
 
-  const colunas: ColunaRecurso[] =
-    por === "equipamento"
+  const colunasDe = (tipo: string): ColunaRecurso[] =>
+    tipo === "equipamento"
       ? equipamentos.dados
           .filter((e) => e.ativo)
           .map((e) => ({
@@ -59,7 +71,7 @@ export default async function AgendaPage(props: {
             rotulo: e.nome,
             subtitulo: e.modelo,
           }))
-      : por === "profissional"
+      : tipo === "profissional"
         ? profissionais.dados
             .filter((p) => p.ativo)
             .map((p) => ({
@@ -77,8 +89,36 @@ export default async function AgendaPage(props: {
               subtitulo: s.nome,
             }));
 
-  const diaAnterior = new Date(inicio.getTime() - 86_400_000).toISOString().slice(0, 10);
-  const diaSeguinte = new Date(inicio.getTime() + 86_400_000).toISOString().slice(0, 10);
+  const todosRecursos = [
+    ...colunasDe("sala"),
+    ...colunasDe("equipamento"),
+    ...colunasDe("profissional"),
+  ];
+  const filtro = todosRecursos.find((r) => `${r.tipo}:${r.id}` === recurso);
+
+  // Dia: uma coluna por recurso. Semana: uma coluna por dia, como no Google Calendar.
+  const colunas: ColunaGrade[] = semana
+    ? dias.map((d) => ({
+        chave: d,
+        rotulo: rotuloDia(d),
+        subtitulo: d === hoje ? "Hoje" : undefined,
+        dia: d,
+        recurso: filtro,
+        href: `/agenda?dia=${d}&por=${filtro?.tipo ?? "sala"}`,
+        destaque: d === hoje,
+      }))
+    : colunasDe(por).map((r) => ({
+        chave: `${r.tipo}-${r.id}`,
+        rotulo: r.rotulo,
+        subtitulo: r.subtitulo,
+        dia,
+        recurso: r,
+      }));
+
+  const passo = semana ? 7 : 1;
+  const comFiltro = semana && recurso ? `&recurso=${recurso}` : "";
+  const diaAnterior = somarDias(dia, -passo);
+  const diaSeguinte = somarDias(dia, passo);
 
   const realizados = agendamentos.filter((a) => a.status === "realizado").length;
   const faltas = agendamentos.filter((a) => a.status === "falta").length;
@@ -92,8 +132,9 @@ export default async function AgendaPage(props: {
             <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
             <p className="text-sm text-[var(--tinta-3)]">
               {agendamentos.length} atendimento(s) · {realizados} realizado(s)
-              {faltas > 0 && ` · ${faltas} falta(s)`} · clique num horário para agendar, arraste
-              para remarcar
+              {faltas > 0 && ` · ${faltas} falta(s)`}
+              {semana && ` na semana de ${rotuloDia(dias[0])} a ${rotuloDia(dias[6])}`} · clique ou
+              arraste num horário para agendar, arraste o atendimento para remarcar
             </p>
           </div>
           <NovoAgendamento
@@ -108,7 +149,7 @@ export default async function AgendaPage(props: {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1">
             <Link
-              href={`/agenda?dia=${diaAnterior}&por=${por}`}
+              href={`/agenda?dia=${diaAnterior}&por=${por}${comFiltro}`}
               className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
             >
               ←
@@ -116,6 +157,7 @@ export default async function AgendaPage(props: {
             {/* Estado na URL: qualquer visão da agenda é compartilhável por link. */}
             <form method="get" className="flex items-center gap-1">
               <input type="hidden" name="por" value={por} />
+              {semana && recurso && <input type="hidden" name="recurso" value={recurso} />}
               <input
                 type="date"
                 name="dia"
@@ -124,13 +166,13 @@ export default async function AgendaPage(props: {
               />
             </form>
             <Link
-              href={`/agenda?dia=${diaSeguinte}&por=${por}`}
+              href={`/agenda?dia=${diaSeguinte}&por=${por}${comFiltro}`}
               className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
             >
               →
             </Link>
             <Link
-              href={`/agenda?dia=${hojeNaClinica()}&por=${por}`}
+              href={`/agenda?dia=${hoje}&por=${por}${comFiltro}`}
               className="ml-1 rounded-md px-2 py-1 text-sm text-[var(--tinta-3)] transition hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
             >
               Hoje
@@ -152,9 +194,11 @@ export default async function AgendaPage(props: {
               </Link>
             ))}
           </nav>
+
+          {semana && <FiltroRecurso dia={dia} valor={recurso} recursos={todosRecursos} />}
         </div>
 
-        <Timeline colunas={colunas} agendamentos={agendamentos} dia={dia} />
+        <Timeline colunas={colunas} agendamentos={agendamentos} semana={semana} />
       </div>
     </ProvedorAgendamento>
   );

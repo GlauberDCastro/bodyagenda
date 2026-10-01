@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agenda";
 import { buscarPacientesAction, pacotesDoPacienteAction } from "@/lib/actions/busca";
@@ -64,6 +64,13 @@ function FormularioAgendamento({
   aoConcluir,
 }: Recursos & { preset: PresetAgendamento; aoConcluir: () => void }) {
   const [termo, setTermo] = useState("");
+  // autoFocus não vale dentro do <dialog>: o showModal() leva o foco para o
+  // primeiro botão (o X). A recepção abre o formulário para digitar o nome.
+  const campoPaciente = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => campoPaciente.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
   const [pacientes, setPacientes] = useState<{ id: string; nome: string }[]>([]);
   /** Termo cuja busca já voltou: só então "nenhum encontrado" é verdade. */
   const [buscado, setBuscado] = useState("");
@@ -116,7 +123,7 @@ function FormularioAgendamento({
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
           placeholder="Digite o nome para buscar…"
-          autoFocus
+          ref={campoPaciente}
         />
         {pacientesVisiveis.length > 0 && (
           <Select
@@ -228,7 +235,16 @@ function FormularioAgendamento({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Campo label="Início" erro={estado.campos?.inicio}>
+        <Campo
+          label="Início"
+          erro={estado.campos?.inicio}
+          // A duração vem do procedimento: reserva sala e aparelho pelo tempo certo.
+          dica={
+            preset.fim && preset.inicio
+              ? `Marcado na agenda: ${preset.inicio.slice(11, 16)}–${preset.fim}. A duração final é a do procedimento.`
+              : undefined
+          }
+        >
           <Input
             name="inicio"
             type="datetime-local"

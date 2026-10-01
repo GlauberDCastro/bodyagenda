@@ -6,6 +6,8 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 export interface PresetAgendamento {
   /** "2026-10-06T09:15", no horário da clínica. */
   inicio?: string;
+  /** "10:30": fim do intervalo arrastado na grade. Só informativo. */
+  fim?: string;
   sala_id?: string;
   equipamentos?: string[];
   profissionais?: string[];

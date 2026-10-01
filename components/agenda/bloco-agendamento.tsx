@@ -40,7 +40,6 @@ const ACOES: { status: StatusAgendamento; rotulo: string }[] = [
  * não há receita, comissão nem ocupação efetiva.
  */
 export interface Arrasto {
-  larguraColuna: number;
   /** Quantas colunas dá para andar para cada lado (0 = só vertical). */
   colunasAntes: number;
   colunasDepois: number;
@@ -71,14 +70,22 @@ export function BlocoAgendamento({
   const [cancelando, setCancelando] = useState(false);
 
   // RF-49 · arrastar para remarcar.
-  const origem = useRef<{ x: number; y: number; moveu: boolean } | null>(null);
+  // A largura da coluna é medida no início do arraste: na semana ela estica.
+  const origem = useRef<{ x: number; y: number; moveu: boolean; largura: number } | null>(null);
   const ignorarClique = useRef(false);
-  const [desloc, setDesloc] = useState<{ min: number; coluna: number } | null>(null);
+  const [desloc, setDesloc] = useState<{ min: number; coluna: number; largura: number } | null>(
+    null,
+  );
   const [salvando, setSalvando] = useState(false);
 
   const aoPressionar = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!arrasto || salvando || e.button !== 0) return;
-    origem.current = { x: e.clientX, y: e.clientY, moveu: false };
+    origem.current = {
+      x: e.clientX,
+      y: e.clientY,
+      moveu: false,
+      largura: e.currentTarget.parentElement?.offsetWidth ?? 160,
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -91,9 +98,9 @@ export function BlocoAgendamento({
     o.moveu = true;
     const coluna = Math.max(
       -arrasto.colunasAntes,
-      Math.min(arrasto.colunasDepois, Math.round(dx / arrasto.larguraColuna)),
+      Math.min(arrasto.colunasDepois, Math.round(dx / o.largura)),
     );
-    setDesloc({ min: deslocamentoEmMinutos(dy, grade), coluna });
+    setDesloc({ min: deslocamentoEmMinutos(dy, grade), coluna, largura: o.largura });
   };
 
   const aoSoltar = async () => {
@@ -162,7 +169,7 @@ export function BlocoAgendamento({
         onPointerUp={aoSoltar}
         onPointerCancel={cancelarArraste}
         aria-roledescription={arrasto ? "atendimento arrastável" : undefined}
-        className={`absolute left-1 right-1 overflow-hidden rounded-[7px] border px-1.5 py-1 text-left text-[11px] leading-tight ${
+        className={`absolute overflow-hidden rounded-[7px] border px-1.5 py-1 text-left text-[11px] leading-tight ${
           desloc
             ? "z-20 cursor-grabbing shadow-[var(--sombra-3)]"
             : `transition hover:brightness-95 ${arrasto ? "cursor-grab" : ""}`
@@ -172,7 +179,7 @@ export function BlocoAgendamento({
           // Sem isto o toque rola a página em vez de arrastar o bloco.
           touchAction: arrasto ? "none" : undefined,
           transform: desloc
-            ? `translate(${desloc.coluna * (arrasto?.larguraColuna ?? 0)}px, ${(desloc.min / 60) * grade.alturaHora}px)`
+            ? `translate(${desloc.coluna * desloc.largura}px, ${(desloc.min / 60) * grade.alturaHora}px)`
             : undefined,
         }}
         title={titulo}
