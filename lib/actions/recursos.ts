@@ -10,6 +10,7 @@ import {
   bloqueioSchema,
 } from "@/lib/schemas/recursos";
 import type { TipoRecurso } from "@/lib/types/database";
+import { janelasDaSemana, validarSemana, type DiaDaSemana } from "@/lib/horarios";
 
 export interface Resultado {
   ok?: boolean;
@@ -278,10 +279,39 @@ export async function removerDisponibilidade(id: string): Promise<Resultado> {
   return { ok: true };
 }
 
-export async function adicionarBloqueio(
-  _anterior: Resultado,
-  formData: FormData,
+/**
+ * Troca o horário de um ou vários recursos numa transação só (migração 0026).
+ * Sem horário a agenda recusa tudo no recurso, então nunca há janela vazia.
+ */
+export async function definirHorarios(
+  recursos: { tipo: TipoRecurso; id: string }[],
+  semana: DiaDaSemana[],
 ): Promise<Resultado> {
+  const problema = validarSemana(semana);
+  if (problema) return { erro: problema };
+  if (recursos.length === 0) return { erro: "Nenhum recurso selecionado." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.rpc("definir_horarios", {
+    p_recursos: recursos.map(({ tipo, id }) => ({ tipo, id })),
+    p_janelas: janelasDaSemana(semana).map(({ dia, inicio, fim }) => ({ dia, inicio, fim })),
+  });
+  if (error) return erroDeBanco(error);
+
+  revalidarConfig();
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+export interface ResultadoBloqueio extends Resultado {
+  /** RF-27 · atendimentos já marcados que caem dentro do bloqueio. */
+  afetados?: number;
+}
+
+export async function adicionarBloqueio(
+  _anterior: ResultadoBloqueio,
+  formData: FormData,
+): Promise<ResultadoBloqueio> {
   const parsed = bloqueioSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return erroDeValidacao(parsed.error.issues);
 
@@ -289,8 +319,17 @@ export async function adicionarBloqueio(
   const { error } = await supabase.from("recurso_bloqueio").insert(parsed.data);
   if (error) return erroDeBanco(error);
 
+  // O bloqueio não desmarca ninguém: avisa quem precisa ser remarcado.
+  const { count } = await supabase
+    .from("reserva")
+    .select("id", { count: "exact", head: true })
+    .eq("recurso_tipo", parsed.data.recurso_tipo)
+    .eq("recurso_id", parsed.data.recurso_id)
+    .eq("ativo", true)
+    .overlaps("periodo", `[${parsed.data.inicio},${parsed.data.fim})`);
+
   revalidarConfig();
-  return { ok: true };
+  return { ok: true, afetados: count ?? 0 };
 }
 
 export async function removerBloqueio(id: string): Promise<Resultado> {
@@ -349,10 +388,7 @@ export async function carregarProfissional(id: string) {
       .select("custo_hora, comissao_tipo, comissao_valor")
       .eq("profissional_id", id)
       .maybeSingle(),
-    supabase
-      .from("profissional_habilitacao")
-      .select("procedimento_id")
-      .eq("profissional_id", id),
+    supabase.from("profissional_habilitacao").select("procedimento_id").eq("profissional_id", id),
   ]);
 
   return prof

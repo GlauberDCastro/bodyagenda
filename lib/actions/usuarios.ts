@@ -32,15 +32,9 @@ async function exigirAdmin(): Promise<Resultado | null> {
   } = await supabase.auth.getUser();
   if (!user) return { erro: "Sessão expirada." };
 
-  const { data } = await supabase
-    .from("usuario")
-    .select("perfil")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data } = await supabase.from("usuario").select("perfil").eq("id", user.id).maybeSingle();
 
-  return data?.perfil === "admin"
-    ? null
-    : { erro: "Apenas o administrador gerencia usuários." };
+  return data?.perfil === "admin" ? null : { erro: "Apenas o administrador gerencia usuários." };
 }
 
 /**
@@ -88,8 +82,7 @@ export async function salvarUsuario(
     const corpo = await r.json();
 
     if (!r.ok) {
-      const jaExiste =
-        corpo?.error_code === "email_exists" || /already/i.test(corpo?.msg ?? "");
+      const jaExiste = corpo?.error_code === "email_exists" || /already/i.test(corpo?.msg ?? "");
       return {
         erro: jaExiste
           ? "Já existe uma conta com este e-mail."
@@ -162,9 +155,7 @@ export async function listarUsuarios() {
     .select("id, nome, email, perfil, ativo, ultimo_acesso")
     .order("nome");
 
-  const { data: vinculos } = await supabase
-    .from("profissional")
-    .select("id, nome, usuario_id");
+  const { data: vinculos } = await supabase.from("profissional").select("id, nome, usuario_id");
 
   return {
     usuarios: data ?? [],

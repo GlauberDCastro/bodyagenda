@@ -13,6 +13,8 @@ export interface Massa {
   email: string;
   senha: string;
   usuarioId: string;
+  /** Gestão: configura horários e bloqueios, que a recepção não pode. */
+  gestao: { email: string; senha: string; usuarioId: string };
   paciente: string;
   procedimento: string;
   sala: string;
@@ -55,21 +57,25 @@ async function authAdmin(caminho: string, metodo = "GET", corpo?: unknown) {
   return { ok: r.ok, status: r.status, dados: await r.json().catch(() => null) };
 }
 
+async function criarUsuario(db: pg.Client, sufixo: string, perfil: string, nome: string) {
+  const email = `teste-e2e-${perfil}-${sufixo}@exemplo.invalid`;
+  const senha = randomBytes(18).toString("base64url");
+  const criado = await authAdmin("users", "POST", { email, password: senha, email_confirm: true });
+  if (!criado.ok) throw new Error(`criar usuario e2e ${perfil}: HTTP ${criado.status}`);
+  const usuarioId: string = criado.dados.id;
+  await db.query(
+    `insert into usuario (id, nome, email, perfil, ativo) values ($1, $2, $3, $4, true)`,
+    [usuarioId, nome, email, perfil],
+  );
+  return { email, senha, usuarioId };
+}
+
 export async function criarMassa(): Promise<Massa> {
   const sufixo = randomBytes(3).toString("hex");
-  const email = `teste-e2e-${sufixo}@exemplo.invalid`;
-  const senha = randomBytes(18).toString("base64url");
-
-  const criado = await authAdmin("users", "POST", { email, password: senha, email_confirm: true });
-  if (!criado.ok) throw new Error(`criar usuario e2e: HTTP ${criado.status}`);
-  const usuarioId: string = criado.dados.id;
-
   const db = await conectar();
   try {
-    await db.query(
-      `insert into usuario (id, nome, email, perfil, ativo) values ($1, 'Recepção E2E', $2, 'recepcao', true)`,
-      [usuarioId, email],
-    );
+    const { email, senha, usuarioId } = await criarUsuario(db, sufixo, "recepcao", "Recepção E2E");
+    const gestao = await criarUsuario(db, sufixo, "gestao", "Gestão E2E");
     const nomeSala = `TESTE E2E ${sufixo}`;
     const {
       rows: [sala],
@@ -97,6 +103,7 @@ export async function criarMassa(): Promise<Massa> {
       email,
       senha,
       usuarioId,
+      gestao,
       paciente,
       procedimento,
       sala: `Sala ${sala.numero} — ${nomeSala}`,
@@ -112,6 +119,20 @@ export async function criarMassa(): Promise<Massa> {
 
 export function lerMassa(): Massa {
   return JSON.parse(readFileSync(ARQUIVO, "utf8"));
+}
+
+export async function horarioDaSala(m: Massa): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select dia_semana || ' ' || hora_inicio || '-' || hora_fim as j
+         from recurso_disponibilidade where recurso_id = $1 order by dia_semana`,
+      [m.salaId],
+    );
+    return rows.map((r) => r.j);
+  } finally {
+    await db.end();
+  }
 }
 
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
@@ -135,14 +156,18 @@ export async function apagarMassa() {
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from paciente where nome = $1`, [m.paciente]);
     await db.query(`delete from recurso_disponibilidade where recurso_id = $1`, [m.salaId]);
+    await db.query(`delete from recurso_bloqueio where recurso_id = $1`, [m.salaId]);
     await db.query(`delete from sala where id = $1`, [m.salaId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.
-    await db.query(`delete from auditoria where usuario_id = $1`, [m.usuarioId]);
-    await db.query(`delete from usuario where id = $1`, [m.usuarioId]);
+    const ids = [m.usuarioId, m.gestao?.usuarioId].filter(Boolean);
+    await db.query(`delete from auditoria where usuario_id = any($1::uuid[])`, [ids]);
+    await db.query(`delete from usuario where id = any($1::uuid[])`, [ids]);
   } finally {
     await db.end();
   }
-  await authAdmin(`users/${m.usuarioId}`, "DELETE");
+  for (const id of [m.usuarioId, m.gestao?.usuarioId].filter(Boolean)) {
+    await authAdmin(`users/${id}`, "DELETE");
+  }
   rmSync(ARQUIVO);
 }

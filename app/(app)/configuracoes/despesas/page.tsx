@@ -19,13 +19,10 @@ export default async function DespesasPage(props: {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Despesas fixas</h1>
-          <p className="text-sm text-[var(--tinta-3)]">
-            Competência {competencia} · rateadas por hora de sala (RN-07)
-          </p>
-        </div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <p className="text-sm text-[var(--tinta-3)]">
+          Competência {competencia} · rateadas por hora de sala (RN-07)
+        </p>
         <div className="flex items-center gap-3">
           <form method="get">
             <input
@@ -37,7 +34,7 @@ export default async function DespesasPage(props: {
           </form>
           <FormularioDespesa competencia={competencia} />
         </div>
-      </header>
+      </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Cartao rotulo="Total do mês" valor={brl.format(total)} />

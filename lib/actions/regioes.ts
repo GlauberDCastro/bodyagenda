@@ -85,10 +85,7 @@ export async function salvarProtocolo(
   return { ok: true };
 }
 
-export async function removerProtocolo(
-  id: string,
-  procedimentoId: string,
-): Promise<Resultado> {
+export async function removerProtocolo(id: string, procedimentoId: string): Promise<Resultado> {
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("procedimento_regiao").delete().eq("id", id);
   if (error) return erroDeBanco(error);

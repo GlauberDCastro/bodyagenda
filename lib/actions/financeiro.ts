@@ -32,7 +32,7 @@ export async function lancarDespesa(_anterior: Resultado, formData: FormData): P
   const { error } = await supabase.from("despesa_fixa").insert(parsed.data);
   if (error) return erroDeBanco(error);
 
-  revalidatePath("/financeiro/despesas");
+  revalidatePath("/configuracoes/despesas");
   revalidatePath("/relatorios/financeiro");
   return { ok: true };
 }

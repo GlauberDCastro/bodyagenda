@@ -1124,6 +1124,7 @@ export type Database = {
       custo_direto_procedimento: { Args: { p_procedimento: string }; Returns: number };
       custo_direto_sessao: { Args: { p_agendamento: string }; Returns: number };
       custo_hora_estrutura: { Args: { p_competencia: string }; Returns: number };
+      definir_horarios: { Args: { p_janelas: Json; p_recursos: Json }; Returns: number };
       detalhar_conflito: {
         Args: {
           p_equipamentos?: string[];

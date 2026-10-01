@@ -117,7 +117,14 @@ export async function criarAgendamento(
     }
 
     // 23514 vem do trigger de janela: fora do expediente ou sobre bloqueio.
+    // A mensagem do banco traz o id do recurso, que não diz nada à recepção.
     if (error.code === "23514") {
+      // "Sem disponibilidade" também aparece quando um bloqueio cobre o dia todo.
+      if (/fora da janela|não tem disponibilidade/.test(error.message)) {
+        return {
+          erro: "Um dos recursos escolhidos não atende neste horário: está fora do expediente ou bloqueado (férias, folga ou manutenção).",
+        };
+      }
       return { erro: error.message };
     }
     if (error.code === "42501" || error.message.includes("row-level security")) {

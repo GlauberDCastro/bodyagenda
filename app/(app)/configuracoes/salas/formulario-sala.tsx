@@ -36,14 +36,11 @@ export function CamposSala({
     inicial?.tipo_alocacao ?? "flexivel",
   );
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarSala(inicial?.id ?? null, anterior, formData);
-      if (r.ok) aoConcluir();
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarSala(inicial?.id ?? null, anterior, formData);
+    if (r.ok) aoConcluir();
+    return r;
+  }, {});
 
   const hoje = new Date().toISOString().slice(0, 10);
 

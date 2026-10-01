@@ -48,14 +48,11 @@ function CamposProtocolo({
 }) {
   const [unidade, setUnidade] = useState(inicial?.unidade ?? "sessao");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
-    async (anterior, formData) => {
-      const r = await salvarProtocolo(inicial?.id ?? null, anterior, formData);
-      if (r.ok) aoConcluir();
-      return r;
-    },
-    {},
-  );
+  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+    const r = await salvarProtocolo(inicial?.id ?? null, anterior, formData);
+    if (r.ok) aoConcluir();
+    return r;
+  }, {});
 
   // Agrupa no <optgroup> para uma lista de 29 regiões continuar navegável.
   const grupos = [...new Set(regioes.map((r) => r.grupo ?? "Outras"))];
@@ -89,11 +86,7 @@ function CamposProtocolo({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Unidade de medida" dica="Harmonização se mede em UI ou ml, não em sessão.">
-          <Select
-            name="unidade"
-            value={unidade}
-            onChange={(e) => setUnidade(e.target.value)}
-          >
+          <Select name="unidade" value={unidade} onChange={(e) => setUnidade(e.target.value)}>
             {UNIDADES.map((u) => (
               <option key={u.valor} value={u.valor}>
                 {u.rotulo}
@@ -119,8 +112,8 @@ function CamposProtocolo({
 
       <div className="rounded-[var(--r-md)] bg-[var(--superficie-2)] p-3">
         <p className="mb-3 text-[12.5px] text-[var(--tinta-2)]">
-          Em branco, herda do procedimento. Preencher só para repetir o mesmo
-          número garante que os dois divirjam quando o procedimento mudar.
+          Em branco, herda do procedimento. Preencher só para repetir o mesmo número garante que os
+          dois divirjam quando o procedimento mudar.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo label="Duração (min)" erro={estado.campos?.duracao_min}>
@@ -228,7 +221,17 @@ export function AcoesProtocolo({
         title={`Editar ${nomeRegiao}`}
         className={botao}
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4Z" />
         </svg>
       </button>
@@ -239,7 +242,17 @@ export function AcoesProtocolo({
         title={`Remover ${nomeRegiao}`}
         className={botao}
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
         </svg>
       </button>

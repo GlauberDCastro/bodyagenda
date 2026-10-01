@@ -28,9 +28,8 @@ export default async function UsuariosPage() {
       <Aviso>
         <p className="font-semibold">Acesso restrito</p>
         <p className="mt-1">
-          Apenas o administrador gerencia usuários. Gestão configura a clínica,
-          mas não concede acesso — separar as duas coisas é o que impede alguém
-          de ampliar os próprios privilégios.
+          Apenas o administrador gerencia usuários. Gestão configura a clínica, mas não concede
+          acesso — separar as duas coisas é o que impede alguém de ampliar os próprios privilégios.
         </p>
       </Aviso>
     );
@@ -56,9 +55,8 @@ export default async function UsuariosPage() {
 
       {semAcesso.length > 0 && (
         <Aviso tom="neutro">
-          {semAcesso.length} profissional(is) sem login:{" "}
-          {semAcesso.map((p) => p.nome).join(", ")}. Elas aparecem na agenda
-          normalmente — o login só é necessário para consultarem a própria
+          {semAcesso.length} profissional(is) sem login: {semAcesso.map((p) => p.nome).join(", ")}.
+          Elas aparecem na agenda normalmente — o login só é necessário para consultarem a própria
           agenda e comissão.
         </Aviso>
       )}
@@ -131,9 +129,7 @@ export default async function UsuariosPage() {
           {PERFIS.map((p) => (
             <div key={p.valor} className="cartao p-4">
               <p className="text-[13.5px] font-medium">{p.rotulo}</p>
-              <p className="mt-1 text-[12.5px] leading-snug text-[var(--tinta-3)]">
-                {p.descricao}
-              </p>
+              <p className="mt-1 text-[12.5px] leading-snug text-[var(--tinta-3)]">{p.descricao}</p>
             </div>
           ))}
         </div>

@@ -66,13 +66,10 @@ export default async function ProcedimentosPage() {
 
       {semPreco.length > 0 && (
         <Aviso tom="critico">
-          <p className="font-semibold">
-            {semPreco.length} procedimento(s) sem preço
-          </p>
+          <p className="font-semibold">{semPreco.length} procedimento(s) sem preço</p>
           <p className="mt-1">
-            {semPreco.map((l) => l.nome).join(", ")} — podem ser agendados e vão
-            ocupar a agenda, mas somam R$ 0 na receita. O relatório fica errado
-            sem avisar.
+            {semPreco.map((l) => l.nome).join(", ")} — podem ser agendados e vão ocupar a agenda,
+            mas somam R$ 0 na receita. O relatório fica errado sem avisar.
           </p>
         </Aviso>
       )}
@@ -83,9 +80,8 @@ export default async function ProcedimentosPage() {
             {semProfissional.length} procedimento(s) sem profissional habilitado
           </p>
           <p className="mt-1">
-            {semProfissional.map((l) => l.nome).join(", ")} — a agenda não tem
-            ninguém para oferecer, então não é possível agendar. Habilite em
-            Profissionais.
+            {semProfissional.map((l) => l.nome).join(", ")} — a agenda não tem ninguém para
+            oferecer, então não é possível agendar. Habilite em Profissionais.
           </p>
         </Aviso>
       )}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { horarioDaClinica } from "./agenda";
 
 /** Data no formato ISO que o Postgres aceita em coluna `date`. */
 const dataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD");
@@ -133,8 +134,9 @@ export const bloqueioSchema = z
   .object({
     recurso_tipo: z.enum(["sala", "equipamento", "profissional"]),
     recurso_id: z.uuid(),
-    inicio: z.string().min(1, "Informe o início"),
-    fim: z.string().min(1, "Informe o fim"),
+    // datetime-local chega sem fuso; o banco roda em UTC.
+    inicio: z.string().min(1, "Informe o início").transform(horarioDaClinica),
+    fim: z.string().min(1, "Informe o fim").transform(horarioDaClinica),
     motivo: z.enum(["manutencao", "ferias", "folga", "outro"]),
     observacao: z.string().nullish(),
   })
