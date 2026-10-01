@@ -6,7 +6,10 @@
  * que é o requisito mais caro do sistema se estiver errado: duas
  * recepcionistas salvando ao mesmo tempo o mesmo aparelho.
  *
- * Roda em transação e faz rollback no fim: não suja o banco.
+ * Cria a própria massa (sala, 4 aparelhos, procedimento) em vez de depender
+ * do catálogo real, que muda conforme a clínica se organiza. A primeira parte
+ * roda em transação com rollback; a de concorrência precisa de dados
+ * commitados e apaga tudo o que criou no fim.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -38,6 +41,46 @@ const conectar = async () => {
   return c;
 };
 
+// Massa isolada: sala, 4 unidades do mesmo modelo e um procedimento de 20 min,
+// todos disponíveis seg-sex 08:00-18:00. Nada aqui encosta em recurso real.
+async function criarMassa(c, sufixo) {
+  const { rows: [sala] } = await c.query(
+    `insert into sala (numero, nome)
+     values ((select coalesce(max(numero), 0) + 900 from sala), $1) returning id`,
+    [`TESTE motor ${sufixo}`],
+  );
+  const equipamentos = [];
+  for (let i = 1; i <= 4; i++) {
+    const { rows: [e] } = await c.query(
+      `insert into equipamento (nome, modelo) values ($1, 'TESTE-MOTOR') returning id`,
+      [`TESTE motor ${sufixo} #${i}`],
+    );
+    equipamentos.push(e);
+  }
+  const { rows: [proc] } = await c.query(
+    `insert into procedimento (nome, duracao_min, valor_sessao)
+     values ($1, 20, 0) returning id, duracao_min`,
+    [`TESTE motor ${sufixo}`],
+  );
+  for (const [tipo, id] of [["sala", sala.id], ...equipamentos.map((e) => ["equipamento", e.id])]) {
+    await c.query(
+      `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+       select $1::tipo_recurso, $2, d, '08:00', '18:00' from generate_series(1, 5) d`,
+      [tipo, id],
+    );
+  }
+  return { sala, equipamentos, proc };
+}
+
+async function apagarMassa(c, { sala, equipamentos, proc }) {
+  const ids = [sala.id, ...equipamentos.map((e) => e.id)];
+  await c.query(`delete from agendamento where procedimento_id = $1`, [proc.id]);
+  await c.query(`delete from recurso_disponibilidade where recurso_id = any($1::uuid[])`, [ids]);
+  await c.query(`delete from equipamento where id = any($1::uuid[])`, [ids]);
+  await c.query(`delete from sala where id = $1`, [sala.id]);
+  await c.query(`delete from procedimento where id = $1`, [proc.id]);
+}
+
 let passaram = 0;
 let falharam = 0;
 
@@ -60,17 +103,11 @@ const { rows: [paciente] } = await cli.query(
   `insert into paciente (nome, cpf) values ('Paciente Teste', '00000000191')
    returning id`,
 );
-const { rows: [proc] } = await cli.query(
-  `select id, duracao_min from procedimento where nome = 'Ultraformer Olhos'`,
-);
-const { rows: [sala] } = await cli.query(`select id from sala where numero = 2`);
-const { rows: equipamentos } = await cli.query(
-  `select id, nome from equipamento where modelo = 'Ultraformer' order by nome`,
-);
+const { sala, equipamentos, proc } = await criarMassa(cli, "transacao");
 
-console.log(`\nmassa: procedimento ${proc.duracao_min}min, ${equipamentos.length} Ultraformer\n`);
+console.log(`\nmassa: procedimento ${proc.duracao_min}min, ${equipamentos.length} aparelhos de teste\n`);
 
-// Terça-feira 14:00 — dentro do expediente seg-sex 08:00-18:00 do seed.
+// Terça-feira 14:00 — dentro do expediente seg-sex 08:00-18:00 da massa.
 const QUANDO = "2026-10-06T14:00:00-03:00";
 
 console.log("-- RN-01 · conflito de recurso --");
@@ -105,7 +142,7 @@ try {
 }
 checar("CA-01 · mesmo equipamento no mesmo horario e recusado (23P01)", conflitou);
 
-// Outra unidade do mesmo modelo deve passar — é o que os 4 Ultraformer compram
+// Outra unidade do mesmo modelo: só a sala ainda está ocupada
 let outraUnidade = false;
 try {
   await cli.query("savepoint s2");
@@ -263,13 +300,10 @@ const { rows: [p2] } = await preparar.query(
   `insert into paciente (nome, cpf) values ('Paciente Concorrencia', '00000000272')
    returning id`,
 );
-const { rows: [pr2] } = await preparar.query(
-  `select id from procedimento where nome = 'Ultraformer Papada'`,
-);
-const { rows: [s3] } = await preparar.query(`select id from sala where numero = 3`);
-const { rows: [e3] } = await preparar.query(
-  `select id from equipamento where nome = 'Ultraformer #3'`,
-);
+const massa2 = await criarMassa(preparar, "concorrencia");
+const pr2 = massa2.proc;
+const s3 = massa2.sala;
+const e3 = massa2.equipamentos[0];
 await preparar.end();
 
 const N = 8;
@@ -298,7 +332,7 @@ const outros = tentativas.filter(
   (t) => t.status === "rejected" && t.reason?.code !== "23P01",
 );
 
-console.log(`  ${N} tentativas simultaneas no mesmo Ultraformer e horario`);
+console.log(`  ${N} tentativas simultaneas no mesmo aparelho e horario`);
 console.log(`  ${sucessos.length} persistiram, ${conflitos.length} receberam 23P01, ${outros.length} outros erros`);
 for (const o of outros) console.log(`    erro inesperado: ${o.reason?.message}`);
 
@@ -307,9 +341,7 @@ checar("CA-13 · as demais recebem exclusion_violation", conflitos.length === N 
 
 // Limpeza
 const limpar = await conectar();
-await limpar.query(
-  `delete from agendamento where paciente_id = $1`, [p2.id],
-);
+await apagarMassa(limpar, massa2);
 await limpar.query(`delete from paciente where id = $1`, [p2.id]);
 await limpar.end();
 

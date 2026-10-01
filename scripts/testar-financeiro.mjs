@@ -47,13 +47,30 @@ await cli.query("begin");
 const { rows: [pac] } = await cli.query(
   `insert into paciente (nome, cpf) values ('Financeiro Teste', '00000000353') returning id`,
 );
+// Recursos próprios do teste, e não o catálogo real: os nomes e as salas da
+// clínica mudam, e as fórmulas precisam de números conhecidos.
 const { rows: [proc] } = await cli.query(
-  `select id, duracao_min, valor_sessao from procedimento where nome = 'Fotona'`,
+  `insert into procedimento (nome, duracao_min, valor_sessao)
+   values ('TESTE financeiro', 15, 0) returning id, duracao_min, valor_sessao`,
 );
-const { rows: [sala] } = await cli.query(`select id from sala where numero = 6`);
+const { rows: [procPacote] } = await cli.query(
+  `insert into procedimento (nome, duracao_min, valor_sessao)
+   values ('TESTE financeiro pacote', 30, 0) returning id`,
+);
+const { rows: [sala] } = await cli.query(
+  `insert into sala (numero, nome)
+   values ((select coalesce(max(numero), 0) + 900 from sala), 'TESTE financeiro') returning id`,
+);
 const { rows: [equip] } = await cli.query(
-  `select id from equipamento where modelo = 'Fotona' limit 1`,
+  `insert into equipamento (nome, modelo) values ('TESTE financeiro', 'TESTE-FIN') returning id`,
 );
+for (const [tipo, id] of [["sala", sala.id], ["equipamento", equip.id]]) {
+  await cli.query(
+    `insert into recurso_disponibilidade (recurso_tipo, recurso_id, dia_semana, hora_inicio, hora_fim)
+     select $1::tipo_recurso, $2, d, '08:00', '18:00' from generate_series(1,5) d`,
+    [tipo, id],
+  );
+}
 
 // Custo de insumo do procedimento: R$ 100
 await cli.query(
@@ -179,11 +196,11 @@ checar("DRE fecha: receita - custos - comissoes - despesas",
 console.log("\n-- RF-95 · passivo de entrega --");
 await cli.query(
   `insert into pacote (paciente_id, procedimento_id, quantidade_sessoes, valor_total)
-   select $1, id, 8, 799 from procedimento where nome = 'CM Slim' returning id`,
-  [pac.id],
+   values ($1, $2, 8, 799) returning id`,
+  [pac.id, procPacote.id],
 );
 const { rows: passivo } = await cli.query(`select * from passivo_entrega()`);
-const cmSlim = passivo.find((x) => x.nome === "CM Slim");
+const cmSlim = passivo.find((x) => x.nome === "TESTE financeiro pacote");
 checar("pacote de 8 sessoes aparece como 8 sessoes devidas",
   cmSlim && cmSlim.sessoes_devidas === 8, JSON.stringify(cmSlim));
 checar("8 sessoes de 30 min = 4 horas de agenda comprometidas",
@@ -209,8 +226,8 @@ const { rows: rent } = await cli.query(
   `select * from rentabilidade_procedimentos(
      '2026-10-01T00:00:00-03:00', '2026-11-01T00:00:00-03:00')`,
 );
-const fotona = rent.find((x) => x.nome === "Fotona");
-checar("Fotona aparece com 1 sessao realizada", fotona && fotona.sessoes === 1);
+const fotona = rent.find((x) => x.nome === "TESTE financeiro");
+checar("procedimento aparece com 1 sessao realizada", fotona && fotona.sessoes === 1);
 checar("margem por procedimento bate com margem_sessao",
   fotona && q(fotona.margem) === 809.05, `veio ${fotona?.margem}`);
 

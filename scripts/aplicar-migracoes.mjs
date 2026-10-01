@@ -91,6 +91,16 @@ const CHECAGENS = [
     ok: (c) => c === 0,
     detalhe: (c) => (c > 0 ? `${c} tabela(s) sem RLS` : ""),
   },
+  {
+    // `create or replace` com assinatura nova cria uma SEGUNDA função; o
+    // PostgREST então recusa a chamada com PGRST203 (foi o caso da 0012).
+    rotulo: "funcoes publicas sobrecarregadas (deve ser 0)",
+    sql: `select count(*)::int as c from (
+            select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where nspname = 'public' group by proname having count(*) > 1) x`,
+    ok: (c) => c === 0,
+    detalhe: (c) => (c > 0 ? `${c} funcao(oes) com mais de uma assinatura` : ""),
+  },
 ];
 
 // ── Caminho 1: conexão direta ao Postgres ────────────────────────────────────
@@ -159,6 +169,9 @@ async function viaPostgres(url) {
       process.exit(1);
     }
   }
+
+  // Sem isto o PostgREST segue servindo o schema antigo até reiniciar.
+  await client.query("notify pgrst, 'reload schema'");
 
   await rodarChecagens(client);
   await client.end();
