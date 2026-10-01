@@ -52,6 +52,32 @@ export async function salvarPaciente(
 }
 
 /**
+ * Cadastro rápido no meio do agendamento: paciente novo ao telefone não pode
+ * obrigar a recepção a sair da agenda. Só o essencial; o resto (endereço,
+ * consentimento LGPD) completa-se depois na ficha do paciente.
+ */
+export async function cadastrarPacienteRapido(dados: {
+  nome: string;
+  telefone?: string;
+  cpf?: string;
+}): Promise<Resultado & { paciente?: { id: string; nome: string } }> {
+  const parsed = pacienteSchema.safeParse({ ...dados, consentimento_lgpd: false });
+  if (!parsed.success) return erroDeValidacao(parsed.error.issues);
+
+  const { consentimento_lgpd, ...paciente } = parsed.data;
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("paciente")
+    .insert({ ...paciente, consentimento_lgpd, consentimento_em: null })
+    .select("id, nome")
+    .single();
+
+  if (error) return erroDeBanco(error);
+  revalidatePath("/pacientes");
+  return { ok: true, paciente: data };
+}
+
+/**
  * RF-15 · paciente é inativado, nunca deletado.
  * O histórico financeiro e de ocupação depende de o registro continuar existindo.
  */

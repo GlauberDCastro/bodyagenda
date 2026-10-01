@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agenda";
 import { buscarPacientesAction, pacotesDoPacienteAction } from "@/lib/actions/busca";
+import { cadastrarPacienteRapido } from "@/lib/actions/pacientes";
 import { Campo, Input, Select, Textarea, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import { useAgendamento, type PresetAgendamento } from "@/components/agenda/contexto-agendamento";
@@ -64,6 +65,9 @@ function FormularioAgendamento({
 }: Recursos & { preset: PresetAgendamento; aoConcluir: () => void }) {
   const [termo, setTermo] = useState("");
   const [pacientes, setPacientes] = useState<{ id: string; nome: string }[]>([]);
+  /** Termo cuja busca já voltou: só então "nenhum encontrado" é verdade. */
+  const [buscado, setBuscado] = useState("");
+  const [cadastrando, setCadastrando] = useState(false);
   const [pacienteId, setPacienteId] = useState("");
   const [pacotes, setPacotes] = useState<PacoteOpcao[]>([]);
   const [pacoteId, setPacoteId] = useState("");
@@ -88,6 +92,7 @@ function FormularioAgendamento({
     if (termo.trim().length < 2) return;
     const t = setTimeout(async () => {
       setPacientes(await buscarPacientesAction(termo));
+      setBuscado(termo);
     }, 250);
     return () => clearTimeout(t);
   }, [termo]);
@@ -133,6 +138,45 @@ function FormularioAgendamento({
           </Select>
         )}
         {pacienteId && <input type="hidden" name="paciente_id" value={pacienteId} />}
+
+        {cadastrando ? (
+          <CadastroRapido
+            nomeInicial={termo.trim()}
+            aoCancelar={() => setCadastrando(false)}
+            aoCriar={(novo) => {
+              setCadastrando(false);
+              setTermo(novo.nome);
+              setBuscado(novo.nome);
+              setPacientes([novo]);
+              setPacienteId(novo.id);
+              setPacoteId("");
+            }}
+          />
+        ) : (
+          termo.trim().length >= 2 &&
+          buscado === termo &&
+          (pacientesVisiveis.length === 0 ? (
+            <p className="mt-2 text-[13px] text-[var(--tinta-3)]">
+              Nenhum paciente com &ldquo;{termo.trim()}&rdquo;.{" "}
+              <button
+                type="button"
+                onClick={() => setCadastrando(true)}
+                className="font-medium text-[var(--marca)] underline-offset-4 hover:underline"
+              >
+                + Cadastrar &ldquo;{termo.trim()}&rdquo;
+              </button>
+            </p>
+          ) : (
+            // Homônimo: o nome existe, mas não é esta pessoa.
+            <button
+              type="button"
+              onClick={() => setCadastrando(true)}
+              className="mt-1.5 text-[12.5px] text-[var(--tinta-3)] underline-offset-4 hover:text-[var(--tinta-1)] hover:underline"
+            >
+              + Novo paciente
+            </button>
+          ))
+        )}
       </Campo>
 
       <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
@@ -274,5 +318,89 @@ function FormularioAgendamento({
         <Salvar />
       </AcoesModal>
     </form>
+  );
+}
+
+/**
+ * Paciente novo sem sair do agendamento. Os campos não têm `name`: vivem
+ * dentro do formulário de agendamento e não podem ir junto no envio dele.
+ */
+function CadastroRapido({
+  nomeInicial,
+  aoCriar,
+  aoCancelar,
+}: {
+  nomeInicial: string;
+  aoCriar: (paciente: { id: string; nome: string }) => void;
+  aoCancelar: () => void;
+}) {
+  const [nome, setNome] = useState(nomeInicial);
+  const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [erros, setErros] = useState<Record<string, string>>({});
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const salvar = async () => {
+    setSalvando(true);
+    const r = await cadastrarPacienteRapido({ nome, telefone, cpf });
+    setSalvando(false);
+    setErros(r.campos ?? {});
+    setErro(r.campos ? null : (r.erro ?? null));
+    if (r.paciente) aoCriar(r.paciente);
+  };
+
+  // Enter num destes campos enviaria o agendamento inteiro.
+  const enterSalva = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      salvar();
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-3 rounded-[var(--r-md)] border border-[var(--traco)] bg-[var(--superficie-2)] p-3">
+      <p className="text-[13px] font-medium">Novo paciente</p>
+      <Campo label="Nome completo" erro={erros.nome}>
+        <Input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          onKeyDown={enterSalva}
+          autoFocus
+        />
+      </Campo>
+      <div className="grid grid-cols-2 gap-3">
+        <Campo label="Telefone" erro={erros.telefone}>
+          <Input
+            type="tel"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            onKeyDown={enterSalva}
+            placeholder="(11) 90000-0000"
+          />
+        </Campo>
+        <Campo label="CPF" erro={erros.cpf} dica="Opcional agora.">
+          <Input
+            value={cpf}
+            onChange={(e) => setCpf(e.target.value)}
+            onKeyDown={enterSalva}
+            inputMode="numeric"
+          />
+        </Campo>
+      </div>
+      {erro && (
+        <p role="alert" className="text-[12.5px]" style={{ color: "var(--status-critico)" }}>
+          {erro}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Botao type="button" variante="fantasma" onClick={aoCancelar}>
+          Cancelar
+        </Botao>
+        <Botao type="button" variante="secundario" onClick={salvar} disabled={salvando}>
+          {salvando ? "Cadastrando…" : "Cadastrar e usar"}
+        </Botao>
+      </div>
+    </div>
   );
 }

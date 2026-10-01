@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   DIA,
+  agendamentosDoPaciente,
   iniciosDosAgendamentos,
   lerMassa,
   profissionaisNoHorario,
@@ -144,5 +145,27 @@ test.describe.serial("fluxos críticos", () => {
     await page.mouse.up();
 
     await expect.poll(() => profissionaisNoHorario(m, "14:00")).toEqual([b.nome]);
+  });
+
+  test("paciente que não existe é cadastrado sem sair do agendamento", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}`);
+    await page.getByRole("button", { name: "Novo agendamento" }).click();
+    const dialogo = page.getByRole("dialog");
+
+    await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.pacienteNovo);
+    await dialogo.getByRole("button", { name: `+ Cadastrar “${m.pacienteNovo}”` }).click();
+    await dialogo.getByPlaceholder("(11) 90000-0000").fill("11 98888-7777");
+    await dialogo.getByRole("button", { name: "Cadastrar e usar" }).click();
+    await expect(dialogo.locator('select[name="paciente_id"]')).toContainText(m.pacienteNovo);
+
+    await dialogo
+      .locator('select[name="procedimento_id"]')
+      .selectOption({ label: `${m.procedimento} — 30 min` });
+    await dialogo.locator('input[name="inicio"]').fill(`${DIA}T16:00`);
+    await dialogo.locator('select[name="sala_id"]').selectOption({ label: m.sala });
+    await dialogo.getByRole("button", { name: "Agendar" }).click();
+    await expect(dialogo).toBeHidden();
+    expect(await agendamentosDoPaciente(m.pacienteNovo)).toBe(1);
   });
 });

@@ -16,6 +16,8 @@ export interface Massa {
   /** Gestão: configura horários e bloqueios, que a recepção não pode. */
   gestao: { email: string; senha: string; usuarioId: string };
   paciente: string;
+  /** Nome que NÃO existe no banco: o E2E o cadastra pelo agendamento. */
+  pacienteNovo: string;
   procedimento: string;
   sala: string;
   salaId: string;
@@ -125,6 +127,7 @@ export async function criarMassa(): Promise<Massa> {
       usuarioId,
       gestao,
       paciente,
+      pacienteNovo: `Paciente Novo E2E ${sufixo}`,
       procedimento,
       sala: `Sala ${sala.numero} — ${nomeSala}`,
       salaId: sala.id,
@@ -189,6 +192,21 @@ export async function profissionaisNoHorario(m: Massa, hhmm: string): Promise<st
   }
 }
 
+/** Atendimentos de um paciente pelo nome — para o paciente criado no E2E. */
+export async function agendamentosDoPaciente(nome: string): Promise<number> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select count(*)::int as n from agendamento a join paciente p on p.id = a.paciente_id
+        where p.nome = $1`,
+      [nome],
+    );
+    return rows[0].n;
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
@@ -208,7 +226,9 @@ export async function apagarMassa() {
   const db = await conectar();
   try {
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
-    await db.query(`delete from paciente where nome = $1`, [m.paciente]);
+    await db.query(`delete from paciente where nome = any($1::text[])`, [
+      [m.paciente, m.pacienteNovo].filter(Boolean),
+    ]);
     const profIds = (m.profissionais ?? []).map((p) => p.id);
     await db.query(`delete from recurso_disponibilidade where recurso_id = any($1::uuid[])`, [
       [m.salaId, ...profIds],
