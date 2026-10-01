@@ -6,6 +6,7 @@ import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agend
 import { buscarPacientesAction, pacotesDoPacienteAction } from "@/lib/actions/busca";
 import { Campo, Input, Select, Textarea, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
+import { useAgendamento, type PresetAgendamento } from "@/components/agenda/contexto-agendamento";
 import type { Sala, Equipamento, Profissional, Procedimento } from "@/lib/types/database";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,20 +25,43 @@ function Salvar() {
   );
 }
 
-export function NovoAgendamento({
-  salas,
-  equipamentos,
-  profissionais,
-  procedimentos,
-  diaPadrao,
-}: {
+interface Recursos {
   salas: Sala[];
   equipamentos: Equipamento[];
   profissionais: Profissional[];
   procedimentos: Procedimento[];
   diaPadrao: string;
-}) {
-  const [aberto, setAberto] = useState(false);
+}
+
+/**
+ * Aberto pelo botão do cabeçalho ou pelo clique num horário vazio da agenda,
+ * que chega com dia, hora e recurso já preenchidos.
+ */
+export function NovoAgendamento(props: Recursos) {
+  const { aberto, preset, versao, abrir, fechar } = useAgendamento();
+
+  return (
+    <GatilhoModal
+      rotulo="Novo agendamento"
+      titulo="Novo agendamento"
+      descricao="Sala, equipamentos e profissionais são checados contra conflito."
+      aberto={aberto}
+      aoMudar={(v) => (v ? abrir() : fechar())}
+    >
+      <FormularioAgendamento key={versao} {...props} preset={preset} aoConcluir={fechar} />
+    </GatilhoModal>
+  );
+}
+
+function FormularioAgendamento({
+  salas,
+  equipamentos,
+  profissionais,
+  procedimentos,
+  diaPadrao,
+  preset,
+  aoConcluir,
+}: Recursos & { preset: PresetAgendamento; aoConcluir: () => void }) {
   const [termo, setTermo] = useState("");
   const [pacientes, setPacientes] = useState<{ id: string; nome: string }[]>([]);
   const [pacienteId, setPacienteId] = useState("");
@@ -53,7 +77,7 @@ export function NovoAgendamento({
   const [estado, acao] = useActionState<ResultadoAgendamento, FormData>(
     async (anterior, formData) => {
       const r = await criarAgendamento(anterior, formData);
-      if (r.ok) setAberto(false);
+      if (r.ok) aoConcluir();
       return r;
     },
     {},
@@ -80,16 +104,8 @@ export function NovoAgendamento({
   const pacientesVisiveis = termo.trim().length < 2 ? [] : pacientes;
   const pacotesVisiveis = pacienteId ? pacotes : [];
 
-
   return (
-    <GatilhoModal
-      rotulo="Novo agendamento"
-      titulo="Novo agendamento"
-      descricao="Sala, equipamentos e profissionais são checados contra conflito."
-      aberto={aberto}
-      aoMudar={setAberto}
-    >
-      <form action={acao} className="space-y-4">
+    <form action={acao} className="space-y-4">
       <Campo label="Paciente" erro={estado.campos?.paciente_id}>
         <Input
           value={termo}
@@ -169,7 +185,12 @@ export function NovoAgendamento({
 
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Início" erro={estado.campos?.inicio}>
-          <Input name="inicio" type="datetime-local" defaultValue={`${diaPadrao}T09:00`} required />
+          <Input
+            name="inicio"
+            type="datetime-local"
+            defaultValue={preset.inicio ?? `${diaPadrao}T09:00`}
+            required
+          />
         </Campo>
         <Campo
           label="Sala"
@@ -177,7 +198,12 @@ export function NovoAgendamento({
           dica={sala ? "Definida pela sala dedicada ao procedimento." : undefined}
         >
           {/* RF-45 · sala dedicada é escolhida automaticamente e travada. */}
-          <Select name="sala_id" required value={sala?.id} disabled={!!sala}>
+          <Select
+            name="sala_id"
+            required
+            {...(sala ? { value: sala.id } : { defaultValue: preset.sala_id ?? "" })}
+            disabled={!!sala}
+          >
             <option value="">Selecione…</option>
             {salas.map((s) => (
               <option key={s.id} value={s.id}>
@@ -193,7 +219,12 @@ export function NovoAgendamento({
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-[var(--traco)] p-2 ">
           {equipamentos.map((e) => (
             <label key={e.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="equipamentos" value={e.id} />
+              <input
+                type="checkbox"
+                name="equipamentos"
+                value={e.id}
+                defaultChecked={preset.equipamentos?.includes(e.id)}
+              />
               {e.nome}
               <span className="text-xs text-[var(--tinta-3)]">({e.modelo})</span>
             </label>
@@ -208,7 +239,12 @@ export function NovoAgendamento({
           )}
           {profissionais.map((p) => (
             <label key={p.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="profissionais" value={p.id} />
+              <input
+                type="checkbox"
+                name="profissionais"
+                value={p.id}
+                defaultChecked={preset.profissionais?.includes(p.id)}
+              />
               <span
                 aria-hidden
                 className="size-2.5 rounded-full"
@@ -234,10 +270,9 @@ export function NovoAgendamento({
         </div>
       )}
 
-      <AcoesModal aoCancelar={() => setAberto(false)}>
-          <Salvar />
-        </AcoesModal>
-      </form>
-    </GatilhoModal>
+      <AcoesModal aoCancelar={aoConcluir}>
+        <Salvar />
+      </AcoesModal>
+    </form>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState, type CSSProperties } from "react";
+import { useActionState, useRef, useState, type CSSProperties } from "react";
 import { mudarStatus, remarcar, type ResultadoAgendamento } from "@/lib/actions/agenda";
 import type { Resultado } from "@/lib/actions/recursos";
 import type { AgendamentoNaAgenda } from "@/lib/consultas/agenda";
 import type { StatusAgendamento } from "@/lib/types/database";
 import { Modal } from "@/components/ui/modal";
 import { Botao, Campo, Input, Textarea } from "@/components/ui/primitivos";
+import { deslocamentoEmMinutos, type Grade } from "@/lib/grade-agenda";
 
 const hora = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
@@ -38,19 +39,86 @@ const ACOES: { status: StatusAgendamento; rotulo: string }[] = [
  * Sem ele a agenda era só leitura: nada marcava `realizado`, e sem realizado
  * não há receita, comissão nem ocupação efetiva.
  */
+export interface Arrasto {
+  larguraColuna: number;
+  /** Quantas colunas dá para andar para cada lado (0 = só vertical). */
+  colunasAntes: number;
+  colunasDepois: number;
+  /** Devolve se o remarcar deu certo; se não, o bloco volta ao lugar. */
+  aoSoltar: (deltaMin: number, deltaColuna: number) => Promise<boolean>;
+}
+
+/** Abaixo disso, o gesto é um clique, não um arraste. */
+const LIMIAR_ARRASTE_PX = 4;
+
 export function BlocoAgendamento({
   agendamento: a,
+  grade,
+  arrasto,
   rotuloStatus,
   estilo,
   titulo,
 }: {
   agendamento: AgendamentoNaAgenda;
+  grade: Grade;
+  /** Ausente quando o status não permite remarcar. */
+  arrasto?: Arrasto;
   rotuloStatus: string;
   estilo: CSSProperties;
   titulo: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+
+  // RF-49 · arrastar para remarcar.
+  const origem = useRef<{ x: number; y: number; moveu: boolean } | null>(null);
+  const ignorarClique = useRef(false);
+  const [desloc, setDesloc] = useState<{ min: number; coluna: number } | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const aoPressionar = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!arrasto || salvando || e.button !== 0) return;
+    origem.current = { x: e.clientX, y: e.clientY, moveu: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const aoMover = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const o = origem.current;
+    if (!o || !arrasto) return;
+    const dx = e.clientX - o.x;
+    const dy = e.clientY - o.y;
+    if (!o.moveu && Math.hypot(dx, dy) < LIMIAR_ARRASTE_PX) return;
+    o.moveu = true;
+    const coluna = Math.max(
+      -arrasto.colunasAntes,
+      Math.min(arrasto.colunasDepois, Math.round(dx / arrasto.larguraColuna)),
+    );
+    setDesloc({ min: deslocamentoEmMinutos(dy, grade), coluna });
+  };
+
+  const aoSoltar = async () => {
+    const o = origem.current;
+    origem.current = null;
+    if (!o?.moveu || !arrasto) return;
+    ignorarClique.current = true;
+    if (!desloc || (desloc.min === 0 && desloc.coluna === 0)) {
+      setDesloc(null);
+      return;
+    }
+    setSalvando(true);
+    await arrasto.aoSoltar(desloc.min, desloc.coluna);
+    // Deu certo: a agenda revalidada já traz o bloco no lugar novo.
+    // Deu errado: volta para onde estava, e a timeline mostra o motivo.
+    setSalvando(false);
+    setDesloc(null);
+  };
+
+  const cancelarArraste = () => {
+    origem.current = null;
+    setDesloc(null);
+  };
+
+  const novoInicio = desloc ? new Date(new Date(a.inicio).getTime() + desloc.min * 60_000) : null;
 
   const fechar = () => {
     setAberto(false);
@@ -81,16 +149,40 @@ export function BlocoAgendamento({
     <>
       <button
         type="button"
-        onClick={() => setAberto(true)}
-        className="absolute left-1 right-1 overflow-hidden rounded-[7px] border px-1.5 py-1 text-left text-[11px] leading-tight transition hover:brightness-95"
-        style={estilo}
+        data-bloco
+        onClick={() => {
+          if (ignorarClique.current) {
+            ignorarClique.current = false;
+            return;
+          }
+          setAberto(true);
+        }}
+        onPointerDown={aoPressionar}
+        onPointerMove={aoMover}
+        onPointerUp={aoSoltar}
+        onPointerCancel={cancelarArraste}
+        aria-roledescription={arrasto ? "atendimento arrastável" : undefined}
+        className={`absolute left-1 right-1 overflow-hidden rounded-[7px] border px-1.5 py-1 text-left text-[11px] leading-tight ${
+          desloc
+            ? "z-20 cursor-grabbing shadow-[var(--sombra-3)]"
+            : `transition hover:brightness-95 ${arrasto ? "cursor-grab" : ""}`
+        } ${salvando ? "opacity-70" : ""}`}
+        style={{
+          ...estilo,
+          // Sem isto o toque rola a página em vez de arrastar o bloco.
+          touchAction: arrasto ? "none" : undefined,
+          transform: desloc
+            ? `translate(${desloc.coluna * (arrasto?.larguraColuna ?? 0)}px, ${(desloc.min / 60) * grade.alturaHora}px)`
+            : undefined,
+        }}
         title={titulo}
       >
         <p className={`truncate font-medium ${a.status === "falta" ? "line-through" : ""}`}>
           {a.paciente?.nome ?? "—"}
         </p>
         <p className="truncate opacity-75">
-          {hora.format(new Date(a.inicio))} · {a.procedimento?.nome ?? "—"}
+          {novoInicio ? `→ ${hora.format(novoInicio)}` : hora.format(new Date(a.inicio))} ·{" "}
+          {a.procedimento?.nome ?? "—"}
         </p>
       </button>
 

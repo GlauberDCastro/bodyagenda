@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DIA, lerMassa, statusDoAgendamento } from "./massa";
+import { DIA, iniciosDosAgendamentos, lerMassa, statusDoAgendamento } from "./massa";
 import { agendar, entrar } from "./acoes";
 
 /** SPEC §8 · os fluxos que não podem quebrar no dia a dia da recepção. */
@@ -55,5 +55,50 @@ test.describe.serial("fluxos críticos", () => {
     await entrarComo(page);
     await page.goto(`/?por=sala&de=${DIA}&ate=${DIA}`);
     await expect(page.getByText(m.sala).first()).toBeVisible();
+  });
+
+  // Grade das 08:00 com 56 px por hora: 10:00 fica 112 px abaixo do topo.
+  const PX_HORA = 56;
+
+  test("clicar no horário vazio abre o agendamento já preenchido", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}`);
+    const coluna = page.locator(`[data-coluna="sala-${m.salaId}"]`);
+    await coluna.scrollIntoViewIfNeeded();
+    await coluna.click({ position: { x: 80, y: 2 * PX_HORA + 5 } });
+
+    const dialogo = page.getByRole("dialog");
+    await expect(dialogo.locator('input[name="inicio"]')).toHaveValue(`${DIA}T10:00`);
+    await expect(dialogo.locator('select[name="sala_id"]')).toHaveValue(m.salaId);
+
+    await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.paciente);
+    await dialogo.locator('select[name="paciente_id"]').selectOption({ label: m.paciente });
+    await dialogo
+      .locator('select[name="procedimento_id"]')
+      .selectOption({ label: `${m.procedimento} — 30 min` });
+    await dialogo.getByRole("button", { name: "Agendar" }).click();
+    await expect(dialogo).toBeHidden();
+    expect(await iniciosDosAgendamentos(m)).toEqual(["09:00", "10:00"]);
+  });
+
+  test("arrastar o atendimento remarca para o novo horário", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}`);
+    const bloco = page.getByRole("button", { name: /10:00/ }).filter({ hasText: m.paciente });
+    await bloco.scrollIntoViewIfNeeded();
+    const caixa = (await bloco.boundingBox())!;
+    const x = caixa.x + caixa.width / 2;
+    const y = caixa.y + 8;
+
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + PX_HORA / 2, { steps: 4 });
+    await page.mouse.move(x, y + PX_HORA, { steps: 4 });
+    await page.mouse.up();
+
+    await expect.poll(() => iniciosDosAgendamentos(m)).toEqual(["09:00", "11:00"]);
+    await expect(
+      page.getByRole("button", { name: /11:00/ }).filter({ hasText: m.paciente }),
+    ).toBeVisible();
   });
 });

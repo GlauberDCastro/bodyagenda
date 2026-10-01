@@ -135,6 +135,21 @@ export async function horarioDaSala(m: Massa): Promise<string[]> {
   }
 }
 
+/** Início de cada atendimento da massa, "HH:MM" no horário da clínica. */
+export async function iniciosDosAgendamentos(m: Massa): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select to_char(inicio at time zone 'America/Sao_Paulo', 'HH24:MI') as h
+         from agendamento where procedimento_id = $1 order by inicio`,
+      [m.procedimentoId],
+    );
+    return rows.map((r) => r.h);
+  } finally {
+    await db.end();
+  }
+}
+
 export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {

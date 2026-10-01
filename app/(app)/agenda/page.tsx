@@ -9,6 +9,7 @@ import {
 import { Timeline } from "@/components/agenda/timeline";
 import { AvisoBanco } from "@/components/ui/primitivos";
 import { NovoAgendamento } from "./novo-agendamento";
+import { ProvedorAgendamento } from "@/components/agenda/contexto-agendamento";
 
 export const metadata = { title: "Agenda" };
 
@@ -83,84 +84,78 @@ export default async function AgendaPage(props: {
   const faltas = agendamentos.filter((a) => a.status === "falta").length;
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
-          <p className="text-sm text-[var(--tinta-3)]">
-            {agendamentos.length} atendimento(s) · {realizados} realizado(s)
-            {faltas > 0 && ` · ${faltas} falta(s)`}
-          </p>
-        </div>
-        <NovoAgendamento
-          salas={salas.dados.filter((s) => s.ativo)}
-          equipamentos={equipamentos.dados.filter((e) => e.ativo)}
-          profissionais={profissionais.dados.filter((p) => p.ativo)}
-          procedimentos={procedimentos.dados.filter((p) => p.ativo)}
-          diaPadrao={dia}
-        />
-      </header>
+    // O botão "Novo agendamento" e o clique na grade abrem o mesmo formulário.
+    <ProvedorAgendamento>
+      <div className="space-y-5">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Agenda</h1>
+            <p className="text-sm text-[var(--tinta-3)]">
+              {agendamentos.length} atendimento(s) · {realizados} realizado(s)
+              {faltas > 0 && ` · ${faltas} falta(s)`} · clique num horário para agendar, arraste
+              para remarcar
+            </p>
+          </div>
+          <NovoAgendamento
+            salas={salas.dados.filter((s) => s.ativo)}
+            equipamentos={equipamentos.dados.filter((e) => e.ativo)}
+            profissionais={profissionais.dados.filter((p) => p.ativo)}
+            procedimentos={procedimentos.dados.filter((p) => p.ativo)}
+            diaPadrao={dia}
+          />
+        </header>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1">
-          <Link
-            href={`/agenda?dia=${diaAnterior}&por=${por}`}
-            className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
-          >
-            ←
-          </Link>
-          {/* Estado na URL: qualquer visão da agenda é compartilhável por link. */}
-          <form method="get" className="flex items-center gap-1">
-            <input type="hidden" name="por" value={por} />
-            <input
-              type="date"
-              name="dia"
-              defaultValue={dia}
-              className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm "
-            />
-          </form>
-          <Link
-            href={`/agenda?dia=${diaSeguinte}&por=${por}`}
-            className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
-          >
-            →
-          </Link>
-          <Link
-            href={`/agenda?dia=${hojeNaClinica()}&por=${por}`}
-            className="ml-1 rounded-md px-2 py-1 text-sm text-[var(--tinta-3)] transition hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
-          >
-            Hoje
-          </Link>
-        </div>
-
-        <nav className="flex gap-1 rounded-lg border border-[var(--traco)] p-0.5 ">
-          {VISOES.map((v) => (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1">
             <Link
-              key={v.chave}
-              href={`/agenda?dia=${dia}&por=${v.chave}`}
-              className={`rounded-md px-2.5 py-1 text-sm transition ${
-                por === v.chave
-                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-[var(--tinta-1)]"
-                  : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
-              }`}
+              href={`/agenda?dia=${diaAnterior}&por=${por}`}
+              className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
             >
-              {v.rotulo}
+              ←
             </Link>
-          ))}
-        </nav>
-      </div>
+            {/* Estado na URL: qualquer visão da agenda é compartilhável por link. */}
+            <form method="get" className="flex items-center gap-1">
+              <input type="hidden" name="por" value={por} />
+              <input
+                type="date"
+                name="dia"
+                defaultValue={dia}
+                className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm "
+              />
+            </form>
+            <Link
+              href={`/agenda?dia=${diaSeguinte}&por=${por}`}
+              className="rounded-md border border-[var(--traco)] px-2 py-1 text-sm transition hover:bg-[var(--superficie-2)] dark:hover:bg-slate-800"
+            >
+              →
+            </Link>
+            <Link
+              href={`/agenda?dia=${hojeNaClinica()}&por=${por}`}
+              className="ml-1 rounded-md px-2 py-1 text-sm text-[var(--tinta-3)] transition hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
+            >
+              Hoje
+            </Link>
+          </div>
 
-      <Timeline
-        colunas={colunas}
-        agendamentos={agendamentos}
-        pertence={(a, c) =>
-          c.tipo === "sala"
-            ? a.sala_id === c.id
-            : c.tipo === "equipamento"
-              ? a.equipamentos.some((e) => e.id === c.id)
-              : a.profissionais.some((p) => p.id === c.id)
-        }
-      />
-    </div>
+          <nav className="flex gap-1 rounded-lg border border-[var(--traco)] p-0.5 ">
+            {VISOES.map((v) => (
+              <Link
+                key={v.chave}
+                href={`/agenda?dia=${dia}&por=${v.chave}`}
+                className={`rounded-md px-2.5 py-1 text-sm transition ${
+                  por === v.chave
+                    ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
+                    : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)] dark:hover:text-slate-100"
+                }`}
+              >
+                {v.rotulo}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <Timeline colunas={colunas} agendamentos={agendamentos} dia={dia} />
+      </div>
+    </ProvedorAgendamento>
   );
 }

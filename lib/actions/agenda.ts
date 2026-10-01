@@ -61,6 +61,17 @@ async function detalharConflito(
   return { erro: frases.join(". ") + ".", conflitos };
 }
 
+/**
+ * 23514 vem do trigger de janela: fora do expediente ou sobre bloqueio. A
+ * mensagem do banco traz o id do recurso, que não diz nada à recepção.
+ * "Sem disponibilidade" também aparece quando um bloqueio cobre o dia todo.
+ */
+function mensagemDeJanela(mensagem: string): string {
+  return /fora da janela|não tem disponibilidade/.test(mensagem)
+    ? "Um dos recursos escolhidos não atende neste horário: está fora do expediente ou bloqueado (férias, folga ou manutenção)."
+    : mensagem;
+}
+
 export async function criarAgendamento(
   _anterior: ResultadoAgendamento,
   formData: FormData,
@@ -116,17 +127,7 @@ export async function criarAgendamento(
       });
     }
 
-    // 23514 vem do trigger de janela: fora do expediente ou sobre bloqueio.
-    // A mensagem do banco traz o id do recurso, que não diz nada à recepção.
-    if (error.code === "23514") {
-      // "Sem disponibilidade" também aparece quando um bloqueio cobre o dia todo.
-      if (/fora da janela|não tem disponibilidade/.test(error.message)) {
-        return {
-          erro: "Um dos recursos escolhidos não atende neste horário: está fora do expediente ou bloqueado (férias, folga ou manutenção).",
-        };
-      }
-      return { erro: error.message };
-    }
+    if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
     if (error.code === "42501" || error.message.includes("row-level security")) {
       return { erro: "Seu perfil não tem permissão para agendar." };
     }
@@ -169,8 +170,15 @@ export async function mudarStatus(_anterior: Resultado, formData: FormData): Pro
   return { ok: true };
 }
 
-/** RF-49 · remarcar. O trigger reconstrói as reservas e revalida conflito. */
-export async function remarcar(id: string, novoInicio: string): Promise<ResultadoAgendamento> {
+/**
+ * RF-49 · remarcar. O trigger reconstrói as reservas e revalida conflito.
+ * `novaSala` vem do arraste para outra coluna na visão por salas.
+ */
+export async function remarcar(
+  id: string,
+  novoInicio: string,
+  novaSala?: string,
+): Promise<ResultadoAgendamento> {
   const supabase = await createServerSupabase();
   const inicio = horarioDaClinica(novoInicio);
 
@@ -186,14 +194,15 @@ export async function remarcar(id: string, novoInicio: string): Promise<Resultad
 
   const { error } = await supabase
     .from("agendamento")
-    .update({ inicio, fim: fim.toISOString() })
+    .update({ inicio, fim: fim.toISOString(), ...(novaSala ? { sala_id: novaSala } : {}) })
     .eq("id", id);
 
   if (error) {
     if (error.code === "23P01") {
       return { erro: "O novo horário conflita com outro agendamento deste recurso." };
     }
-    if (error.code === "23514") return { erro: error.message };
+    if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
+    if (error.code === "42501") return { erro: "Seu perfil não pode remarcar este atendimento." };
     return { erro: error.message };
   }
 
