@@ -6,6 +6,9 @@ export interface PacoteComSaldo extends Pacote {
   /** Sessões já consumidas — agendadas ou realizadas, mas não canceladas. */
   usadas: number;
   restantes: number;
+  /** RF-62 · realizadas (ou falta, que consome a sessão) e só agendadas. */
+  realizadas: number;
+  agendadas: number;
 }
 
 export async function buscarPacientes(termo: string): Promise<Paciente[]> {
@@ -57,16 +60,23 @@ export async function pacotesDoPaciente(pacienteId: string): Promise<PacoteComSa
     )
     .neq("status", "cancelado");
 
-  const consumo = new Map<string, number>();
+  const consumo = new Map<string, { realizadas: number; agendadas: number }>();
   for (const a of agendamentos ?? []) {
-    if (a.pacote_id) consumo.set(a.pacote_id, (consumo.get(a.pacote_id) ?? 0) + 1);
+    if (!a.pacote_id) continue;
+    const c = consumo.get(a.pacote_id) ?? { realizadas: 0, agendadas: 0 };
+    if (a.status === "realizado" || a.status === "falta") c.realizadas++;
+    else c.agendadas++;
+    consumo.set(a.pacote_id, c);
   }
 
   return pacotes.map((p) => {
-    const usadas = consumo.get(p.id) ?? 0;
+    const { realizadas, agendadas } = consumo.get(p.id) ?? { realizadas: 0, agendadas: 0 };
+    const usadas = realizadas + agendadas;
     return {
       ...p,
       usadas,
+      realizadas,
+      agendadas,
       restantes: Math.max(0, p.quantidade_sessoes - usadas),
     } as PacoteComSaldo;
   });

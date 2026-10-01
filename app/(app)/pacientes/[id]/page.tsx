@@ -12,6 +12,8 @@ import { FormularioPacote } from "./formulario-pacote";
 import { cobrancas, diasDeAtraso, emAberto } from "@/lib/consultas/caixa";
 import { TabelaCobrancas } from "@/components/financeiro/tabela-cobrancas";
 import { CancelarPacote } from "@/components/financeiro/cancelar-pacote";
+import { AtivarPaciente } from "@/components/pacientes/ativar-paciente";
+import { FormularioPaciente } from "../formulario-paciente";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataHora = new Intl.DateTimeFormat("pt-BR", {
@@ -63,13 +65,20 @@ export default async function PacientePage(props: { params: Promise<{ id: string
         >
           ← Pacientes
         </Link>
-        <h1 className="text-xl font-semibold tracking-tight">{paciente.nome}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold tracking-tight">{paciente.nome}</h1>
+          <div className="flex items-center gap-2">
+            <AtivarPaciente id={paciente.id} ativo={paciente.ativo} nome={paciente.nome} />
+            <FormularioPaciente inicial={paciente} />
+          </div>
+        </div>
         <p className="text-sm text-[var(--tinta-3)]">
           {[paciente.cpf ? formatarCpf(paciente.cpf) : null, paciente.telefone, paciente.email]
             .filter(Boolean)
             .join(" · ") || "Sem dados de contato"}
         </p>
         <div className="flex flex-wrap gap-2">
+          {!paciente.ativo && <Etiqueta>Inativo</Etiqueta>}
           {!paciente.consentimento_lgpd && (
             <Etiqueta tom="atencao">Consentimento LGPD pendente</Etiqueta>
           )}
@@ -112,9 +121,10 @@ export default async function PacientePage(props: { params: Promise<{ id: string
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {/* RF-62 · saldo no formato "sessão 3 de 10" */}
+                    {/* RF-62 · consumidas, agendadas e restantes, cada uma no seu lugar */}
                     <span className="tabular-nums text-[var(--tinta-2)]">
-                      sessão {p.usadas} de {p.quantidade_sessoes}
+                      {p.realizadas} de {p.quantidade_sessoes} realizada(s)
+                      {p.agendadas > 0 && ` · ${p.agendadas} agendada(s)`}
                     </span>
                     <Etiqueta
                       tom={p.status === "ativo" ? (p.restantes > 0 ? "bom" : "atencao") : "neutro"}

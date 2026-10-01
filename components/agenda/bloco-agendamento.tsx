@@ -197,7 +197,15 @@ export function BlocoAgendamento({
         aberto={aberto}
         aoFechar={fechar}
         titulo={a.paciente?.nome ?? "Atendimento"}
-        descricao={`${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${rotuloStatus}`}
+        descricao={[
+          a.procedimento?.nome ?? "—",
+          `${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))}`,
+          // RF-62 · em que ponto do pacote o paciente está.
+          a.numero_sessao && a.sessoes_pacote
+            ? `sessão ${a.numero_sessao} de ${a.sessoes_pacote}`
+            : "avulsa",
+          rotuloStatus,
+        ].join(" · ")}
       >
         <div className="space-y-5">
           {(a.profissionais.length > 0 || a.equipamentos.length > 0) && (

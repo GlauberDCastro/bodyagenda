@@ -27,20 +27,45 @@ export async function salvarPaciente(
   id: string | null,
   _anterior: Resultado,
   formData: FormData,
-): Promise<Resultado> {
+): Promise<Resultado & { homonimo?: { id: string; nome: string } }> {
   const parsed = pacienteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return erroDeValidacao(parsed.error.issues);
 
   const { consentimento_lgpd, ...paciente } = parsed.data;
   const supabase = await createServerSupabase();
 
+  // RF-11 · mesmo nome e mesma data de nascimento quase sempre é a mesma
+  // pessoa cadastrada duas vezes. Avisa e pede confirmação; não bloqueia,
+  // porque homônimo existe.
+  if (!id && paciente.data_nascimento && formData.get("confirmar_homonimo") !== "on") {
+    const { data: igual } = await supabase
+      .from("paciente")
+      .select("id, nome")
+      .ilike("nome", paciente.nome.trim())
+      .eq("data_nascimento", paciente.data_nascimento)
+      .limit(1)
+      .maybeSingle();
+    if (igual) {
+      return {
+        erro: "Já existe um paciente com este nome e esta data de nascimento.",
+        homonimo: igual,
+      };
+    }
+  }
+
   // RF-14 · o consentimento carrega a data em que foi dado. Marcar `true` sem
-  // registrar quando não comprova nada perante a LGPD.
-  const dados = {
-    ...paciente,
-    consentimento_lgpd,
-    consentimento_em: consentimento_lgpd ? new Date().toISOString() : null,
-  };
+  // registrar quando não comprova nada perante a LGPD — e editar a ficha
+  // depois não pode trocar essa data.
+  let consentimentoEm: string | null = consentimento_lgpd ? new Date().toISOString() : null;
+  if (id && consentimento_lgpd) {
+    const { data: atual } = await supabase
+      .from("paciente")
+      .select("consentimento_em")
+      .eq("id", id)
+      .maybeSingle();
+    consentimentoEm = atual?.consentimento_em ?? consentimentoEm;
+  }
+  const dados = { ...paciente, consentimento_lgpd, consentimento_em: consentimentoEm };
 
   const { error } = id
     ? await supabase.from("paciente").update(dados).eq("id", id)
@@ -48,6 +73,7 @@ export async function salvarPaciente(
 
   if (error) return erroDeBanco(error);
   revalidatePath("/pacientes");
+  if (id) revalidatePath(`/pacientes/${id}`);
   return { ok: true };
 }
 
@@ -86,6 +112,16 @@ export async function inativarPaciente(id: string): Promise<Resultado> {
   const { error } = await supabase.from("paciente").update({ ativo: false }).eq("id", id);
   if (error) return erroDeBanco(error);
   revalidatePath("/pacientes");
+  revalidatePath(`/pacientes/${id}`);
+  return { ok: true };
+}
+
+export async function reativarPaciente(id: string): Promise<Resultado> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from("paciente").update({ ativo: true }).eq("id", id);
+  if (error) return erroDeBanco(error);
+  revalidatePath("/pacientes");
+  revalidatePath(`/pacientes/${id}`);
   return { ok: true };
 }
 

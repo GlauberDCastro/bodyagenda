@@ -285,4 +285,40 @@ test.describe.serial("fluxos críticos", () => {
     await primeiro.click();
     await expect(dialogo.locator('input[name="inicio"]')).toHaveValue(new RegExp(`T${hora}$`));
   });
+
+  test("ficha: editar, consentimento LGPD, homônimo, inativar e reativar", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto(`/pacientes/${m.pacienteId}`);
+    await expect(page.getByText("Consentimento LGPD pendente")).toBeVisible();
+
+    // RF-14 · edição da ficha com consentimento posterior.
+    await page.getByRole("button", { name: "Editar dados" }).click();
+    let dialogo = page.getByRole("dialog");
+    await dialogo.locator('input[name="telefone"]').fill("11 97777-6666");
+    await dialogo.locator('input[name="data_nascimento"]').fill("1990-05-10");
+    await dialogo.locator('input[name="consentimento_lgpd"]').check();
+    await dialogo.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByText("11 97777-6666")).toBeVisible();
+    await expect(page.getByText("Consentimento LGPD pendente")).toHaveCount(0);
+
+    // RF-11 · mesmo nome e nascimento: avisa antes de duplicar.
+    await page.goto("/pacientes");
+    await page.getByRole("button", { name: "Novo paciente" }).click();
+    dialogo = page.getByRole("dialog");
+    await dialogo.locator('input[name="nome"]').fill(m.paciente);
+    await dialogo.locator('input[name="data_nascimento"]').fill("1990-05-10");
+    await dialogo.getByRole("button", { name: "Salvar paciente" }).click();
+    await expect(dialogo).toContainText("com esta data de nascimento");
+    await expect(dialogo.getByRole("link", { name: m.paciente })).toBeVisible();
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+
+    // RF-15 · inativar e reativar.
+    await page.goto(`/pacientes/${m.pacienteId}`);
+    await page.getByRole("button", { name: "Inativar" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Inativar paciente" }).click();
+    await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Reativar" }).click();
+    await expect(page.getByText("Inativo", { exact: true })).toHaveCount(0);
+  });
 });

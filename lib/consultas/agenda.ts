@@ -7,6 +7,8 @@ export interface AgendamentoNaAgenda {
   fim: string;
   status: StatusAgendamento;
   numero_sessao: number | null;
+  /** Total de sessões do pacote, para "sessão 3 de 10" (RF-62). */
+  sessoes_pacote: number | null;
   paciente: { id: string; nome: string } | null;
   procedimento: { id: string; nome: string; duracao_min: number } | null;
   sala_id: string;
@@ -32,6 +34,7 @@ export async function agendamentosDoPeriodo(
     .from("agendamento")
     .select(
       `id, inicio, fim, status, numero_sessao, sala_id,
+       pacote:pacote_id (quantidade_sessoes),
        paciente:paciente_id (id, nome),
        procedimento:procedimento_id (id, nome, duracao_min),
        agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
@@ -49,6 +52,7 @@ export async function agendamentosDoPeriodo(
       fim: string;
       status: StatusAgendamento;
       numero_sessao: number | null;
+      pacote: { quantidade_sessoes: number } | null;
       sala_id: string;
       paciente: { id: string; nome: string } | null;
       procedimento: { id: string; nome: string; duracao_min: number } | null;
@@ -64,6 +68,7 @@ export async function agendamentosDoPeriodo(
       fim: linha.fim,
       status: linha.status,
       numero_sessao: linha.numero_sessao,
+      sessoes_pacote: linha.pacote?.quantidade_sessoes ?? null,
       sala_id: linha.sala_id,
       paciente: linha.paciente,
       procedimento: linha.procedimento,
