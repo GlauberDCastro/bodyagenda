@@ -4,12 +4,7 @@ import { sair } from "@/lib/actions/auth";
 import { Navegacao, Migalha } from "@/components/shell/navegacao";
 import { BuscaPaciente } from "@/components/shell/busca-paciente";
 import { SUBTITULO_PRODUTO } from "@/components/ui/logo";
-
-const ROTULO_PERFIL: Record<string, string> = {
-  admin: "Administrador da clínica",
-  recepcao: "Recepção",
-  profissional: "Profissional",
-};
+import { ROTULO_PERFIL } from "@/lib/perfis";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase();

@@ -50,6 +50,11 @@ export default async function ProcedimentosPage() {
   const semCusto = linhas.filter((l) => !l.temCusto).length;
   const semProfissional = linhas.filter((l) => l.ativo && l.profissionais === 0);
 
+  // Procedimento a R$ 0 nao da erro em lugar nenhum: gera agendamento, ocupa
+  // a agenda e soma ZERO na receita. O relatorio fica errado sem avisar, que
+  // e pior do que falhar.
+  const semPreco = linhas.filter((l) => l.ativo && Number(l.valor_sessao) === 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -58,6 +63,19 @@ export default async function ProcedimentosPage() {
         </p>
         <FormularioProcedimento />
       </div>
+
+      {semPreco.length > 0 && (
+        <Aviso tom="critico">
+          <p className="font-semibold">
+            {semPreco.length} procedimento(s) sem preço
+          </p>
+          <p className="mt-1">
+            {semPreco.map((l) => l.nome).join(", ")} — podem ser agendados e vão
+            ocupar a agenda, mas somam R$ 0 na receita. O relatório fica errado
+            sem avisar.
+          </p>
+        </Aviso>
+      )}
 
       {semProfissional.length > 0 && (
         <Aviso>

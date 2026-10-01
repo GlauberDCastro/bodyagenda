@@ -591,6 +591,7 @@ export type Database = {
           sessoes_padrao: number;
           updated_at: string;
           valor_sessao: number;
+          valor_tabela: number | null;
         };
         Insert: {
           ativo?: boolean;
@@ -604,6 +605,7 @@ export type Database = {
           sessoes_padrao?: number;
           updated_at?: string;
           valor_sessao: number;
+          valor_tabela?: number | null;
         };
         Update: {
           ativo?: boolean;
@@ -617,6 +619,7 @@ export type Database = {
           sessoes_padrao?: number;
           updated_at?: string;
           valor_sessao?: number;
+          valor_tabela?: number | null;
         };
         Relationships: [];
       };
@@ -668,6 +671,7 @@ export type Database = {
           sessoes_padrao: number | null;
           unidade: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao: number | null;
+          valor_tabela: number | null;
         };
         Insert: {
           ativo?: boolean;
@@ -681,6 +685,7 @@ export type Database = {
           sessoes_padrao?: number | null;
           unidade?: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao?: number | null;
+          valor_tabela?: number | null;
         };
         Update: {
           ativo?: boolean;
@@ -694,6 +699,7 @@ export type Database = {
           sessoes_padrao?: number | null;
           unidade?: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao?: number | null;
+          valor_tabela?: number | null;
         };
         Relationships: [
           {
@@ -1156,6 +1162,7 @@ export type Database = {
         }[];
       };
       e_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      e_gestao: { Args: Record<PropertyKey, never>; Returns: boolean };
       excluir_recurso: {
         Args: { p_id: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
         Returns: undefined;
@@ -1331,12 +1338,13 @@ export type Database = {
       };
       reservas_suspensas: { Args: Record<PropertyKey, never>; Returns: boolean };
       tz_clinica: { Args: Record<PropertyKey, never>; Returns: string };
+      ve_financeiro: { Args: Record<PropertyKey, never>; Returns: boolean };
     };
     Enums: {
       alocacao_equipamento: "fixo" | "movel";
       alocacao_sala: "dedicada" | "flexivel";
       motivo_bloqueio: "manutencao" | "ferias" | "folga" | "outro";
-      perfil_usuario: "admin" | "recepcao" | "profissional";
+      perfil_usuario: "admin" | "recepcao" | "profissional" | "gestao" | "financeiro";
       status_agendamento:
         | "agendado"
         | "confirmado"
@@ -1470,7 +1478,7 @@ export const Constants = {
       alocacao_equipamento: ["fixo", "movel"],
       alocacao_sala: ["dedicada", "flexivel"],
       motivo_bloqueio: ["manutencao", "ferias", "folga", "outro"],
-      perfil_usuario: ["admin", "recepcao", "profissional"],
+      perfil_usuario: ["admin", "recepcao", "profissional", "gestao", "financeiro"],
       status_agendamento: [
         "agendado",
         "confirmado",

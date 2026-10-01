@@ -26,7 +26,7 @@ export default async function ProfissionaisPage() {
         <p className="text-sm text-[var(--tinta-3)]">
           {profissionais.dados.filter((p) => p.ativo).length} profissional(is) ativo(s)
         </p>
-        <FormularioProfissional procedimentos={procedimentos.dados} />
+        <FormularioProfissional procedimentos={procedimentos.dados.filter((p) => p.ativo)} />
       </div>
 
       {profissionais.dados.length === 0 ? (
@@ -74,7 +74,7 @@ export default async function ProfissionaisPage() {
                     </Etiqueta>
                   </td>
                   <td className="px-4 py-2.5">
-                    <AcoesProfissional profissional={p} procedimentos={procedimentos.dados} />
+                    <AcoesProfissional profissional={p} procedimentos={procedimentos.dados.filter((x) => x.ativo)} />
                   </td>
                 </tr>
               ))}
