@@ -792,11 +792,50 @@ export type Database = {
           },
         ];
       };
+      convite_profissional: {
+        Row: {
+          id: string;
+          profissional_id: string;
+          token_hash: string;
+          criado_por: string | null;
+          criado_em: string;
+          expira_em: string;
+          usado_em: string | null;
+          revogado_em: string | null;
+          usuario_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          profissional_id: string;
+          token_hash: string;
+          criado_por?: string | null;
+          criado_em?: string;
+          expira_em?: string;
+          usado_em?: string | null;
+          revogado_em?: string | null;
+          usuario_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          profissional_id?: string;
+          token_hash?: string;
+          criado_por?: string | null;
+          criado_em?: string;
+          expira_em?: string;
+          usado_em?: string | null;
+          revogado_em?: string | null;
+          usuario_id?: string | null;
+        };
+        Relationships: [];
+      };
       profissional: {
         Row: {
           ativo: boolean;
           cor_agenda: string;
           cpf: string | null;
+          telefone: string | null;
+          data_nascimento: string | null;
+          registro_conselho: string | null;
           created_at: string;
           especialidade: string | null;
           id: string;
@@ -810,6 +849,9 @@ export type Database = {
           ativo?: boolean;
           cor_agenda?: string;
           cpf?: string | null;
+          telefone?: string | null;
+          data_nascimento?: string | null;
+          registro_conselho?: string | null;
           created_at?: string;
           especialidade?: string | null;
           id?: string;
@@ -823,6 +865,9 @@ export type Database = {
           ativo?: boolean;
           cor_agenda?: string;
           cpf?: string | null;
+          telefone?: string | null;
+          data_nascimento?: string | null;
+          registro_conselho?: string | null;
           created_at?: string;
           especialidade?: string | null;
           id?: string;

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createServerSupabase, createAdminSupabase } from "@/lib/supabase/server";
 import { env, chaveServiceRole } from "@/lib/env";
 import type { Resultado } from "./recursos";
+import { exigirAdmin } from "@/lib/auth/exigir-admin";
 
 const vazioParaNulo = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (v === "" || v === undefined ? null : v), schema.nullable());
@@ -22,25 +23,6 @@ function validacao(issues: { path: PropertyKey[]; message: string }[]): Resultad
   const campos: Record<string, string> = {};
   for (const i of issues) campos[String(i.path[0] ?? "_")] ??= i.message;
   return { erro: issues[0]?.message ?? "Dados inválidos", campos };
-}
-
-/** Só o admin cria e edita acesso — nem a gestão. Checado no servidor. */
-async function exigirAdmin(): Promise<Resultado | null> {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { erro: "Sessão expirada." };
-
-  const { data } = await supabase
-    .from("usuario")
-    .select("perfil")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  return data?.perfil === "admin"
-    ? null
-    : { erro: "Apenas o administrador gerencia usuários." };
 }
 
 /**

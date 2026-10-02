@@ -60,6 +60,18 @@ export function CamposProfissional({
         </Campo>
       </div>
 
+      <div className="grid grid-cols-3 gap-3">
+        <Campo label="Telefone" erro={estado.campos?.telefone}>
+          <Input name="telefone" type="tel" defaultValue={inicial?.telefone ?? ""} />
+        </Campo>
+        <Campo label="Nascimento" erro={estado.campos?.data_nascimento}>
+          <Input name="data_nascimento" type="date" defaultValue={inicial?.data_nascimento ?? ""} />
+        </Campo>
+        <Campo label="Registro no conselho" erro={estado.campos?.registro_conselho}>
+          <Input name="registro_conselho" defaultValue={inicial?.registro_conselho ?? ""} />
+        </Campo>
+      </div>
+
       <Campo label="Cor na agenda" erro={estado.campos?.cor_agenda}>
         <Input name="cor_agenda" type="color" defaultValue={inicial?.cor_agenda ?? "#64748b"} className="h-10" />
       </Campo>

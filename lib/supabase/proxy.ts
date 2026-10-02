@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
 /** Rotas acessíveis sem sessão. */
-const PUBLICAS = ["/login", "/auth"];
+const PUBLICAS = ["/login", "/auth", "/convite"];
 
 /** RF-05 · sessão expira após 8 h sem nenhuma requisição. */
 const INATIVIDADE_MAX_MS = 8 * 60 * 60 * 1000;

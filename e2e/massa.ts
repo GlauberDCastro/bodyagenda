@@ -31,6 +31,10 @@ export interface Massa {
   equipamentoFixoId: string;
   /** Dois profissionais habilitados no procedimento, para trocar arrastando. */
   profissionais: { id: string; nome: string }[];
+  /** Admin: único perfil que convida profissionais. */
+  admin: { email: string; senha: string; usuarioId: string };
+  /** Profissional sem login, reservado para o teste de convite. */
+  profissionalConvite: { id: string; nome: string };
 }
 
 function env(): Record<string, string> {
@@ -88,6 +92,11 @@ export async function criarMassa(): Promise<Massa> {
     const { email, senha, usuarioId } = await criarUsuario(db, sufixo, "recepcao", "Recepção E2E");
     const gestao = await criarUsuario(db, sufixo, "gestao", "Gestão E2E");
     const financeiro = await criarUsuario(db, sufixo, "financeiro", "Financeiro E2E");
+    const admin = await criarUsuario(db, sufixo, "admin", "Admin E2E");
+    const nomeConvite = `TESTE E2E Prof Convite ${sufixo}`;
+    const {
+      rows: [profConvite],
+    } = await db.query(`insert into profissional (nome) values ($1) returning id`, [nomeConvite]);
     const nomeSala = `TESTE E2E ${sufixo}`;
     const {
       rows: [sala],
@@ -173,6 +182,8 @@ export async function criarMassa(): Promise<Massa> {
       usuarioId,
       gestao,
       financeiro,
+      admin,
+      profissionalConvite: { id: profConvite.id, nome: nomeConvite },
       paciente,
       pacienteId: pac.id,
       pacienteNovo: `Paciente Novo E2E ${sufixo}`,
@@ -351,6 +362,7 @@ export async function apagarMassa() {
   if (!existsSync(ARQUIVO)) return;
   const m = lerMassa();
   const db = await conectar();
+  const contas: string[] = [];
   try {
     // Cobrança aponta para a origem sem chave estrangeira: sai antes dela.
     await db.query(
@@ -366,7 +378,19 @@ export async function apagarMassa() {
     await db.query(`delete from paciente where nome = any($1::text[])`, [
       [m.paciente, m.pacienteNovo].filter(Boolean),
     ]);
-    const profIds = (m.profissionais ?? []).map((p) => p.id);
+    const profIds = [
+      ...(m.profissionais ?? []).map((p) => p.id),
+      m.profissionalConvite?.id,
+    ].filter(Boolean);
+    // Conta criada pelo próprio teste ao aceitar o convite.
+    const { rows: contasConvite } = await db.query(
+      `select usuario_id from profissional where id = any($1::uuid[]) and usuario_id is not null`,
+      [profIds],
+    );
+    contas.push(...contasConvite.map((c) => c.usuario_id as string));
+    await db.query(`delete from convite_profissional where profissional_id = any($1::uuid[])`, [
+      profIds,
+    ]);
     await db.query(`delete from recurso_disponibilidade where recurso_id = any($1::uuid[])`, [
       [m.salaId, ...profIds],
     ]);
@@ -393,13 +417,18 @@ export async function apagarMassa() {
     await db.query(`delete from procedimento where nome like $1 || ' (cópia)%'`, [m.procedimento]);
     // A auditoria referencia o usuário: as linhas do teste saem junto.
     await db.query(`delete from despesa_fixa where descricao like 'TESTE E2E%'`);
-    const ids = [m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId].filter(Boolean);
+    contas.push(
+      ...[m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId, m.admin?.usuarioId].filter(
+        Boolean,
+      ),
+    );
+    const ids = contas;
     await db.query(`delete from auditoria where usuario_id = any($1::uuid[])`, [ids]);
     await db.query(`delete from usuario where id = any($1::uuid[])`, [ids]);
   } finally {
     await db.end();
   }
-  for (const id of [m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId].filter(Boolean)) {
+  for (const id of contas) {
     await authAdmin(`users/${id}`, "DELETE");
   }
   rmSync(ARQUIVO);

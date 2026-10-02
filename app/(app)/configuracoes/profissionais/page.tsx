@@ -1,4 +1,10 @@
-import { listarProfissionais, listarProcedimentos } from "@/lib/consultas/recursos";
+import {
+  listarProfissionais,
+  listarProcedimentos,
+  perfilDoUsuario,
+} from "@/lib/consultas/recursos";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { ConviteProfissional } from "@/components/config/convite-profissional";
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioProfissional } from "./formulario-profissional";
 import { AcoesProfissional } from "@/components/config/acoes-profissional";
@@ -7,10 +13,20 @@ import { BotaoDuplicar } from "../equipamentos/botao-duplicar";
 export const metadata = { title: "Profissionais" };
 
 export default async function ProfissionaisPage() {
-  const [profissionais, procedimentos] = await Promise.all([
+  const supabase = await createServerSupabase();
+  const [profissionais, procedimentos, perfil, { data: convites }] = await Promise.all([
     listarProfissionais(),
     listarProcedimentos(),
+    perfilDoUsuario(),
+    // RLS: só o admin enxerga convites; para os demais a lista vem vazia.
+    supabase
+      .from("convite_profissional")
+      .select("profissional_id, expira_em")
+      .is("usado_em", null)
+      .is("revogado_em", null)
+      .gt("expira_em", new Date().toISOString()),
   ]);
+  const pendentes = new Map((convites ?? []).map((c) => [c.profissional_id, c.expira_em]));
 
   if (profissionais.semSchema) return <AvisoBanco />;
   if (profissionais.erro) {
@@ -42,7 +58,7 @@ export default async function ProfissionaisPage() {
               <tr className="text-[var(--tinta-3)]">
                 <th className="px-4 py-2.5 font-medium">Nome</th>
                 <th className="px-4 py-2.5 font-medium">Especialidade</th>
-                <th className="px-4 py-2.5 font-medium">Login</th>
+                <th className="px-4 py-2.5 font-medium">Acesso</th>
                 <th className="px-4 py-2.5 font-medium">Vigência</th>
                 <th className="px-4 py-2.5 font-medium">Situação</th>
                 <th className="px-4 py-2.5 font-medium"><span className="sr-only">Ações</span></th>
@@ -63,7 +79,17 @@ export default async function ProfissionaisPage() {
                   </td>
                   <td className="px-4 py-2.5 text-[var(--tinta-2)]">{p.especialidade ?? "—"}</td>
                   <td className="px-4 py-2.5">
-                    <Etiqueta>{p.usuario_id ? "Com acesso" : "Sem login"}</Etiqueta>
+                    <ConviteProfissional
+                      profissional={{
+                        id: p.id,
+                        nome: p.nome,
+                        telefone: p.telefone,
+                        ativo: p.ativo,
+                        temAcesso: Boolean(p.usuario_id),
+                      }}
+                      pendenteAte={pendentes.get(p.id) ?? null}
+                      podeConvidar={perfil === "admin"}
+                    />
                   </td>
                   <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">
                     {p.vigencia_inicio}

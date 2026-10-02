@@ -92,6 +92,9 @@ export const profissionalSchema = z
       .nullish()
       .or(z.literal("").transform(() => null)),
     especialidade: z.string().nullish(),
+    telefone: z.string().nullish().or(z.literal("").transform(() => null)),
+    data_nascimento: z.string().nullish().or(z.literal("").transform(() => null)),
+    registro_conselho: z.string().nullish().or(z.literal("").transform(() => null)),
     cor_agenda: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor deve estar no formato #RRGGBB"),
     custo_hora: z.coerce.number().nonnegative().default(0),
     comissao_tipo: z.enum(["percentual", "valor_fixo", "nenhuma"]),
