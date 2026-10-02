@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import {
   criarAgendamento,
   editarAgendamento,
@@ -27,7 +27,7 @@ interface PacoteOpcao {
 }
 
 function Salvar({ editando }: { editando: boolean }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {editando
@@ -213,7 +213,7 @@ function FormularioAgendamento({
     setBuscandoLivres(false);
   }
 
-  const [estado, acao] = useActionState<ResultadoAgendamento, FormData>(
+  const [estado, acao, enviando] = useActionState<ResultadoAgendamento, FormData>(
     async (anterior, formData) => {
       const r = editando
         ? await editarAgendamento(anterior, formData)
@@ -263,7 +263,7 @@ function FormularioAgendamento({
   const carenciaVisivel = pacienteId && procId ? carencia : null;
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       {editando && <input type="hidden" name="id" value={editando.id} />}
       {editando ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--traco)] bg-[var(--superficie-2)] px-3.5 py-2.5">
@@ -575,7 +575,7 @@ function FormularioAgendamento({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar editando={Boolean(editando)} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

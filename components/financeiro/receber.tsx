@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { registrarRecebimento } from "@/lib/actions/financeiro";
 import type { Resultado } from "@/lib/actions/recursos";
 import { FORMAS_PAGAMENTO } from "@/lib/schemas/pacientes";
@@ -13,7 +13,7 @@ const hoje = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Registrando…" : "Registrar recebimento"}
@@ -35,7 +35,7 @@ export function Receber({
 }) {
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState(Number(cobranca.valor));
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await registrarRecebimento(anterior, formData);
     if (r.ok) setAberto(false);
     return r;
@@ -52,7 +52,7 @@ export function Receber({
       aoMudar={setAberto}
       variante="secundario"
     >
-      <form action={acao} className="space-y-4">
+      <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
         <input type="hidden" name="lancamento_id" value={cobranca.id} />
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Valor recebido" erro={estado.campos?.valor}>
@@ -94,7 +94,7 @@ export function Receber({
         <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
-      </form>
+      </Formulario>
     </GatilhoModal>
   );
 }

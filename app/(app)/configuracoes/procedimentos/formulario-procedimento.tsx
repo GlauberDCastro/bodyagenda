@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarProcedimento } from "@/lib/actions/procedimentos";
 import type { Resultado } from "@/lib/actions/recursos";
 import { calcularMargem, type LinhaCusto } from "@/lib/domain/margem";
@@ -12,7 +12,7 @@ import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : "Salvar procedimento"}
@@ -34,7 +34,7 @@ export function FormularioProcedimento({
   const [valor, setValor] = useState(Number(inicial?.valor_sessao ?? 0));
   const [sessoes, setSessoes] = useState(inicial?.sessoes_padrao ?? 1);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await salvarProcedimento(inicial?.id ?? null, anterior, formData);
     if (r.ok) setAberto(false);
     return r;
@@ -52,7 +52,7 @@ export function FormularioProcedimento({
       aoMudar={setAberto}
       variante={inicial ? "secundario" : "primario"}
     >
-      <form action={acao} className="space-y-4">
+      <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <Campo label="Nome" erro={estado.campos?.nome}>
         <Input
           name="nome"
@@ -179,7 +179,7 @@ export function FormularioProcedimento({
       <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
-      </form>
+      </Formulario>
     </GatilhoModal>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { venderPacote } from "@/lib/actions/pacientes";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
@@ -12,7 +12,7 @@ import { FORMAS_PAGAMENTO } from "@/lib/schemas/pacientes";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Vendendo…" : "Vender pacote"}
@@ -36,7 +36,7 @@ export function FormularioPacote({
   const [desconto, setDesconto] = useState(0);
   const [parcelas, setParcelas] = useState(1);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await venderPacote(anterior, formData);
     if (r.ok) setAberto(false);
     return r;
@@ -70,7 +70,7 @@ export function FormularioPacote({
       aberto={aberto}
       aoMudar={setAberto}
     >
-      <form action={acao} className="space-y-4">
+      <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <input type="hidden" name="paciente_id" value={pacienteId} />
 
       <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
@@ -198,7 +198,7 @@ export function FormularioPacote({
       <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
-      </form>
+      </Formulario>
     </GatilhoModal>
   );
 }

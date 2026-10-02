@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarProfissional, type Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
@@ -15,7 +15,7 @@ export type ProfissionalCompleto = Profissional & {
 };
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -36,7 +36,7 @@ export function CamposProfissional({
     (inicial?.comissao_tipo as "percentual" | "valor_fixo" | "nenhuma") ?? "nenhuma",
   );
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await salvarProfissional(inicial?.id ?? null, anterior, formData);
     if (r.ok) aoConcluir();
     return r;
@@ -46,7 +46,7 @@ export function CamposProfissional({
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <Campo label="Nome" erro={estado.campos?.nome}>
         <Input name="nome" required  defaultValue={inicial?.nome} />
       </Campo>
@@ -151,7 +151,7 @@ export function CamposProfissional({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Criar profissional"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

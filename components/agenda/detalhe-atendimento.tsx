@@ -10,6 +10,7 @@ import type { ResumoPaciente } from "@/lib/consultas/pacientes";
 import type { StatusAgendamento } from "@/lib/types/database";
 import { COR_STATUS, FINALIZADOS, ROTULO_STATUS } from "@/lib/status-agendamento";
 import { Modal } from "@/components/ui/modal";
+import { Formulario } from "@/components/ui/formulario";
 import { Aviso, Botao, Campo, Textarea } from "@/components/ui/primitivos";
 import { useAgendamento } from "./contexto-agendamento";
 import { linkWhatsApp, mensagemConfirmacao } from "@/lib/whatsapp";
@@ -283,7 +284,7 @@ export function DetalheAtendimento({
         </dl>
 
         {/* RF-50 a RF-52 · o caminho do atendimento, clicável em qualquer etapa. */}
-        <form action={acaoStatus} className="space-y-3">
+        <Formulario acao={acaoStatus} enviando={enviando} estado={estado} className="space-y-3">
           <input type="hidden" name="id" value={a.id} />
           <h3 className="text-[13px] font-medium text-[var(--tinta-2)]">Status do atendimento</h3>
           {!cancelando && (
@@ -362,7 +363,7 @@ export function DetalheAtendimento({
               {estado.erro}
             </p>
           )}
-        </form>
+        </Formulario>
 
         {/* Histórico curto: frequência e o que vem antes e depois deste atendimento. */}
         {resumo && (

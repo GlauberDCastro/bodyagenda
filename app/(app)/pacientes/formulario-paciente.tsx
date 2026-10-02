@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarPaciente } from "@/lib/actions/pacientes";
 import type { Resultado } from "@/lib/actions/recursos";
 import type { Paciente } from "@/lib/types/database";
@@ -10,7 +10,7 @@ import { Aviso, Campo, Input, Textarea, Botao } from "@/components/ui/primitivos
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -44,14 +44,14 @@ export function FormularioPaciente({ inicial }: { inicial?: Paciente }) {
 }
 
 function Campos({ inicial, aoConcluir }: { inicial?: Paciente; aoConcluir: () => void }) {
-  const [estado, acao] = useActionState<Estado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Estado, FormData>(async (anterior, formData) => {
     const r = await salvarPaciente(inicial?.id ?? null, anterior, formData);
     if (r.ok) aoConcluir();
     return r;
   }, {});
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <Campo label="Nome completo" erro={estado.campos?.nome}>
         <Input name="nome" required autoFocus defaultValue={inicial?.nome} />
       </Campo>
@@ -130,6 +130,6 @@ function Campos({ inicial, aoConcluir }: { inicial?: Paciente; aoConcluir: () =>
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Salvar paciente"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }

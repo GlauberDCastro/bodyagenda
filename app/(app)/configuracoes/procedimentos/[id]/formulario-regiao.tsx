@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarProtocolo, removerProtocolo } from "@/lib/actions/regioes";
 import { UNIDADES } from "@/lib/constantes";
 import type { Resultado } from "@/lib/actions/recursos";
@@ -27,7 +27,7 @@ export interface Protocolo {
 }
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -48,7 +48,7 @@ function CamposProtocolo({
 }) {
   const [unidade, setUnidade] = useState(inicial?.unidade ?? "sessao");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(
     async (anterior, formData) => {
       const r = await salvarProtocolo(inicial?.id ?? null, anterior, formData);
       if (r.ok) aoConcluir();
@@ -61,7 +61,7 @@ function CamposProtocolo({
   const grupos = [...new Set(regioes.map((r) => r.grupo ?? "Outras"))];
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
 
       <Campo label="Região" erro={estado.campos?.regiao_id}>
@@ -172,7 +172,7 @@ function CamposProtocolo({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Adicionar região"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { adicionarBloqueio, removerBloqueio, type ResultadoBloqueio } from "@/lib/actions/recursos";
 import { LABEL_TIPO_RECURSO, MOTIVOS_BLOQUEIO, type TipoRecurso } from "@/lib/types/database";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import { Aviso, Botao, Campo, Input, Select, Textarea } from "@/components/ui/primitivos";
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Bloqueando…" : "Bloquear"}
@@ -62,7 +62,7 @@ function FormularioBloqueio({
   aoMudarTipo: (t: TipoRecurso) => void;
   aoConcluir: () => void;
 }) {
-  const [estado, acao] = useActionState<ResultadoBloqueio, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<ResultadoBloqueio, FormData>(async (anterior, formData) => {
     const r = await adicionarBloqueio(anterior, formData);
     // Com atendimento afetado, fica aberto para a recepção ler o aviso.
     if (r.ok && !r.afetados) aoConcluir();
@@ -88,7 +88,7 @@ function FormularioBloqueio({
   const opcoes = recursos.filter((r) => r.tipo === tipo);
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Tipo">
           <Select
@@ -147,7 +147,7 @@ function FormularioBloqueio({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

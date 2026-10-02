@@ -25,6 +25,8 @@ test.describe.serial("fluxos críticos", () => {
     await entrarComo(page, "senha-errada");
     await expect(page.getByRole("alert")).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
+    // Erro do servidor não apaga o que foi digitado.
+    await expect(page.locator("#email")).toHaveValue(m.email);
 
     await entrarComo(page);
     await expect(page).toHaveURL(/\/$/);
@@ -424,6 +426,18 @@ test.describe.serial("fluxos críticos", () => {
     await dialogo.getByRole("button", { name: "Salvar paciente" }).click();
     await expect(dialogo).toContainText("com esta data de nascimento");
     await expect(dialogo.getByRole("link", { name: m.paciente })).toBeVisible();
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+
+    // CPF recusado pelo servidor: o formulário mantém o que foi digitado.
+    await page.getByRole("button", { name: "Novo paciente" }).click();
+    dialogo = page.getByRole("dialog");
+    await dialogo.locator('input[name="nome"]').fill("Paciente Que Não Deve Ser Salvo");
+    await dialogo.locator('input[name="telefone"]').fill("(11) 91234-5678");
+    await dialogo.locator('input[name="cpf"]').fill("111.111.111-11");
+    await dialogo.getByRole("button", { name: "Salvar paciente" }).click();
+    await expect(dialogo.getByText(/CPF inválido/)).toBeVisible();
+    await expect(dialogo.locator('input[name="nome"]')).toHaveValue("Paciente Que Não Deve Ser Salvo");
+    await expect(dialogo.locator('input[name="telefone"]')).toHaveValue("(11) 91234-5678");
     await dialogo.getByRole("button", { name: "Cancelar" }).click();
 
     // RF-15 · inativar e reativar.

@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { adicionarCusto } from "@/lib/actions/procedimentos";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Adicionando…" : "Adicionar custo"}
@@ -19,7 +19,7 @@ function Salvar() {
 export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) {
   const [aberto, setAberto] = useState(false);
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await adicionarCusto(anterior, formData);
     if (r.ok) setAberto(false);
     return r;
@@ -34,7 +34,7 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
       aberto={aberto}
       aoMudar={setAberto}
     >
-      <form action={acao} className="space-y-4">
+      <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <input type="hidden" name="procedimento_id" value={procedimentoId} />
 
       <Campo label="Descrição" erro={estado.campos?.descricao}>
@@ -75,7 +75,7 @@ export function FormularioCusto({ procedimentoId }: { procedimentoId: string }) 
       <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
-      </form>
+      </Formulario>
     </GatilhoModal>
   );
 }

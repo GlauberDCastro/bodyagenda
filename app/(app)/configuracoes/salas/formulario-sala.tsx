@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarSala, type Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Textarea, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento, Sala } from "@/lib/types/database";
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -36,7 +36,7 @@ export function CamposSala({
     inicial?.tipo_alocacao ?? "flexivel",
   );
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(
     async (anterior, formData) => {
       const r = await salvarSala(inicial?.id ?? null, anterior, formData);
       if (r.ok) aoConcluir();
@@ -48,7 +48,7 @@ export function CamposSala({
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Número" erro={estado.campos?.numero}>
           <Input name="numero" type="number" min={1} required defaultValue={inicial?.numero} />
@@ -125,7 +125,7 @@ export function CamposSala({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Criar sala"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

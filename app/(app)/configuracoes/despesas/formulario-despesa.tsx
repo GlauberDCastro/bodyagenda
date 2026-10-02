@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { lancarDespesa } from "@/lib/actions/financeiro";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 
 function Salvar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Lançando…" : "Lançar despesa"}
@@ -18,7 +18,7 @@ function Salvar() {
 
 export function FormularioDespesa({ competencia }: { competencia: string }) {
   const [aberto, setAberto] = useState(false);
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await lancarDespesa(anterior, formData);
     if (r.ok) setAberto(false);
     return r;
@@ -32,7 +32,7 @@ export function FormularioDespesa({ competencia }: { competencia: string }) {
       aberto={aberto}
       aoMudar={setAberto}
     >
-      <form action={acao} className="space-y-4">
+      <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
         <input type="hidden" name="competencia" value={competencia} />
 
         <Campo label="Descrição" erro={estado.campos?.descricao}>
@@ -62,7 +62,7 @@ export function FormularioDespesa({ competencia }: { competencia: string }) {
         <AcoesModal aoCancelar={() => setAberto(false)}>
           <Salvar />
         </AcoesModal>
-      </form>
+      </Formulario>
     </GatilhoModal>
   );
 }

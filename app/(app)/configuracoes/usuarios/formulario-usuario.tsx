@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarUsuario, alternarAcesso } from "@/lib/actions/usuarios";
 import type { Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao, Etiqueta } from "@/components/ui/primitivos";
@@ -23,7 +23,7 @@ export interface ProfissionalOpcao {
 }
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -42,7 +42,7 @@ function CamposUsuario({
 }) {
   const [perfil, setPerfil] = useState(inicial?.perfil ?? "recepcao");
 
-  const [estado, acao] = useActionState<Resultado, FormData>(
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(
     async (anterior, formData) => {
       const r = await salvarUsuario(inicial?.id ?? null, anterior, formData);
       if (r.ok) aoConcluir();
@@ -62,7 +62,7 @@ function CamposUsuario({
   const vinculado = profissionais.find((p) => p.usuario_id === inicial?.id);
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <input type="hidden" name="ativo" value={String(inicial?.ativo ?? true)} />
 
       <Campo label="Nome" erro={estado.campos?.nome}>
@@ -132,7 +132,7 @@ function CamposUsuario({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Criar acesso"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

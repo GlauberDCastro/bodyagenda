@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { salvarEquipamento, type Resultado } from "@/lib/actions/recursos";
 import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Sala, Equipamento } from "@/lib/types/database";
 
 function Salvar({ rotulo }: { rotulo: string }) {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
       {pending ? "Salvando…" : rotulo}
@@ -29,7 +29,7 @@ export function CamposEquipamento({
     inicial?.tipo_alocacao ?? "movel",
   );
 
-  const [estado, acao] = useActionState<Resultado, FormData>(async (anterior, formData) => {
+  const [estado, acao, enviando] = useActionState<Resultado, FormData>(async (anterior, formData) => {
     const r = await salvarEquipamento(inicial?.id ?? null, anterior, formData);
     if (r.ok) aoConcluir();
     return r;
@@ -39,7 +39,7 @@ export function CamposEquipamento({
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       <Campo
         label="Modelo"
         erro={estado.campos?.modelo}
@@ -116,7 +116,7 @@ export function CamposEquipamento({
       <AcoesModal aoCancelar={aoConcluir}>
         <Salvar rotulo={inicial ? "Salvar alterações" : "Criar equipamento"} />
       </AcoesModal>
-    </form>
+    </Formulario>
   );
 }
 

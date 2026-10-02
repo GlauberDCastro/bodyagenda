@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import { entrar, type EstadoFormulario } from "@/lib/actions/auth";
 import { Campo, Input, Botao } from "@/components/ui/primitivos";
 
 function Entrar() {
-  const { pending } = useFormStatus();
+  const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending} className="w-full">
       {pending ? "Entrando…" : "Entrar"}
@@ -15,10 +15,10 @@ function Entrar() {
 }
 
 export function LoginForm({ redirecionar }: { redirecionar: string }) {
-  const [estado, acao] = useActionState<EstadoFormulario, FormData>(entrar, {});
+  const [estado, acao, enviando] = useActionState<EstadoFormulario, FormData>(entrar, {});
 
   return (
-    <form action={acao} className="space-y-4">
+    <Formulario acao={acao} enviando={enviando} className="space-y-4">
       <input type="hidden" name="redirecionar" value={redirecionar} />
 
       <Campo label="E-mail">
@@ -36,6 +36,6 @@ export function LoginForm({ redirecionar }: { redirecionar: string }) {
       )}
 
       <Entrar />
-    </form>
+    </Formulario>
   );
 }
