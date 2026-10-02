@@ -57,6 +57,7 @@ export function BlocoAgendamento({
   rotuloStatus,
   estilo,
   titulo,
+  cor = "var(--tinta-3)",
 }: {
   agendamento: AgendamentoNaAgenda;
   grade: Grade;
@@ -65,6 +66,8 @@ export function BlocoAgendamento({
   rotuloStatus: string;
   estilo: CSSProperties;
   titulo: string;
+  /** Cor do status: a barra lateral e o fundo do bloco. */
+  cor?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const [cancelando, setCancelando] = useState(false);
@@ -169,13 +172,20 @@ export function BlocoAgendamento({
         onPointerUp={aoSoltar}
         onPointerCancel={cancelarArraste}
         aria-roledescription={arrasto ? "atendimento arrastável" : undefined}
-        className={`absolute overflow-hidden rounded-[7px] border px-1.5 py-1 text-left text-[11px] leading-tight ${
+        className={`absolute overflow-hidden rounded-[10px] text-left ${
           desloc
-            ? "z-20 cursor-grabbing shadow-[var(--sombra-3)]"
-            : `transition hover:brightness-95 ${arrasto ? "cursor-grab" : ""}`
+            ? "z-30 cursor-grabbing shadow-[var(--sombra-3)]"
+            : `z-[1] transition-shadow hover:shadow-[var(--sombra-2)] ${arrasto ? "cursor-grab" : ""}`
         } ${salvando ? "opacity-70" : ""}`}
         style={{
           ...estilo,
+          borderLeft: `3px solid ${cor}`,
+          // "A confirmar" é hachurado, como na agenda de referência: dá para
+          // separar de longe o que ainda não foi confirmado.
+          background:
+            a.status === "agendado"
+              ? `repeating-linear-gradient(135deg, color-mix(in oklab, ${cor} 12%, var(--superficie)) 0 7px, var(--superficie) 7px 14px)`
+              : `color-mix(in oklab, ${cor} 14%, var(--superficie))`,
           // Sem isto o toque rola a página em vez de arrastar o bloco.
           touchAction: arrasto ? "none" : undefined,
           transform: desloc
@@ -184,13 +194,48 @@ export function BlocoAgendamento({
         }}
         title={titulo}
       >
-        <p className={`truncate font-medium ${a.status === "falta" ? "line-through" : ""}`}>
-          {a.paciente?.nome ?? "—"}
-        </p>
-        <p className="truncate opacity-75">
-          {novoInicio ? `→ ${hora.format(novoInicio)}` : hora.format(new Date(a.inicio))} ·{" "}
-          {a.procedimento?.nome ?? "—"}
-        </p>
+        {(() => {
+          const horario = novoInicio
+            ? `→ ${hora.format(novoInicio)}`
+            : `${hora.format(new Date(a.inicio))} – ${hora.format(new Date(a.fim))}`;
+          const alto = Number(estilo.height ?? 0) >= 100;
+          const nome = (
+            <p
+              className={`text-[14px] font-semibold leading-snug text-[var(--tinta-1)] ${
+                alto ? "line-clamp-2" : "truncate"
+              } ${a.status === "falta" ? "line-through" : ""}`}
+            >
+              {a.paciente?.nome ?? "—"}
+            </p>
+          );
+          const status = a.status === "agendado" ? "a confirmar" : rotuloStatus.toLowerCase();
+          // Bloco curto: nome e horário numa linha só.
+          if (Number(estilo.height ?? 0) < 64) {
+            return (
+              <div className="flex items-start justify-between gap-2 px-2.5 py-1.5">
+                {nome}
+                <span className="shrink-0 pt-0.5 text-[12.5px] tabular-nums text-[var(--tinta-2)]">
+                  {horario}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div className="flex h-full flex-col px-2.5 py-2">
+              {nome}
+              <p className="truncate text-[13px] text-[var(--tinta-2)]">
+                {[a.procedimento?.nome, ...a.profissionais.map((p) => p.nome)]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {/* Coluna estreita (semana): horário e status quebram em vez de cortar. */}
+              <p className="mt-auto flex flex-wrap gap-x-1.5 text-[12.5px] leading-snug tabular-nums text-[var(--tinta-2)]">
+                <span>{horario}</span>
+                <span className="font-semibold text-[var(--tinta-1)]">{status}</span>
+              </p>
+            </div>
+          );
+        })()}
       </button>
 
       <Modal

@@ -69,15 +69,17 @@ test.describe.serial("fluxos críticos", () => {
     await expect(page.getByText(m.sala).first()).toBeVisible();
   });
 
-  // Grade das 08:00 com 56 px por hora: 10:00 fica 112 px abaixo do topo.
-  const PX_HORA = 56;
+  /** A faixa de 15 min de uma coluna, rolada para a vista: o alvo de clique e arraste. */
+  async function faixa(page: Page, coluna: string, hora: string) {
+    const slot = page.locator(`[data-coluna="${coluna}"] [data-slot="${hora}"]`);
+    await slot.scrollIntoViewIfNeeded();
+    return slot;
+  }
 
   test("clicar no horário vazio abre o agendamento já preenchido", async ({ page }) => {
     await entrarComo(page);
     await page.goto(`/agenda?dia=${DIA}`);
-    const coluna = page.locator(`[data-coluna="sala-${m.salaId}"]`);
-    await coluna.scrollIntoViewIfNeeded();
-    await coluna.click({ position: { x: 80, y: 2 * PX_HORA + 5 } });
+    await (await faixa(page, `sala-${m.salaId}`, "10:00")).click();
 
     const dialogo = page.getByRole("dialog");
     await expect(dialogo.locator('input[name="inicio"]')).toHaveValue(`${DIA}T10:00`);
@@ -97,6 +99,12 @@ test.describe.serial("fluxos críticos", () => {
     await entrarComo(page);
     await page.goto(`/agenda?dia=${DIA}`);
     const bloco = page.getByRole("button", { name: /10:00/ }).filter({ hasText: m.paciente });
+    // Uma hora na grade = distância entre a faixa das 10:00 e a das 11:00,
+    // medidas sem rolar entre uma e outra.
+    const slot = (h: string) =>
+      page.locator(`[data-coluna="sala-${m.salaId}"] [data-slot="${h}"]`).boundingBox();
+    const umaHora = (await slot("11:00"))!.y - (await slot("10:00"))!.y;
+    // Rola até o bloco e só então mede onde ele está.
     await bloco.scrollIntoViewIfNeeded();
     const caixa = (await bloco.boundingBox())!;
     const x = caixa.x + caixa.width / 2;
@@ -104,8 +112,8 @@ test.describe.serial("fluxos críticos", () => {
 
     await page.mouse.move(x, y);
     await page.mouse.down();
-    await page.mouse.move(x, y + PX_HORA / 2, { steps: 4 });
-    await page.mouse.move(x, y + PX_HORA, { steps: 4 });
+    await page.mouse.move(x, y + umaHora / 2, { steps: 4 });
+    await page.mouse.move(x, y + umaHora, { steps: 4 });
     await page.mouse.up();
 
     await expect.poll(() => iniciosDosAgendamentos(m)).toEqual(["09:00", "11:00"]);
@@ -123,8 +131,7 @@ test.describe.serial("fluxos críticos", () => {
 
     // Clique na coluna do A às 14:00 já traz o A marcado.
     const colunaA = page.locator(`[data-coluna="profissional-${a.id}"]`);
-    await colunaA.scrollIntoViewIfNeeded();
-    await colunaA.click({ position: { x: 80, y: 6 * PX_HORA + 5 } });
+    await (await faixa(page, `profissional-${a.id}`, "14:00")).click();
     const dialogo = page.getByRole("dialog");
     await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.paciente);
     await dialogo.locator('select[name="paciente_id"]').selectOption({ label: m.paciente });
@@ -180,12 +187,17 @@ test.describe.serial("fluxos críticos", () => {
     await entrarComo(page);
     await page.goto(`/agenda?dia=${DIA}`);
     const coluna = page.locator(`[data-coluna="sala-${m.salaId}"]`);
-    await coluna.scrollIntoViewIfNeeded();
-    const caixa = (await coluna.boundingBox())!;
-    const x = caixa.x + caixa.width / 2;
-    await page.mouse.move(x, caixa.y + 5 * PX_HORA + 5); // 13:00
+    // Uma rolagem só; depois as duas medições, para uma não deslocar a outra.
+    await faixa(page, `sala-${m.salaId}`, "13:00");
+    const meio = async (h: string) => {
+      const c = (await coluna.locator(`[data-slot="${h}"]`).boundingBox())!;
+      return { x: c.x + c.width / 2, y: c.y + c.height / 2 };
+    };
+    const de = await meio("13:00");
+    const ate = await meio("14:15");
+    await page.mouse.move(de.x, de.y);
     await page.mouse.down();
-    await page.mouse.move(x, caixa.y + 6 * PX_HORA + 20, { steps: 6 }); // faixa das 14:15
+    await page.mouse.move(ate.x, ate.y, { steps: 6 });
     await expect(coluna).toContainText("13:00 – 14:30");
     await page.mouse.up();
 
@@ -387,6 +399,18 @@ test.describe.serial("fluxos críticos", () => {
     await expect(celula).toContainText("atendimento(s)");
     await celula.click();
     await expect(page).toHaveURL(new RegExp(`dia=${DIA}&por=sala`));
+
+    // Capturas para revisão visual (test-results fica fora do git).
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    for (const tema of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: tema });
+      await page.goto(`/agenda?dia=${DIA}&por=sala`);
+      await page.screenshot({ path: `test-results/agenda-dia-${tema}.png` });
+      await page.goto(`/agenda?dia=${DIA}&por=semana&recurso=sala:${m.salaId}`);
+      await page.screenshot({ path: `test-results/agenda-semana-${tema}.png` });
+      await page.goto(`/agenda?dia=${DIA}&por=mes`);
+      await page.screenshot({ path: `test-results/agenda-mes-${tema}.png` });
+    }
   });
 
   test("exportação CSV e XLSX, auditoria registrada e sessão expirada", async ({
