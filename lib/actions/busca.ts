@@ -1,6 +1,11 @@
 "use server";
 
-import { buscarPacientes, pacotesAgendaveis } from "@/lib/consultas/pacientes";
+import {
+  buscarPacientes,
+  pacotesAgendaveis,
+  resumoDoPaciente,
+  type ResumoPaciente,
+} from "@/lib/consultas/pacientes";
 import { carenciaViolada, horariosLivres } from "@/lib/consultas/agenda";
 import { horarioDaClinica } from "@/lib/schemas/agenda";
 
@@ -65,4 +70,12 @@ export async function horariosLivresAction(params: {
 /** RF-53 · alerta (sem bloquear) de sessão antes da carência mínima. */
 export async function carenciaAction(pacienteId: string, procedimentoId: string, inicioLocal: string) {
   return carenciaViolada(pacienteId, procedimentoId, horarioDaClinica(inicioLocal));
+}
+
+/** Resumo do paciente para o painel do atendimento na agenda. */
+export async function resumoPacienteAction(
+  pacienteId: string,
+  atendimentoAtual?: string,
+): Promise<ResumoPaciente | null> {
+  return resumoDoPaciente(pacienteId, atendimentoAtual);
 }

@@ -39,6 +39,8 @@ async function detalharConflito(
     equipamentos: string[];
     profissionais: string[];
   },
+  /** Na edição, o próprio atendimento ainda ocupa os recursos antigos. */
+  ignorar?: string,
 ): Promise<ResultadoAgendamento> {
   const { data } = await supabase.rpc("detalhar_conflito", {
     p_inicio: dados.inicio,
@@ -46,6 +48,7 @@ async function detalharConflito(
     p_sala: dados.sala_id,
     p_equipamentos: dados.equipamentos,
     p_profissionais: dados.profissionais,
+    ...(ignorar && { p_ignorar: ignorar }),
   });
 
   const conflitos = (data ?? []) as ResultadoAgendamento["conflitos"];
@@ -194,6 +197,77 @@ export async function criarAgendamento(
 
   revalidatePath("/agenda");
   return { ok: true, id: String(id) } as ResultadoAgendamento & { id: string };
+}
+
+/**
+ * Edita o atendimento inteiro: procedimento, duração, horário, sala, aparelhos,
+ * profissionais, valor e observações. Mesmas regras da criação; o banco faz
+ * tudo numa transação e revalida conflito ignorando o próprio atendimento.
+ */
+export async function editarAgendamento(
+  _anterior: ResultadoAgendamento,
+  formData: FormData,
+): Promise<ResultadoAgendamento> {
+  const id = String(formData.get("id") ?? "");
+  const parsed = agendamentoSchema.safeParse({
+    ...Object.fromEntries(formData),
+    equipamentos: formData.getAll("equipamentos"),
+    profissionais: formData.getAll("profissionais"),
+  });
+  if (!id || !parsed.success) {
+    const campos: Record<string, string> = {};
+    for (const i of parsed.error?.issues ?? []) campos[String(i.path[0] ?? "_")] ??= i.message;
+    return { erro: parsed.error?.issues[0].message ?? "Atendimento inválido", campos };
+  }
+
+  const d = parsed.data;
+  const supabase = await createServerSupabase();
+
+  const faltando = await requisitoObrigatorioFaltando(supabase, d);
+  if (faltando) return { erro: faltando };
+
+  const { error } = await supabase.rpc("editar_agendamento", {
+    p_agendamento: id,
+    p_procedimento: d.procedimento_id,
+    p_inicio: d.inicio,
+    p_sala: d.sala_id,
+    p_equipamentos: d.equipamentos,
+    p_profissionais: d.profissionais,
+    p_observacoes: d.observacoes ?? undefined,
+    p_valor_avulso: d.valor_avulso ?? undefined,
+    p_duracao: d.duracao_min ?? undefined,
+  });
+
+  if (error) {
+    if (error.code === "23P01") {
+      const { data: proc } = await supabase
+        .from("procedimento")
+        .select("duracao_min, buffer_min")
+        .eq("id", d.procedimento_id)
+        .single();
+      const minutos = (d.duracao_min ?? proc?.duracao_min ?? 0) + (proc?.buffer_min ?? 0);
+      return detalharConflito(
+        supabase,
+        {
+          inicio: d.inicio,
+          fim: new Date(new Date(d.inicio).getTime() + minutos * 60_000).toISOString(),
+          sala_id: d.sala_id,
+          equipamentos: d.equipamentos,
+          profissionais: d.profissionais,
+        },
+        id,
+      );
+    }
+    if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
+    if (error.code === "42501" || error.message.includes("row-level security")) {
+      return { erro: "Seu perfil não pode editar este atendimento." };
+    }
+    return { erro: error.message };
+  }
+
+  revalidatePath("/agenda");
+  revalidatePath(`/pacientes/${d.paciente_id}`);
+  return { ok: true };
 }
 
 /**

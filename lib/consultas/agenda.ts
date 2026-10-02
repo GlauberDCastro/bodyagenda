@@ -9,11 +9,48 @@ export interface AgendamentoNaAgenda {
   numero_sessao: number | null;
   /** Total de sessões do pacote, para "sessão 3 de 10" (RF-62). */
   sessoes_pacote: number | null;
+  pacote_id: string | null;
+  valor_avulso: number | null;
+  observacoes: string | null;
+  motivo_cancelamento: string | null;
   paciente: { id: string; nome: string } | null;
-  procedimento: { id: string; nome: string; duracao_min: number } | null;
+  procedimento: { id: string; nome: string; duracao_min: number; buffer_min: number } | null;
   sala_id: string;
+  sala: { numero: number; nome: string } | null;
   equipamentos: { id: string; nome: string }[];
   profissionais: { id: string; nome: string; cor_agenda: string }[];
+}
+
+const CAMPOS_AGENDA = `id, inicio, fim, status, numero_sessao, sala_id, pacote_id, valor_avulso,
+       observacoes, motivo_cancelamento,
+       pacote:pacote_id (quantidade_sessoes),
+       sala:sala_id (numero, nome),
+       paciente:paciente_id (id, nome),
+       procedimento:procedimento_id (id, nome, duracao_min, buffer_min),
+       agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
+       agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`;
+
+type LinhaAgenda = Omit<AgendamentoNaAgenda, "sessoes_pacote" | "equipamentos" | "profissionais"> & {
+  pacote: { quantidade_sessoes: number } | null;
+  agendamento_equipamento: { equipamento: { id: string; nome: string } | null }[];
+  agendamento_profissional: {
+    profissional: { id: string; nome: string; cor_agenda: string } | null;
+  }[];
+};
+
+function paraAgenda(linha: LinhaAgenda): AgendamentoNaAgenda {
+  const { pacote, agendamento_equipamento, agendamento_profissional, ...resto } = linha;
+  return {
+    ...resto,
+    valor_avulso: resto.valor_avulso === null ? null : Number(resto.valor_avulso),
+    sessoes_pacote: pacote?.quantidade_sessoes ?? null,
+    equipamentos: agendamento_equipamento
+      .map((x) => x.equipamento)
+      .filter((x): x is { id: string; nome: string } => x !== null),
+    profissionais: agendamento_profissional
+      .map((x) => x.profissional)
+      .filter((x): x is { id: string; nome: string; cor_agenda: string } => x !== null),
+  };
 }
 
 /** Coluna da timeline: cada recurso vira uma faixa vertical (RF-41). */
@@ -32,54 +69,27 @@ export async function agendamentosDoPeriodo(
 
   const { data } = await supabase
     .from("agendamento")
-    .select(
-      `id, inicio, fim, status, numero_sessao, sala_id,
-       pacote:pacote_id (quantidade_sessoes),
-       paciente:paciente_id (id, nome),
-       procedimento:procedimento_id (id, nome, duracao_min),
-       agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
-       agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`,
-    )
+    .select(CAMPOS_AGENDA)
     .gte("inicio", inicio.toISOString())
     .lt("inicio", fim.toISOString())
     .neq("status", "cancelado")
     .order("inicio");
 
-  return (data ?? []).map((a) => {
-    const linha = a as unknown as {
-      id: string;
-      inicio: string;
-      fim: string;
-      status: StatusAgendamento;
-      numero_sessao: number | null;
-      pacote: { quantidade_sessoes: number } | null;
-      sala_id: string;
-      paciente: { id: string; nome: string } | null;
-      procedimento: { id: string; nome: string; duracao_min: number } | null;
-      agendamento_equipamento: { equipamento: { id: string; nome: string } | null }[];
-      agendamento_profissional: {
-        profissional: { id: string; nome: string; cor_agenda: string } | null;
-      }[];
-    };
+  return ((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda);
+}
 
-    return {
-      id: linha.id,
-      inicio: linha.inicio,
-      fim: linha.fim,
-      status: linha.status,
-      numero_sessao: linha.numero_sessao,
-      sessoes_pacote: linha.pacote?.quantidade_sessoes ?? null,
-      sala_id: linha.sala_id,
-      paciente: linha.paciente,
-      procedimento: linha.procedimento,
-      equipamentos: linha.agendamento_equipamento
-        .map((x) => x.equipamento)
-        .filter((x): x is { id: string; nome: string } => x !== null),
-      profissionais: linha.agendamento_profissional
-        .map((x) => x.profissional)
-        .filter((x): x is { id: string; nome: string; cor_agenda: string } => x !== null),
-    };
-  });
+/** Todos os atendimentos do paciente, no mesmo formato da agenda (inclui cancelados). */
+export async function agendamentosDoPacienteNaAgenda(
+  pacienteId: string,
+): Promise<AgendamentoNaAgenda[]> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("agendamento")
+    .select(CAMPOS_AGENDA)
+    .eq("paciente_id", pacienteId)
+    .order("inicio", { ascending: false })
+    .limit(200);
+  return ((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda);
 }
 
 /**

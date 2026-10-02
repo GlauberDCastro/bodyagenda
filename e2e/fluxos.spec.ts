@@ -271,6 +271,48 @@ test.describe.serial("fluxos críticos", () => {
     await expect.poll(() => inicioDoPaciente(m.pacienteNovo)).toBe("2030-01-09 16:00");
   });
 
+  test("painel do atendimento: editar, abrir a ficha e agendar a próxima sessão", async ({
+    page,
+  }) => {
+    await entrarComo(page);
+    await page.goto("/agenda?dia=2030-01-09&por=sala");
+    await page.getByRole("button", { name: new RegExp(m.pacienteNovo) }).click();
+    let painel = page.getByRole("dialog");
+    await expect(painel.getByRole("link", { name: "Abrir ficha do paciente" })).toBeVisible();
+
+    // Editar: mesmo formulário do agendamento, já preenchido.
+    await painel.getByRole("button", { name: "Editar atendimento" }).click();
+    const form = page.getByRole("dialog");
+    await expect(form.getByRole("heading", { name: "Editar atendimento" })).toBeVisible();
+    await expect(form.locator('input[name="inicio"]')).toHaveValue("2030-01-09T16:00");
+    await form.locator('input[name="inicio"]').fill("2030-01-09T10:30");
+    await form.locator('textarea[name="observacoes"]').fill("Editado pelo E2E");
+    await form.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(form).toBeHidden();
+    await expect.poll(() => inicioDoPaciente(m.pacienteNovo)).toBe("2030-01-09 10:30");
+
+    // O painel mostra a observação e leva à ficha.
+    await page.getByRole("button", { name: new RegExp(m.pacienteNovo) }).click();
+    painel = page.getByRole("dialog");
+    await expect(painel).toContainText("Editado pelo E2E");
+    await painel.getByRole("link", { name: "Abrir ficha do paciente" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: m.pacienteNovo })).toBeVisible();
+
+    // Na ficha, o próximo atendimento abre o mesmo painel, sem o link para a própria ficha.
+    await page
+      .getByRole("button", { name: new RegExp(m.procedimento) })
+      .first()
+      .click();
+    painel = page.getByRole("dialog");
+    await expect(painel.getByRole("link", { name: "Abrir ficha do paciente" })).toHaveCount(0);
+    await painel.getByRole("button", { name: "Agendar próxima sessão" }).click();
+    const proxima = page.getByRole("dialog");
+    await expect(proxima.locator('input[name="inicio"]')).toHaveValue("2030-01-16T10:30");
+    await proxima.getByRole("button", { name: "Agendar" }).click();
+    await expect(proxima).toBeHidden();
+    await expect.poll(() => agendamentosDoPaciente(m.pacienteNovo)).toBe(2);
+  });
+
   test("caixa: vender pacote em 3 parcelas e receber parte de uma", async ({ page }) => {
     await entrarComo(page);
     await page.goto(`/pacientes/${m.pacienteId}`);

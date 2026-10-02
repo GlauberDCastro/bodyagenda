@@ -1193,10 +1193,25 @@ export type Database = {
         };
         Returns: string;
       };
+      editar_agendamento: {
+        Args: {
+          p_agendamento: string;
+          p_duracao?: number;
+          p_equipamentos?: string[];
+          p_inicio: string;
+          p_observacoes?: string;
+          p_procedimento: string;
+          p_profissionais?: string[];
+          p_sala: string;
+          p_valor_avulso?: number;
+        };
+        Returns: undefined;
+      };
       detalhar_conflito: {
         Args: {
           p_equipamentos?: string[];
           p_fim: string;
+          p_ignorar?: string;
           p_inicio: string;
           p_profissionais?: string[];
           p_sala: string;

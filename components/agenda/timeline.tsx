@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { AgendamentoNaAgenda, ColunaRecurso } from "@/lib/consultas/agenda";
-import type { StatusAgendamento } from "@/lib/types/database";
 import { remarcar, remarcarTrocandoRecurso } from "@/lib/actions/agenda";
 import {
   usaRecurso,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/grade-agenda";
 import { Aviso } from "@/components/ui/primitivos";
 import { BlocoAgendamento } from "./bloco-agendamento";
+import { COR_STATUS, ROTULO_STATUS } from "@/lib/status-agendamento";
 import { useAgendamento, type PresetAgendamento } from "./contexto-agendamento";
 
 /** 40 px por faixa de 15 min: espaço para nome, procedimento e horário. */
@@ -42,34 +42,6 @@ export interface ColunaGrade {
   href?: string;
   destaque?: boolean;
 }
-
-/**
- * Cor do bloco por status.
- *
- * Usa a paleta de status (fixa, nunca tematizada) em vez de cores cruas: os
- * mesmos tons do resto do sistema, e os passos escuros funcionam sobre a
- * superfície escura em vez de serem uma inversão automática.
- *
- * O status também aparece no `title`, porque cor sozinha não carrega estado.
- */
-const COR_STATUS: Record<StatusAgendamento, string | null> = {
-  agendado: "var(--tinta-3)",
-  confirmado: "var(--serie-1)",
-  em_atendimento: "var(--status-atencao)",
-  realizado: "var(--status-bom)",
-  falta: "var(--status-critico)",
-  cancelado: null,
-};
-
-const ROTULO_STATUS: Record<StatusAgendamento, string> = {
-  agendado: "Agendado",
-  confirmado: "Confirmado",
-  em_atendimento: "Em atendimento",
-  realizado: "Realizado",
-  falta: "Falta",
-  cancelado: "Cancelado",
-};
-
 
 /** Minutos desde o início do dia, no fuso da clínica. */
 function minutosDoDia(iso: string): number {

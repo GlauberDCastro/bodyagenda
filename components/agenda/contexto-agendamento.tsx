@@ -2,7 +2,10 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
-/** O que o clique num horário vazio já sabe: quando e em qual recurso. */
+/**
+ * O que o formulário já sabe ao abrir: no clique num horário vazio, quando e
+ * em qual recurso; na edição, o atendimento inteiro.
+ */
 export interface PresetAgendamento {
   /** "2026-10-06T09:15", no horário da clínica. */
   inicio?: string;
@@ -11,6 +14,19 @@ export interface PresetAgendamento {
   sala_id?: string;
   equipamentos?: string[];
   profissionais?: string[];
+  /** Ficha do paciente e "agendar próxima sessão" já chegam com o paciente. */
+  paciente?: { id: string; nome: string };
+  procedimento_id?: string;
+  pacote_id?: string;
+  duracao_min?: number | null;
+  observacoes?: string | null;
+  valor_avulso?: number | null;
+  /** Presente = editar este atendimento em vez de criar outro. */
+  edicao?: {
+    id: string;
+    /** "Ultraformer MPT · sessão 2 de 3", ou ausente quando é avulsa. */
+    pacote?: string;
+  };
 }
 
 interface Contexto {

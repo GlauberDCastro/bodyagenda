@@ -102,3 +102,68 @@ export async function pacotesAgendaveis(pacienteId: string): Promise<PacoteComSa
     (p) => p.status === "ativo" && p.restantes > 0 && (!p.validade || p.validade >= hoje),
   );
 }
+
+export interface ResumoPaciente {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  observacoes: string | null;
+  consentimento_lgpd: boolean;
+  realizados: number;
+  faltas: number;
+  ultimo: { inicio: string; procedimento: string; status: string } | null;
+  proximo: { inicio: string; procedimento: string } | null;
+  /** Soma das cobranças vencidas e não pagas. 0 para quem não lê o caixa. */
+  emAtraso: number;
+}
+
+/**
+ * O que a recepção precisa ver do paciente ao abrir um atendimento: alerta
+ * clínico, contato para confirmar, frequência e se há débito. `atual` é o
+ * atendimento aberto, que não conta como "último" nem "próximo".
+ */
+export async function resumoDoPaciente(id: string, atual?: string): Promise<ResumoPaciente | null> {
+  const supabase = await createServerSupabase();
+  const [{ data: p }, { data: ags }, { data: cobs }] = await Promise.all([
+    supabase
+      .from("paciente")
+      .select("id, nome, telefone, observacoes, consentimento_lgpd")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("agendamento")
+      .select("id, inicio, status, procedimento:procedimento_id (nome)")
+      .eq("paciente_id", id)
+      .neq("status", "cancelado")
+      .order("inicio"),
+    supabase.rpc("cobrancas", { p_paciente: id }),
+  ]);
+  if (!p) return null;
+
+  const agora = new Date().toISOString();
+  const lista = ((ags ?? []) as unknown as {
+    id: string;
+    inicio: string;
+    status: string;
+    procedimento: { nome: string } | null;
+  }[]).filter((a) => a.id !== atual);
+  const passados = lista.filter((a) => a.inicio < agora);
+  const ultimo = passados.at(-1);
+  const proximo = lista.find((a) => a.inicio >= agora);
+
+  return {
+    ...p,
+    consentimento_lgpd: Boolean(p.consentimento_lgpd),
+    realizados: lista.filter((a) => a.status === "realizado").length,
+    faltas: lista.filter((a) => a.status === "falta").length,
+    ultimo: ultimo
+      ? { inicio: ultimo.inicio, procedimento: ultimo.procedimento?.nome ?? "—", status: ultimo.status }
+      : null,
+    proximo: proximo
+      ? { inicio: proximo.inicio, procedimento: proximo.procedimento?.nome ?? "—" }
+      : null,
+    emAtraso: (cobs ?? [])
+      .filter((c) => c.status === "atrasado")
+      .reduce((t, c) => t + Number(c.valor), 0),
+  };
+}

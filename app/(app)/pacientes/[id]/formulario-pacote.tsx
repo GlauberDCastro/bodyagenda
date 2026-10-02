@@ -23,9 +23,11 @@ function Salvar() {
 export function FormularioPacote({
   pacienteId,
   procedimentos,
+  variante,
 }: {
   pacienteId: string;
   procedimentos: Procedimento[];
+  variante?: "primario" | "secundario";
 }) {
   const [aberto, setAberto] = useState(false);
   const [procId, setProcId] = useState("");
@@ -62,6 +64,7 @@ export function FormularioPacote({
   return (
     <GatilhoModal
       rotulo="Vender pacote"
+      variante={variante}
       titulo="Vender pacote"
       descricao="O valor fica congelado na venda — reajuste depois não altera este pacote."
       aberto={aberto}

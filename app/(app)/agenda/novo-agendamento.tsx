@@ -2,7 +2,11 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { criarAgendamento, type ResultadoAgendamento } from "@/lib/actions/agenda";
+import {
+  criarAgendamento,
+  editarAgendamento,
+  type ResultadoAgendamento,
+} from "@/lib/actions/agenda";
 import {
   buscarPacientesAction,
   carenciaAction,
@@ -22,11 +26,17 @@ interface PacoteOpcao {
   rotulo: string;
 }
 
-function Salvar() {
+function Salvar({ editando }: { editando: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Botao type="submit" disabled={pending}>
-      {pending ? "Agendando…" : "Agendar"}
+      {editando
+        ? pending
+          ? "Salvando…"
+          : "Salvar alterações"
+        : pending
+          ? "Agendando…"
+          : "Agendar"}
     </Botao>
   );
 }
@@ -54,16 +64,29 @@ interface Recursos {
  * Aberto pelo botão do cabeçalho ou pelo clique num horário vazio da agenda,
  * que chega com dia, hora e recurso já preenchidos.
  */
-export function NovoAgendamento(props: Recursos) {
+export function NovoAgendamento({
+  rotulo = "Novo agendamento",
+  presetPadrao,
+  ...props
+}: Recursos & {
+  rotulo?: string;
+  /** O que o botão já preenche: na ficha, o próprio paciente. */
+  presetPadrao?: PresetAgendamento;
+}) {
   const { aberto, preset, versao, abrir, fechar } = useAgendamento();
+  const editando = Boolean(preset.edicao);
 
   return (
     <GatilhoModal
-      rotulo="Novo agendamento"
-      titulo="Novo agendamento"
-      descricao="Sala, equipamentos e profissionais são checados contra conflito."
+      rotulo={rotulo}
+      titulo={editando ? "Editar atendimento" : "Novo agendamento"}
+      descricao={
+        editando
+          ? "As mesmas regras do agendamento valem aqui: conflito, habilitação e aparelhos."
+          : "Sala, equipamentos e profissionais são checados contra conflito."
+      }
       aberto={aberto}
-      aoMudar={(v) => (v ? abrir() : fechar())}
+      aoMudar={(v) => (v ? abrir(presetPadrao) : fechar())}
     >
       <FormularioAgendamento key={versao} {...props} preset={preset} aoConcluir={fechar} />
     </GatilhoModal>
@@ -80,29 +103,37 @@ function FormularioAgendamento({
   preset,
   aoConcluir,
 }: Recursos & { preset: PresetAgendamento; aoConcluir: () => void }) {
-  const [termo, setTermo] = useState("");
+  const editando = preset.edicao;
+  const [termo, setTermo] = useState(preset.paciente?.nome ?? "");
   // autoFocus não vale dentro do <dialog>: o showModal() leva o foco para o
   // primeiro botão (o X). A recepção abre o formulário para digitar o nome.
   const campoPaciente = useRef<HTMLInputElement>(null);
+  // Com o paciente já escolhido, não há o que digitar.
+  const comPaciente = Boolean(preset.paciente);
   useEffect(() => {
+    if (comPaciente) return;
     const t = setTimeout(() => campoPaciente.current?.focus(), 50);
     return () => clearTimeout(t);
-  }, []);
-  const [pacientes, setPacientes] = useState<{ id: string; nome: string }[]>([]);
+  }, [comPaciente]);
+  const [pacientes, setPacientes] = useState<{ id: string; nome: string }[]>(
+    preset.paciente ? [preset.paciente] : [],
+  );
   /** Termo cuja busca já voltou: só então "nenhum encontrado" é verdade. */
-  const [buscado, setBuscado] = useState("");
+  const [buscado, setBuscado] = useState(preset.paciente?.nome ?? "");
   const [cadastrando, setCadastrando] = useState(false);
-  const [pacienteId, setPacienteId] = useState("");
+  const [pacienteId, setPacienteId] = useState(preset.paciente?.id ?? "");
   const [pacotes, setPacotes] = useState<PacoteOpcao[]>([]);
-  const [pacoteId, setPacoteId] = useState("");
-  const [procId, setProcId] = useState("");
+  const [pacoteId, setPacoteId] = useState(preset.pacote_id ?? "");
+  const [procId, setProcId] = useState(preset.procedimento_id ?? "");
 
   // Recursos controlados: o formulário aplica as regras do catálogo sozinho.
   const [salaSel, setSalaSel] = useState(preset.sala_id ?? "");
   const [equipSel, setEquipSel] = useState<string[]>(preset.equipamentos ?? []);
   const [profSel, setProfSel] = useState<string[]>(preset.profissionais ?? []);
   const [inicio, setInicio] = useState(preset.inicio ?? `${diaPadrao}T09:00`);
-  const [duracao, setDuracao] = useState("");
+  const [duracao, setDuracao] = useState(
+    preset.duracao_min ? String(preset.duracao_min) : "",
+  );
   const [livres, setLivres] = useState<string[] | null>(null);
   const [buscandoLivres, setBuscandoLivres] = useState(false);
   const [carencia, setCarencia] = useState<{ ultima: string; dias: number; minimo: number } | null>(
@@ -184,7 +215,9 @@ function FormularioAgendamento({
 
   const [estado, acao] = useActionState<ResultadoAgendamento, FormData>(
     async (anterior, formData) => {
-      const r = await criarAgendamento(anterior, formData);
+      const r = editando
+        ? await editarAgendamento(anterior, formData)
+        : await criarAgendamento(anterior, formData);
       if (r.ok) aoConcluir();
       return r;
     },
@@ -220,11 +253,31 @@ function FormularioAgendamento({
   // o resultado obsoleto simplesmente não é exibido, e não há um instante em
   // que a tela mostre o paciente anterior enquanto a nova busca não voltou.
   const pacientesVisiveis = termo.trim().length < 2 ? [] : pacientes;
-  const pacotesVisiveis = pacienteId ? pacotes : [];
+  const pacotesVisiveis = pacienteId && !editando ? pacotes : [];
+  // Pacote sugerido (próxima sessão) só vale se ainda tiver saldo.
+  const pacoteEfetivo = editando
+    ? (preset.pacote_id ?? "")
+    : pacotesVisiveis.some((p) => p.id === pacoteId)
+      ? pacoteId
+      : "";
   const carenciaVisivel = pacienteId && procId ? carencia : null;
 
   return (
     <form action={acao} className="space-y-4">
+      {editando && <input type="hidden" name="id" value={editando.id} />}
+      {editando ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--traco)] bg-[var(--superficie-2)] px-3.5 py-2.5">
+          <div>
+            <p className="text-[12px] text-[var(--tinta-3)]">Paciente</p>
+            <p className="text-[14.5px] font-medium">{preset.paciente?.nome}</p>
+          </div>
+          <p className="text-[13px] text-[var(--tinta-2)]">
+            {editando.pacote ?? "Sessão avulsa"}
+          </p>
+          <input type="hidden" name="paciente_id" value={pacienteId} />
+          {preset.pacote_id && <input type="hidden" name="pacote_id" value={preset.pacote_id} />}
+        </div>
+      ) : (
       <Campo label="Paciente" erro={estado.campos?.paciente_id}>
         <Input
           value={termo}
@@ -292,6 +345,7 @@ function FormularioAgendamento({
           ))
         )}
       </Campo>
+      )}
 
       <div className="grid grid-cols-[1fr_8rem] gap-3">
         <Campo label="Procedimento" erro={estado.campos?.procedimento_id}>
@@ -299,6 +353,8 @@ function FormularioAgendamento({
             name="procedimento_id"
             value={procId}
             onChange={(e) => escolherProcedimento(e.target.value)}
+            // Sessão de pacote é do procedimento vendido.
+            disabled={Boolean(editando && preset.pacote_id)}
             required
           >
             <option value="">Selecione…</option>
@@ -309,6 +365,9 @@ function FormularioAgendamento({
               </option>
             ))}
           </Select>
+          {editando && preset.pacote_id && (
+            <input type="hidden" name="procedimento_id" value={procId} />
+          )}
         </Campo>
         {/* RF-43 · vazio = a duração do procedimento. */}
         <Campo label="Duração (min)" erro={estado.campos?.duracao_min}>
@@ -326,7 +385,11 @@ function FormularioAgendamento({
 
       {pacotesVisiveis.length > 0 && (
         <Campo label="Consumir de um pacote" dica="Deixe vazio para cobrar como sessão avulsa.">
-          <Select name="pacote_id" value={pacoteId} onChange={(e) => setPacoteId(e.target.value)}>
+          <Select
+            name="pacote_id"
+            value={pacoteEfetivo}
+            onChange={(e) => setPacoteId(e.target.value)}
+          >
             <option value="">Sessão avulsa</option>
             {pacotesVisiveis.map((p) => (
               <option key={p.id} value={p.id}>
@@ -337,7 +400,7 @@ function FormularioAgendamento({
         </Campo>
       )}
 
-      {!pacoteId && (
+      {!pacoteEfetivo && (
         <Campo
           label="Valor da sessão avulsa"
           erro={estado.campos?.valor_avulso}
@@ -350,7 +413,9 @@ function FormularioAgendamento({
             type="number"
             step="0.01"
             min="0"
-            defaultValue={procedimento ? Number(procedimento.valor_sessao) : ""}
+            defaultValue={
+              preset.valor_avulso ?? (procedimento ? Number(procedimento.valor_sessao) : "")
+            }
           />
         </Campo>
       )}
@@ -494,7 +559,7 @@ function FormularioAgendamento({
       </Campo>
 
       <Campo label="Observações">
-        <Textarea name="observacoes" rows={2} />
+        <Textarea name="observacoes" rows={2} defaultValue={preset.observacoes ?? ""} />
       </Campo>
 
       {/* RF-46 · conflito traduzido: qual recurso, que horário, com quem. */}
@@ -508,7 +573,7 @@ function FormularioAgendamento({
       )}
 
       <AcoesModal aoCancelar={aoConcluir}>
-        <Salvar />
+        <Salvar editando={Boolean(editando)} />
       </AcoesModal>
     </form>
   );
