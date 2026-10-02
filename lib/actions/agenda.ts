@@ -271,6 +271,23 @@ export async function editarAgendamento(
 }
 
 /**
+ * Observações valem mesmo depois do atendimento encerrado: é onde se anota
+ * o que aconteceu na sessão. Só este campo; o resto exige voltar o status.
+ */
+export async function salvarObservacoes(id: string, observacoes: string): Promise<Resultado> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("agendamento")
+    .update({ observacoes: observacoes.trim() || null })
+    .eq("id", id)
+    .select("paciente_id");
+  if (error || !data?.length) return { erro: "Seu perfil não pode editar este atendimento." };
+  revalidatePath("/agenda");
+  revalidatePath(`/pacientes/${data[0].paciente_id}`);
+  return { ok: true };
+}
+
+/**
  * RF-50 a RF-52 · transições de status.
  *
  * Marcar `realizado` faz o pacote baixar a sessão (a contagem é derivada dos

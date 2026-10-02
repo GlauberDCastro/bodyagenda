@@ -1193,6 +1193,24 @@ export type Database = {
         };
         Returns: string;
       };
+      pacientes_resumo: {
+        Args: { p_termo?: string };
+        Returns: {
+          id: string;
+          nome: string;
+          cpf: string | null;
+          telefone: string | null;
+          data_nascimento: string | null;
+          ativo: boolean;
+          consentimento_lgpd: boolean;
+          ultima_visita: string | null;
+          proximo_inicio: string | null;
+          proximo_procedimento: string | null;
+          pacotes_ativos: number;
+          faltas: number;
+          em_atraso: number;
+        }[];
+      };
       editar_agendamento: {
         Args: {
           p_agendamento: string;

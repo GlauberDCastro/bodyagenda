@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
-import { mudarStatus } from "@/lib/actions/agenda";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { mudarStatus, salvarObservacoes } from "@/lib/actions/agenda";
 import { resumoPacienteAction } from "@/lib/actions/busca";
 import type { Resultado } from "@/lib/actions/recursos";
 import type { AgendamentoNaAgenda } from "@/lib/consultas/agenda";
@@ -12,6 +12,7 @@ import { COR_STATUS, FINALIZADOS, ROTULO_STATUS } from "@/lib/status-agendamento
 import { Modal } from "@/components/ui/modal";
 import { Aviso, Botao, Campo, Textarea } from "@/components/ui/primitivos";
 import { useAgendamento } from "./contexto-agendamento";
+import { linkWhatsApp, mensagemConfirmacao } from "@/lib/whatsapp";
 
 const TZ = "America/Sao_Paulo";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -36,14 +37,6 @@ const paraLocal = (d: Date) =>
 
 /** O caminho normal do atendimento, na ordem em que a recepção o percorre. */
 const ETAPAS: StatusAgendamento[] = ["agendado", "confirmado", "em_atendimento", "realizado"];
-
-/** Telefone brasileiro → link do WhatsApp com a mensagem de confirmação pronta. */
-function linkWhatsApp(telefone: string, mensagem: string): string | null {
-  const digitos = telefone.replace(/\D/g, "");
-  if (digitos.length < 10) return null;
-  const numero = digitos.length <= 11 ? `55${digitos}` : digitos;
-  return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-}
 
 function Item({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -74,6 +67,10 @@ export function DetalheAtendimento({
   const { abrir } = useAgendamento();
   const [resumo, setResumo] = useState<ResumoPaciente | null>(null);
   const [cancelando, setCancelando] = useState(false);
+  const [editandoObs, setEditandoObs] = useState(false);
+  const [obs, setObs] = useState(a.observacoes ?? "");
+  const [erroObs, setErroObs] = useState<string | null>(null);
+  const [salvandoObs, salvarObs] = useTransition();
   const pacienteId = a.paciente?.id;
 
   useEffect(() => {
@@ -87,6 +84,7 @@ export function DetalheAtendimento({
 
   const fechar = () => {
     setCancelando(false);
+    setEditandoObs(false);
     aoFechar();
   };
 
@@ -110,14 +108,11 @@ export function DetalheAtendimento({
       ? `Pacote · sessão ${a.numero_sessao} de ${a.sessoes_pacote}`
       : null;
   const paciente = a.paciente ?? { id: "", nome: "Paciente" };
-  const primeiroNome = paciente.nome.split(" ")[0];
 
-  const whatsapp =
-    resumo?.telefone &&
-    linkWhatsApp(
-      resumo.telefone,
-      `Olá, ${primeiroNome}! Confirmando seu atendimento de ${a.procedimento?.nome ?? ""} em ${diaCurto.format(inicio)} às ${hora.format(inicio)}. Podemos confirmar?`,
-    );
+  const whatsapp = linkWhatsApp(
+    resumo?.telefone,
+    mensagemConfirmacao(paciente.nome, a.procedimento?.nome ?? "", a.inicio),
+  );
 
   /** Valores atuais do atendimento, para editar ou repetir na próxima sessão. */
   const base = {
@@ -244,10 +239,41 @@ export function DetalheAtendimento({
               <span className="text-[var(--tinta-3)]"> · inclui {buffer} min de preparo</span>
             )}
           </Item>
-          {a.observacoes && (
-            <div className="sm:col-span-2">
-              <Item rotulo="Observações do atendimento">{a.observacoes}</Item>
+          {editandoObs ? (
+            <div className="space-y-2 sm:col-span-2">
+              <Campo label="Observações do atendimento">
+                <Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={3} autoFocus />
+              </Campo>
+              {erroObs && (
+                <p role="alert" className="text-[13px]" style={{ color: "var(--status-critico)" }}>
+                  {erroObs}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Botao
+                  type="button"
+                  disabled={salvandoObs}
+                  onClick={() =>
+                    salvarObs(async () => {
+                      const r = await salvarObservacoes(a.id, obs);
+                      setErroObs(r.erro ?? null);
+                      if (r.ok) setEditandoObs(false);
+                    })
+                  }
+                >
+                  {salvandoObs ? "Salvando…" : "Salvar observações"}
+                </Botao>
+                <Botao type="button" variante="fantasma" onClick={() => setEditandoObs(false)}>
+                  Cancelar
+                </Botao>
+              </div>
             </div>
+          ) : (
+            a.observacoes && (
+              <div className="sm:col-span-2">
+                <Item rotulo="Observações do atendimento">{a.observacoes}</Item>
+              </div>
+            )
           )}
           {a.status === "cancelado" && a.motivo_cancelamento && (
             <div className="sm:col-span-2">
@@ -375,15 +401,28 @@ export function DetalheAtendimento({
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--traco)] pt-4">
           {finalizado && (
             <p className="mr-auto text-[12.5px] text-[var(--tinta-3)]">
-              Para editar, volte o status para uma etapa anterior.
+              Atendimento encerrado: só as observações mudam. Para o resto, volte o status.
             </p>
           )}
           <Botao type="button" variante="secundario" onClick={proximaSessao}>
             Agendar próxima sessão
           </Botao>
-          <Botao type="button" onClick={editar} disabled={finalizado}>
-            Editar atendimento
-          </Botao>
+          {finalizado ? (
+            <Botao
+              type="button"
+              onClick={() => {
+                setObs(a.observacoes ?? "");
+                setEditandoObs(true);
+              }}
+              disabled={editandoObs}
+            >
+              Editar observações
+            </Botao>
+          ) : (
+            <Botao type="button" onClick={editar}>
+              Editar atendimento
+            </Botao>
+          )}
         </div>
       </div>
     </Modal>

@@ -313,6 +313,26 @@ test.describe.serial("fluxos críticos", () => {
     await expect.poll(() => agendamentosDoPaciente(m.pacienteNovo)).toBe(2);
   });
 
+  test("confirmações da véspera e observação em atendimento já realizado", async ({ page }) => {
+    await entrarComo(page);
+    await page.goto("/agenda/confirmacoes?dia=2030-01-09");
+    const linha = page.getByRole("listitem").filter({ hasText: m.pacienteNovo });
+    await linha.getByRole("button", { name: "Confirmado" }).click();
+    await expect(linha.getByRole("button", { name: "Desfazer" })).toBeVisible();
+    await linha.getByRole("button", { name: "Desfazer" }).click();
+    await expect(linha.getByRole("button", { name: "Confirmado" })).toBeVisible();
+
+    // Realizado não se edita por inteiro, mas a observação da sessão sim.
+    await page.goto(`/agenda?dia=${DIA}&por=sala`);
+    await page.getByRole("button", { name: /09:00/ }).filter({ hasText: m.paciente }).click();
+    const painel = page.getByRole("dialog");
+    await expect(painel.getByRole("button", { name: "Editar atendimento" })).toHaveCount(0);
+    await painel.getByRole("button", { name: "Editar observações" }).click();
+    await painel.getByRole("textbox").fill("Sessão sem intercorrências");
+    await painel.getByRole("button", { name: "Salvar observações" }).click();
+    await expect(painel).toContainText("Sessão sem intercorrências");
+  });
+
   test("caixa: vender pacote em 3 parcelas e receber parte de uma", async ({ page }) => {
     await entrarComo(page);
     await page.goto(`/pacientes/${m.pacienteId}`);
@@ -390,6 +410,10 @@ test.describe.serial("fluxos críticos", () => {
     await expect(dialogo).toBeHidden();
     await expect(page.getByText("11 97777-6666")).toBeVisible();
     await expect(page.getByText("Consentimento LGPD pendente")).toHaveCount(0);
+
+    // Lista: telefone gravado formatado é achado digitando só os números.
+    await page.goto("/pacientes?q=977776666");
+    await expect(page.getByRole("link", { name: new RegExp(m.paciente) })).toBeVisible();
 
     // RF-11 · mesmo nome e nascimento: avisa antes de duplicar.
     await page.goto("/pacientes");

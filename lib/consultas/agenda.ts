@@ -13,7 +13,7 @@ export interface AgendamentoNaAgenda {
   valor_avulso: number | null;
   observacoes: string | null;
   motivo_cancelamento: string | null;
-  paciente: { id: string; nome: string } | null;
+  paciente: { id: string; nome: string; telefone: string | null } | null;
   procedimento: { id: string; nome: string; duracao_min: number; buffer_min: number } | null;
   sala_id: string;
   sala: { numero: number; nome: string } | null;
@@ -25,7 +25,7 @@ const CAMPOS_AGENDA = `id, inicio, fim, status, numero_sessao, sala_id, pacote_i
        observacoes, motivo_cancelamento,
        pacote:pacote_id (quantidade_sessoes),
        sala:sala_id (numero, nome),
-       paciente:paciente_id (id, nome),
+       paciente:paciente_id (id, nome, telefone),
        procedimento:procedimento_id (id, nome, duracao_min, buffer_min),
        agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
        agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`;
@@ -207,4 +207,16 @@ export async function carenciaViolada(
   if (!minimo || !ultima) return null;
   const dias = Math.floor((new Date(inicio).getTime() - new Date(ultima).getTime()) / 86_400_000);
   return dias < minimo ? { ultima, dias, minimo } : null;
+}
+
+/** Quantos atendimentos ainda esperam confirmação no intervalo. */
+export async function contarAConfirmar(inicio: Date, fim: Date): Promise<number> {
+  const supabase = await createServerSupabase();
+  const { count } = await supabase
+    .from("agendamento")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "agendado")
+    .gte("inicio", inicio.toISOString())
+    .lt("inicio", fim.toISOString());
+  return count ?? 0;
 }

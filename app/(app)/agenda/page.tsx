@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   agendamentosDoPeriodo,
+  contarAConfirmar,
   regrasDoCatalogo,
   type ColunaRecurso,
 } from "@/lib/consultas/agenda";
@@ -19,7 +20,7 @@ import { serieOcupacao } from "@/lib/consultas/relatorios";
 import type { StatusAgendamento } from "@/lib/types/database";
 import { AgendaMes, semanasDoMes } from "@/components/agenda/mes";
 import type { ColunaGrade } from "@/components/agenda/timeline";
-import { diasDaSemana, somarDias, usaRecurso } from "@/lib/grade-agenda";
+import { diasDaSemana, proximoDiaUtil, somarDias, usaRecurso } from "@/lib/grade-agenda";
 
 export const metadata = { title: "Agenda" };
 
@@ -113,19 +114,31 @@ export default async function AgendaPage(props: {
   const dias = mes ? semanasDoMes(dia).flat() : semana ? diasDaSemana(dia) : [dia];
   const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
 
-  const [salas, equipamentos, profissionais, procedimentos, todosAgendamentos, regras, capacidade] =
-    await Promise.all([
-      listarSalas(),
-      listarEquipamentos(),
-      listarProfissionais(),
-      listarProcedimentos(),
-      agendamentosDoPeriodo(inicio, fim),
-      regrasDoCatalogo(),
-      // Mês: capacidade por dia do tipo (ou do recurso escolhido), para a barra de cada dia.
-      mes
-        ? serieOcupacao(tipo, dias[0], dias[dias.length - 1], recurso.split(":")[1])
-        : Promise.resolve([]),
-    ]);
+  // Atalho da véspera: quantos do próximo dia de atendimento faltam confirmar.
+  const diaConfirmar = proximoDiaUtil(hoje);
+  const limitesConfirmar = limites(diaConfirmar, diaConfirmar);
+  const [
+    salas,
+    equipamentos,
+    profissionais,
+    procedimentos,
+    todosAgendamentos,
+    regras,
+    capacidade,
+    aConfirmar,
+  ] = await Promise.all([
+    listarSalas(),
+    listarEquipamentos(),
+    listarProfissionais(),
+    listarProcedimentos(),
+    agendamentosDoPeriodo(inicio, fim),
+    regrasDoCatalogo(),
+    // Mês: capacidade por dia do tipo (ou do recurso escolhido), para a barra de cada dia.
+    mes
+      ? serieOcupacao(tipo, dias[0], dias[dias.length - 1], recurso.split(":")[1])
+      : Promise.resolve([]),
+    contarAConfirmar(limitesConfirmar.inicio, limitesConfirmar.fim),
+  ]);
 
   if (salas.semSchema) return <AvisoBanco />;
 
@@ -222,14 +235,27 @@ export default async function AgendaPage(props: {
       <div className="space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="titulo-xl">Agenda</h1>
-          <NovoAgendamento
-            salas={salas.dados.filter((s) => s.ativo)}
-            equipamentos={equipamentos.dados.filter((e) => e.ativo)}
-            profissionais={profissionais.dados.filter((p) => p.ativo)}
-            procedimentos={procedimentos.dados.filter((p) => p.ativo)}
-            diaPadrao={dia}
-            regras={regras}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/agenda/confirmacoes?dia=${diaConfirmar}`}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium shadow-[var(--sombra-1)] transition-colors hover:bg-[var(--superficie-2)]"
+            >
+              Confirmações
+              {aConfirmar > 0 && (
+                <span className="rounded-full bg-[var(--superficie-inversa)] px-2 py-0.5 text-[12px] tabular-nums text-[var(--tinta-inversa)]">
+                  {aConfirmar}
+                </span>
+              )}
+            </Link>
+            <NovoAgendamento
+              salas={salas.dados.filter((s) => s.ativo)}
+              equipamentos={equipamentos.dados.filter((e) => e.ativo)}
+              profissionais={profissionais.dados.filter((p) => p.ativo)}
+              procedimentos={procedimentos.dados.filter((p) => p.ativo)}
+              diaPadrao={dia}
+              regras={regras}
+            />
+          </div>
         </header>
 
         <div className="flex flex-wrap items-center gap-3">

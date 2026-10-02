@@ -100,3 +100,9 @@ export function distribuirEmFaixas(
   fecharGrupo();
   return resultado;
 }
+
+/** Próximo dia de atendimento depois de `dia`: pula o domingo. */
+export function proximoDiaUtil(dia: string): string {
+  const seguinte = somarDias(dia, 1);
+  return new Date(`${seguinte}T12:00:00Z`).getUTCDay() === 0 ? somarDias(seguinte, 1) : seguinte;
+}

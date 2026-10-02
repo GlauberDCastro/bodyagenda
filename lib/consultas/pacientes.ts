@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { Paciente, Pacote, Procedimento, Agendamento } from "@/lib/types/database";
+import type { Database } from "@/lib/types/supabase";
 
 export interface PacoteComSaldo extends Pacote {
   procedimento: Pick<Procedimento, "id" | "nome" | "duracao_min"> | null;
@@ -166,4 +167,18 @@ export async function resumoDoPaciente(id: string, atual?: string): Promise<Resu
       .filter((c) => c.status === "atrasado")
       .reduce((t, c) => t + Number(c.valor), 0),
   };
+}
+
+export type LinhaPaciente =
+  Database["public"]["Functions"]["pacientes_resumo"]["Returns"][number];
+
+/**
+ * Lista de pacientes com última visita, próximo atendimento, pacotes, faltas
+ * e atraso. Marca os atrasados antes, como as telas de cobrança (RF-82).
+ */
+export async function listarPacientesResumo(termo: string): Promise<LinhaPaciente[]> {
+  const supabase = await createServerSupabase();
+  await supabase.rpc("marcar_atrasados");
+  const { data } = await supabase.rpc("pacientes_resumo", { p_termo: termo });
+  return (data ?? []).map((l) => ({ ...l, em_atraso: Number(l.em_atraso) }));
 }
