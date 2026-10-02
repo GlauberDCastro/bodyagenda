@@ -5,8 +5,8 @@ export default function ConfiguracoesLayout({ children }: { children: React.Reac
     <div className="space-y-6">
       <header className="space-y-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Configurações</h1>
-          <p className="text-sm text-[var(--tinta-3)]">
+          <h1 className="titulo-xl">Configurações</h1>
+          <p className="mt-1 text-[15px] text-[var(--tinta-2)]">
             Tudo o que molda a clínica no sistema: recursos, catálogo, horários, despesas e acessos.
             Nada aqui está fixado no código.
           </p>

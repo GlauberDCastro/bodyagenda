@@ -1,9 +1,10 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { sair } from "@/lib/actions/auth";
 import { Navegacao, Migalha } from "@/components/shell/navegacao";
 import { BuscaPaciente } from "@/components/shell/busca-paciente";
-import { SUBTITULO_PRODUTO } from "@/components/ui/logo";
+import { NOME_CLINICA } from "@/components/ui/logo";
+import { MenuUsuario } from "@/components/shell/menu-usuario";
 import { ROTULO_PERFIL } from "@/lib/perfis";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,63 +24,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("id", user.id)
     .maybeSingle();
 
-  const nome = (perfil?.nome ?? user.email?.split("@")[0] ?? "Usuário").replace(
-    /^./,
-    (c) => c.toUpperCase(),
+  const nome = (perfil?.nome ?? user.email?.split("@")[0] ?? "Usuário").replace(/^./, (c) =>
+    c.toUpperCase(),
   );
-  const inicial = nome.charAt(0).toUpperCase();
-
   return (
-    <div className="flex min-h-dvh gap-3 p-3">
-      {/* Coluna de navegação: cartões flutuantes, não uma barra colada na borda. */}
-      <aside className="hidden w-[228px] shrink-0 lg:block">
-        <div className="sticky top-3 h-[calc(100dvh-1.5rem)]">
-          <Navegacao />
-        </div>
-      </aside>
+    <div className="flex min-h-dvh gap-5 p-3 lg:p-4">
+      <Navegacao recolhidoInicial={(await cookies()).get("hd_menu_recolhido")?.value === "1"} />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <header className="cartao flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        {/* Topo solto sobre o fundo: sem cartão, cada controle é a sua pílula. */}
+        <header className="flex flex-wrap items-center justify-between gap-3 pt-1">
           <Migalha />
 
-          <div className="flex flex-1 items-center justify-end gap-2.5">
+          <div className="flex flex-1 items-center justify-end gap-3">
             <BuscaPaciente />
 
-            <div className="hidden items-center gap-2 rounded-full border border-[var(--traco)] px-3 py-1.5 sm:flex">
+            <div className="hidden h-[52px] items-center gap-2.5 rounded-full bg-[var(--superficie)] px-5 shadow-[var(--sombra-2)] sm:flex">
               <span
                 aria-hidden
-                className="size-1.5 rounded-full"
+                className="size-2 rounded-full"
                 style={{ background: "var(--status-bom)" }}
               />
-              <span className="text-[13px] text-[var(--tinta-2)]">{SUBTITULO_PRODUTO}</span>
+              <span className="text-[15px] text-[var(--tinta-1)]">{NOME_CLINICA}</span>
             </div>
 
-            <div className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 transition-colors hover:bg-[var(--superficie-2)]">
-              <span
-                className="grid size-7 place-items-center rounded-full text-[12px] font-semibold text-white"
-                style={{
-                  background: "linear-gradient(135deg, var(--marca), oklch(0.6 0.19 300))",
-                }}
-                aria-hidden
-              >
-                {inicial}
-              </span>
-              <span className="hidden leading-tight sm:block">
-                <span className="block text-[13px] font-medium text-[var(--tinta-1)]">{nome}</span>
-                <span className="block text-[11px] text-[var(--tinta-3)]">
-                  {ROTULO_PERFIL[perfil?.perfil ?? ""] ?? "Sem perfil"}
-                </span>
-              </span>
-            </div>
-
-            <form action={sair}>
-              <button
-                type="submit"
-                className="rounded-full px-3 py-1.5 text-[13px] text-[var(--tinta-3)] transition-colors hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
-              >
-                Sair
-              </button>
-            </form>
+            <MenuUsuario nome={nome} perfil={ROTULO_PERFIL[perfil?.perfil ?? ""] ?? "Sem perfil"} />
           </div>
         </header>
 

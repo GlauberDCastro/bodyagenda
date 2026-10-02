@@ -14,8 +14,8 @@ export default async function PacientesPage(props: { searchParams: Promise<{ q?:
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Pacientes</h1>
-          <p className="text-sm text-[var(--tinta-3)]">Busque por nome, CPF ou telefone.</p>
+          <h1 className="titulo-xl">Pacientes</h1>
+          <p className="mt-1 text-[15px] text-[var(--tinta-2)]">Busque por nome, CPF ou telefone.</p>
         </div>
         <FormularioPaciente />
       </header>

@@ -62,8 +62,8 @@ export default async function ComissoesPage(props: {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Comissões</h1>
-          <p className="text-sm text-[var(--tinta-3)]">
+          <h1 className="titulo-xl">Comissões</h1>
+          <p className="mt-1 text-[15px] text-[var(--tinta-2)]">
             Nascem quando a sessão é marcada como realizada. Fechar a competência congela o valor;
             depois registre o pagamento de cada profissional.
           </p>

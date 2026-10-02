@@ -42,11 +42,11 @@ export function BuscaPaciente() {
   const visiveis = termo.trim().length < 2 ? [] : resultados;
 
   return (
-    <div className="relative hidden min-w-0 flex-1 md:block md:max-w-sm">
-      <div className="flex items-center gap-2 rounded-full border border-[var(--traco)] bg-[var(--superficie-2)] px-3.5 py-1.5 focus-within:border-[var(--marca)] focus-within:bg-[var(--superficie)]">
+    <div className="relative hidden min-w-0 flex-1 md:block md:max-w-md">
+      <div className="flex h-[52px] items-center gap-2.5 rounded-full border border-transparent bg-[var(--superficie)] px-5 shadow-[var(--sombra-2)] focus-within:border-[var(--marca)]">
         <svg
-          width="15"
-          height="15"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -64,12 +64,12 @@ export function BuscaPaciente() {
           onChange={(e) => setTermo(e.target.value)}
           onFocus={() => visiveis.length > 0 && setAberto(true)}
           onBlur={() => setTimeout(() => setAberto(false), 160)}
-          placeholder="Buscar paciente por nome ou CPF"
+          placeholder="Buscar paciente, CPF…"
           aria-label="Buscar paciente"
-          className="min-w-0 flex-1 bg-transparent text-[13.5px] text-[var(--tinta-1)] outline-none placeholder:text-[var(--tinta-3)]"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--tinta-1)] outline-none placeholder:text-[var(--tinta-3)]"
         />
-        <kbd className="hidden shrink-0 rounded border border-[var(--traco)] px-1.5 py-0.5 font-mono text-[10.5px] text-[var(--tinta-3)] lg:block">
-          ⌘K
+        <kbd className="hidden shrink-0 rounded-md border border-[var(--traco)] bg-[var(--superficie-2)] px-2 py-0.5 text-[12.5px] text-[var(--tinta-3)] lg:block">
+          ⌘ K
         </kbd>
       </div>
 

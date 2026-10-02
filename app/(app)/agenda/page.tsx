@@ -161,7 +161,7 @@ export default async function AgendaPage(props: {
     <ProvedorAgendamento>
       <div className="space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-[28px] font-semibold tracking-tight">Agenda</h1>
+          <h1 className="titulo-xl">Agenda</h1>
           <NovoAgendamento
             salas={salas.dados.filter((s) => s.ativo)}
             equipamentos={equipamentos.dados.filter((e) => e.ativo)}

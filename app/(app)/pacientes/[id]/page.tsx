@@ -66,7 +66,7 @@ export default async function PacientePage(props: { params: Promise<{ id: string
           ← Pacientes
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">{paciente.nome}</h1>
+          <h1 className="titulo-xl">{paciente.nome}</h1>
           <div className="flex items-center gap-2">
             <AtivarPaciente id={paciente.id} ativo={paciente.ativo} nome={paciente.nome} />
             <FormularioPaciente inicial={paciente} />

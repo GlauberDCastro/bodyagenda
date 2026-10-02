@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Logotipo } from "@/components/ui/logo";
+import { Marca } from "@/components/ui/logo";
 import { ABAS_CONFIGURACAO } from "@/components/config/abas-configuracao";
 
 /** Ícones em traço, 1.6px — peso único em toda a navegação. */
@@ -46,111 +47,183 @@ interface ItemNav {
 
 const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   {
-    titulo: "Operação",
+    titulo: "Atendimento",
     itens: [
       { href: "/", rotulo: "Painel", icone: "painel" },
       { href: "/agenda", rotulo: "Agenda", icone: "agenda" },
       { href: "/pacientes", rotulo: "Pacientes", icone: "pacientes" },
-      { href: "/recebimentos", rotulo: "Recebimentos", icone: "recebimentos" },
     ],
   },
   {
-    titulo: "Resultado",
+    titulo: "Clínica",
+    itens: [{ href: "/relatorios/ocupacao", rotulo: "Ocupação", icone: "relatorios" }],
+  },
+  {
+    titulo: "Financeiro",
     itens: [
-      { href: "/relatorios/ocupacao", rotulo: "Ocupação", icone: "relatorios" },
+      { href: "/recebimentos", rotulo: "Recebimentos", icone: "recebimentos" },
       { href: "/relatorios/financeiro", rotulo: "Financeiro", icone: "financeiro" },
       { href: "/comissoes", rotulo: "Comissões", icone: "comissoes" },
     ],
   },
 ];
 
-/** Fixada no rodapé do menu, fora dos grupos: é onde se ajusta, não onde se opera. */
+/** Fica no grupo "Sistema", no fim do menu: é onde se ajusta, não onde se opera. */
 const CONFIGURACOES: ItemNav = {
   href: "/configuracoes",
   rotulo: "Configurações",
   icone: "configuracoes",
 };
 
+const ICONE_RECOLHER = "M4 5h16v14H4zM9 5v14M15.5 10 13.5 12l2 2";
+
 /** A rota `/` só casa exata; as demais casam por prefixo. */
 function estaAtivo(href: string, caminho: string): boolean {
   return href === "/" ? caminho === "/" : caminho.startsWith(href);
 }
 
-function ItemMenu({ item, ativo }: { item: ItemNav; ativo: boolean }) {
+function ItemMenu({
+  item,
+  ativo,
+  recolhido,
+}: {
+  item: ItemNav;
+  ativo: boolean;
+  recolhido: boolean;
+}) {
   return (
     <Link
       href={item.href}
       aria-current={ativo ? "page" : undefined}
-      className={`flex items-center gap-2.5 rounded-[var(--r-md)] px-3 py-2 text-[13.5px] transition-colors
+      aria-label={recolhido ? item.rotulo : undefined}
+      title={recolhido ? item.rotulo : undefined}
+      className={`flex items-center gap-3 rounded-full py-2.5 text-[15px] transition-colors
+        ${recolhido ? "justify-center px-0" : "px-4"}
         ${
           ativo
-            ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
+            ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)] shadow-[var(--sombra-3)]"
             : "text-[var(--tinta-2)] hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
         }`}
     >
-      <Icone d={ICONES[item.icone]} />
-      {item.rotulo}
+      <Icone d={ICONES[item.icone]} tamanho={20} />
+      {!recolhido && item.rotulo}
     </Link>
   );
 }
 
-export function Navegacao() {
+/** Cookie, não localStorage: o servidor já renderiza o menu no estado certo. */
+const COOKIE_RECOLHIDO = "hd_menu_recolhido";
+
+export function Navegacao({ recolhidoInicial = false }: { recolhidoInicial?: boolean }) {
   const caminho = usePathname();
+  const [recolhido, setRecolhido] = useState(recolhidoInicial);
+
+  function alternar() {
+    const novo = !recolhido;
+    setRecolhido(novo);
+    document.cookie = `${COOKIE_RECOLHIDO}=${novo ? 1 : 0}; path=/; max-age=31536000; samesite=lax`;
+  }
+
+  const grupos = [...GRUPOS, { titulo: "Sistema", itens: [CONFIGURACOES] }];
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="cartao flex items-center px-4 py-3.5">
-        <Link href="/" aria-label="hellodoctor — início">
-          <Logotipo />
+    <aside
+      className={`hidden shrink-0 transition-[width] duration-200 lg:block ${
+        recolhido ? "w-[84px]" : "w-[260px]"
+      }`}
+    >
+      <div className="sticky top-3 flex h-[calc(100dvh-1.5rem)] flex-col gap-3">
+        <Link
+          href="/"
+          aria-label="hellodoctor — início"
+          className={`flex items-center gap-3 py-2 ${recolhido ? "justify-center" : "px-2"}`}
+        >
+          <span
+            className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--superficie)] shadow-[var(--sombra-2)]"
+            style={{ color: "var(--marca)" }}
+          >
+            <Marca tamanho={24} />
+          </span>
+          {!recolhido && (
+            <span
+              className="text-[22px] leading-none"
+              style={{ letterSpacing: "-0.035em", fontWeight: 600 }}
+            >
+              hellodoctor
+            </span>
+          )}
         </Link>
+
+        <nav className="cartao flex-1 overflow-y-auto p-3">
+          <div className="space-y-5">
+            {grupos.map((grupo) => (
+              <div key={grupo.titulo} className="space-y-1">
+                {recolhido ? (
+                  <hr className="mx-3 mb-2 border-[var(--traco)] first:hidden" />
+                ) : (
+                  <p className="px-4 pb-1 pt-1 text-[13px] text-[var(--tinta-3)]">{grupo.titulo}</p>
+                )}
+                {grupo.itens.map((item) => (
+                  <ItemMenu
+                    key={item.href}
+                    item={item}
+                    ativo={estaAtivo(item.href, caminho)}
+                    recolhido={recolhido}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        <button
+          type="button"
+          onClick={alternar}
+          aria-expanded={!recolhido}
+          aria-label={recolhido ? "Expandir menu" : "Recolher menu"}
+          className={`cartao flex items-center gap-3 py-3.5 text-[15px] text-[var(--tinta-2)] transition-colors hover:text-[var(--tinta-1)] ${
+            recolhido ? "justify-center" : "px-5"
+          }`}
+        >
+          <span className={recolhido ? "rotate-180" : undefined}>
+            <Icone d={ICONE_RECOLHER} tamanho={20} />
+          </span>
+          {!recolhido && "Recolher menu"}
+        </button>
       </div>
-
-      <nav className="cartao flex flex-1 flex-col p-3">
-        <div className="space-y-5">
-          {GRUPOS.map((grupo) => (
-            <div key={grupo.titulo} className="space-y-1">
-              <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-[var(--tinta-3)]">
-                {grupo.titulo}
-              </p>
-              {grupo.itens.map((item) => (
-                <ItemMenu key={item.href} item={item} ativo={estaAtivo(item.href, caminho)} />
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-auto border-t border-[var(--traco)] pt-3">
-          <ItemMenu item={CONFIGURACOES} ativo={estaAtivo(CONFIGURACOES.href, caminho)} />
-        </div>
-      </nav>
-    </div>
+    </aside>
   );
 }
 
-/** Migalha derivada da rota — evita repetir o título em toda página. */
+/** Migalha derivada da rota: "Painel › Agenda", "Configurações › Salas". */
 export function Migalha() {
   const caminho = usePathname();
 
-  // Em Configurações a migalha mostra a aba: "Configurações › Salas".
   const aba = ABAS_CONFIGURACAO.find((a) => caminho.startsWith(a.href));
-  const todos = [
-    ...GRUPOS.flatMap((g) => g.itens.map((i) => ({ ...i, grupo: g.titulo }))),
-    ...(aba
-      ? [{ ...CONFIGURACOES, href: aba.href, rotulo: aba.rotulo, grupo: "Configurações" }]
-      : []),
-  ];
+  const todos = [...GRUPOS.flatMap((g) => g.itens), CONFIGURACOES];
   const atual =
-    [...todos]
+    todos
       .filter((i) => estaAtivo(i.href, caminho))
       .sort((a, b) => b.href.length - a.href.length)[0] ?? null;
 
+  const raiz = aba ? CONFIGURACOES : { href: "/", rotulo: "Painel" };
+  const folha = aba?.rotulo ?? (atual && atual.href !== "/" ? atual.rotulo : null);
+
   return (
-    <nav aria-label="Localização" className="flex items-center gap-2 text-[13.5px]">
-      <span className="text-[var(--tinta-3)]">{atual?.grupo ?? "hellodoctor"}</span>
-      <span className="text-[var(--tinta-3)]" aria-hidden>
-        ›
-      </span>
-      <span className="font-medium text-[var(--tinta-1)]">{atual?.rotulo ?? "Início"}</span>
+    <nav aria-label="Localização" className="flex items-center gap-2.5 px-2 text-[15px]">
+      {folha ? (
+        <>
+          <Link href={raiz.href} className="text-[var(--tinta-3)] hover:text-[var(--tinta-1)]">
+            {raiz.rotulo}
+          </Link>
+          <span className="text-[var(--tinta-3)]" aria-hidden>
+            ›
+          </span>
+          <span className="font-medium text-[var(--tinta-1)]">{folha}</span>
+        </>
+      ) : (
+        <span className="font-medium text-[var(--tinta-1)]">Painel</span>
+      )}
     </nav>
   );
 }

@@ -49,8 +49,8 @@ export default async function OcupacaoPage(props: {
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Relatórios de ocupação</h1>
-          <p className="text-sm text-[var(--tinta-3)]">{periodo.rotulo}</p>
+          <h1 className="titulo-xl">Relatórios de ocupação</h1>
+          <p className="mt-1 text-[15px] text-[var(--tinta-2)]">{periodo.rotulo}</p>
         </div>
         <Link href="/" className="text-sm underline-offset-4 hover:underline">
           ← Painel

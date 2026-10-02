@@ -46,3 +46,4 @@ export function Logotipo({ compacto = false }: { compacto?: boolean }) {
 
 export const NOME_PRODUTO = "hellodoctor";
 export const SUBTITULO_PRODUTO = "Performance Clínica";
+export const NOME_CLINICA = "Body Prime";

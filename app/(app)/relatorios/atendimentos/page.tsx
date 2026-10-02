@@ -67,8 +67,8 @@ export default async function AtendimentosPage(props: {
         <Link href="/" className="text-sm text-[var(--tinta-3)] underline-offset-4 hover:underline">
           ← Painel
         </Link>
-        <h1 className="text-xl font-semibold tracking-tight">Atendimentos</h1>
-        <p className="text-sm text-[var(--tinta-3)]">
+        <h1 className="titulo-xl">Atendimentos</h1>
+        <p className="mt-1 text-[15px] text-[var(--tinta-2)]">
           {periodo.rotulo} · {filtros.join(" · ")} · {lista.length} atendimento(s)
         </p>
       </header>

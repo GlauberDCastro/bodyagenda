@@ -67,8 +67,8 @@ export default async function RecebimentosPage(props: {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Recebimentos</h1>
-        <p className="text-sm text-[var(--tinta-3)]">
+        <h1 className="titulo-xl">Recebimentos</h1>
+        <p className="mt-1 text-[15px] text-[var(--tinta-2)]">
           Parcelas de pacotes e sessões avulsas realizadas. Venda de pacote é na ficha do paciente.
         </p>
       </header>

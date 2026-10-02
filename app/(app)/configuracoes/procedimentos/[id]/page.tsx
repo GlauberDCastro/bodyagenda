@@ -94,7 +94,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight">{proc.nome}</h1>
+            <h1 className="titulo-xl">{proc.nome}</h1>
             <Etiqueta tom={proc.ativo ? "bom" : "neutro"}>
               {proc.ativo ? "Ativo" : "Inativo"}
             </Etiqueta>
