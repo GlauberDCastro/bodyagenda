@@ -1,4 +1,12 @@
 import type { StatusAgendamento } from "@/lib/types/database";
+import type { AgendamentoNaAgenda, ColunaRecurso } from "@/lib/consultas/agenda";
+
+/** Diz se um agendamento ocupa aquele recurso. */
+export function usaRecurso(a: AgendamentoNaAgenda, c: ColunaRecurso): boolean {
+  if (c.tipo === "sala") return a.sala_id === c.id;
+  if (c.tipo === "equipamento") return a.equipamentos.some((e) => e.id === c.id);
+  return a.profissionais.some((p) => p.id === c.id);
+}
 
 /** Geometria da timeline: onde começa, quantos px vale uma hora, o passo. */
 export interface Grade {

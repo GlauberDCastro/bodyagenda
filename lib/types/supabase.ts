@@ -1449,7 +1449,12 @@ export type Database = {
       };
       reservas_suspensas: { Args: Record<PropertyKey, never>; Returns: boolean };
       serie_ocupacao: {
-        Args: { p_fim: string; p_inicio: string; p_tipo: Database["public"]["Enums"]["tipo_recurso"] };
+        Args: {
+          p_fim: string;
+          p_inicio: string;
+          p_recurso?: string;
+          p_tipo: Database["public"]["Enums"]["tipo_recurso"];
+        };
         Returns: { dia: string; capacidade_h: number; realizadas_h: number }[];
       };
       tz_clinica: { Args: Record<PropertyKey, never>; Returns: string };

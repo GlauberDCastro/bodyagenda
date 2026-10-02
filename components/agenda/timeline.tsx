@@ -6,6 +6,7 @@ import type { AgendamentoNaAgenda, ColunaRecurso } from "@/lib/consultas/agenda"
 import type { StatusAgendamento } from "@/lib/types/database";
 import { remarcar, remarcarTrocandoRecurso } from "@/lib/actions/agenda";
 import {
+  usaRecurso,
   dentroDoExpedienteExibido,
   distribuirEmFaixas,
   horarioLocal,
@@ -86,13 +87,6 @@ function minutosDoDia(iso: string): number {
 /** "2026-10-06" do atendimento, no fuso da clínica. */
 const diaDe = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(iso));
-
-/** Diz se um agendamento ocupa aquele recurso. */
-function usaRecurso(a: AgendamentoNaAgenda, c: ColunaRecurso): boolean {
-  if (c.tipo === "sala") return a.sala_id === c.id;
-  if (c.tipo === "equipamento") return a.equipamentos.some((e) => e.id === c.id);
-  return a.profissionais.some((p) => p.id === c.id);
-}
 
 const pertence = (a: AgendamentoNaAgenda, c: ColunaGrade) =>
   diaDe(a.inicio) === c.dia && (!c.recurso || usaRecurso(a, c.recurso));

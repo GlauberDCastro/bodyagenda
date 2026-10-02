@@ -159,6 +159,38 @@ test.describe.serial("fluxos críticos", () => {
     await expect.poll(() => profissionaisNoHorario(m, "14:00")).toEqual([b.nome]);
   });
 
+  test("semana e mês de um profissional só mostram apenas a agenda dele", async ({ page }) => {
+    const [a, b] = m.profissionais;
+    await entrarComo(page);
+    await page.goto(`/agenda?dia=${DIA}&por=profissional`);
+
+    // Período e recurso são escolhas independentes do tipo.
+    await page
+      .getByRole("navigation", { name: "Período" })
+      .getByRole("link", { name: "Semana" })
+      .click();
+    await page.getByLabel("Escolher profissional").selectOption({ label: b.nome });
+    await expect(page).toHaveURL(new RegExp(`periodo=semana.*recurso=profissional%3A${b.id}`));
+    const atendimentoDeB = page
+      .getByRole("button", { name: /14:00/ })
+      .filter({ hasText: m.paciente });
+    await expect(atendimentoDeB).toBeVisible();
+
+    await page.getByLabel("Escolher profissional").selectOption({ label: a.nome });
+    await expect(page).toHaveURL(new RegExp(`recurso=profissional%3A${a.id}`));
+    await expect(atendimentoDeB).toHaveCount(0);
+
+    // No mês o recurso continua escolhido; o dia conta só os atendimentos de B.
+    await page.getByLabel("Escolher profissional").selectOption({ label: b.nome });
+    await expect(page).toHaveURL(new RegExp(`recurso=profissional%3A${b.id}`));
+    await page
+      .getByRole("navigation", { name: "Período" })
+      .getByRole("link", { name: "Mês" })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`periodo=mes.*recurso=profissional%3A${b.id}`));
+    await expect(page.getByRole("link", { name: `${DIA}: 1 atendimento(s)` })).toBeVisible();
+  });
+
   test("paciente que não existe é cadastrado sem sair do agendamento", async ({ page }) => {
     await entrarComo(page);
     await page.goto(`/agenda?dia=${DIA}`);

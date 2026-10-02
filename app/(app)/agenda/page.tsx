@@ -19,7 +19,7 @@ import { serieOcupacao } from "@/lib/consultas/relatorios";
 import type { StatusAgendamento } from "@/lib/types/database";
 import { AgendaMes, semanasDoMes } from "@/components/agenda/mes";
 import type { ColunaGrade } from "@/components/agenda/timeline";
-import { diasDaSemana, somarDias } from "@/lib/grade-agenda";
+import { diasDaSemana, somarDias, usaRecurso } from "@/lib/grade-agenda";
 
 export const metadata = { title: "Agenda" };
 
@@ -42,25 +42,73 @@ const SEMANA_CURTA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const rotuloDia = (dia: string) =>
   `${SEMANA_CURTA[new Date(`${dia}T12:00:00Z`).getUTCDay()]} ${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 
-const VISOES = [
-  { chave: "sala", rotulo: "Dia · Sala" },
-  { chave: "equipamento", rotulo: "Dia · Equipamento" },
-  { chave: "profissional", rotulo: "Dia · Profissional" },
-  { chave: "semana", rotulo: "Semana" },
-  { chave: "mes", rotulo: "Mês com ocupação" },
+/** Dois eixos independentes: de quem é a agenda e quanto tempo ela cobre. */
+const TIPOS = [
+  { chave: "sala", rotulo: "Salas" },
+  { chave: "equipamento", rotulo: "Equipamentos" },
+  { chave: "profissional", rotulo: "Profissionais" },
 ] as const;
+const PERIODOS = [
+  { chave: "dia", rotulo: "Dia" },
+  { chave: "semana", rotulo: "Semana" },
+  { chave: "mes", rotulo: "Mês" },
+] as const;
+type Tipo = (typeof TIPOS)[number]["chave"];
+
+function Segmentos({
+  rotulo,
+  opcoes,
+  atual,
+  href,
+}: {
+  rotulo: string;
+  opcoes: readonly { chave: string; rotulo: string }[];
+  atual: string;
+  href: (chave: string) => string;
+}) {
+  return (
+    <nav
+      aria-label={rotulo}
+      className="inline-flex flex-wrap gap-1 rounded-full bg-[var(--superficie)] p-1.5 shadow-[var(--sombra-1)]"
+    >
+      {opcoes.map((o) => (
+        <Link
+          key={o.chave}
+          href={href(o.chave)}
+          aria-current={atual === o.chave ? "page" : undefined}
+          className={`rounded-full px-4 py-2 text-[14.5px] transition-colors ${
+            atual === o.chave
+              ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
+              : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)]"
+          }`}
+        >
+          {o.rotulo}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 export default async function AgendaPage(props: {
-  searchParams: Promise<{ dia?: string; por?: string; recurso?: string; status?: string }>;
+  searchParams: Promise<{
+    dia?: string;
+    por?: string;
+    periodo?: string;
+    recurso?: string;
+    status?: string;
+  }>;
 }) {
-  const {
-    dia = hojeNaClinica(),
-    por = "sala",
-    recurso = "",
-    status = "",
-  } = await props.searchParams;
-  const semana = por === "semana";
-  const mes = por === "mes";
+  const q = await props.searchParams;
+  const { dia = hojeNaClinica(), status = "" } = q;
+  // Links antigos usavam `por=semana` e `por=mes`; o tipo vinha do recurso.
+  const legado = q.por === "semana" || q.por === "mes" ? q.por : null;
+  const periodo = legado ?? (q.periodo === "semana" || q.periodo === "mes" ? q.periodo : "dia");
+  const tipoBruto = legado ? q.recurso?.split(":")[0] : q.por;
+  const tipo: Tipo = TIPOS.some((t) => t.chave === tipoBruto) ? (tipoBruto as Tipo) : "sala";
+  // Recurso só vale para o tipo atual e fora do dia (no dia, cada recurso já é uma coluna).
+  const recurso = periodo !== "dia" && q.recurso?.startsWith(`${tipo}:`) ? q.recurso : "";
+  const semana = periodo === "semana";
+  const mes = periodo === "mes";
   const hoje = hojeNaClinica();
   const dias = mes ? semanasDoMes(dia).flat() : semana ? diasDaSemana(dia) : [dia];
   const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
@@ -73,12 +121,11 @@ export default async function AgendaPage(props: {
       listarProcedimentos(),
       agendamentosDoPeriodo(inicio, fim),
       regrasDoCatalogo(),
-      // Mês com ocupação: capacidade de sala por dia, para a barra de cada dia.
-      mes ? serieOcupacao("sala", dias[0], dias[dias.length - 1]) : Promise.resolve([]),
+      // Mês: capacidade por dia do tipo (ou do recurso escolhido), para a barra de cada dia.
+      mes
+        ? serieOcupacao(tipo, dias[0], dias[dias.length - 1], recurso.split(":")[1])
+        : Promise.resolve([]),
     ]);
-  const agendamentos = status
-    ? todosAgendamentos.filter((a) => a.status === (status as StatusAgendamento))
-    : todosAgendamentos;
 
   if (salas.semSchema) return <AvisoBanco />;
 
@@ -116,6 +163,10 @@ export default async function AgendaPage(props: {
     ...colunasDe("profissional"),
   ];
   const filtro = todosRecursos.find((r) => `${r.tipo}:${r.id}` === recurso);
+  const agendamentos = todosAgendamentos.filter(
+    (a) =>
+      (!status || a.status === (status as StatusAgendamento)) && (!filtro || usaRecurso(a, filtro)),
+  );
 
   // Dia: uma coluna por recurso. Semana: uma coluna por dia, como no Google Calendar.
   const colunas: ColunaGrade[] = semana
@@ -125,10 +176,10 @@ export default async function AgendaPage(props: {
         subtitulo: d === hoje ? "Hoje" : undefined,
         dia: d,
         recurso: filtro,
-        href: `/agenda?dia=${d}&por=${filtro?.tipo ?? "sala"}`,
+        href: `/agenda?dia=${d}&por=${tipo}`,
         destaque: d === hoje,
       }))
-    : colunasDe(por).map((r) => ({
+    : colunasDe(tipo).map((r) => ({
         chave: `${r.tipo}-${r.id}`,
         rotulo: r.rotulo,
         subtitulo: r.subtitulo,
@@ -156,6 +207,15 @@ export default async function AgendaPage(props: {
     .filter(Boolean)
     .join(" · ");
 
+  const linkAgenda = (m: { por: string; periodo: string; recurso?: string }) =>
+    `/agenda?${new URLSearchParams({
+      dia,
+      por: m.por,
+      ...(m.periodo !== "dia" && { periodo: m.periodo }),
+      ...(m.recurso && { recurso: m.recurso }),
+      ...(status && { status }),
+    })}`;
+
   return (
     // O botão "Novo agendamento" e o clique na grade abrem o mesmo formulário.
     <ProvedorAgendamento>
@@ -172,35 +232,31 @@ export default async function AgendaPage(props: {
           />
         </header>
 
-        <nav
-          aria-label="Visão da agenda"
-          className="inline-flex flex-wrap gap-1 rounded-full bg-[var(--superficie)] p-1.5 shadow-[var(--sombra-1)]"
-        >
-          {VISOES.map((v) => (
-            <Link
-              key={v.chave}
-              href={`/agenda?${new URLSearchParams({ dia, por: v.chave, ...(status && { status }) })}`}
-              aria-current={por === v.chave ? "page" : undefined}
-              className={`rounded-full px-4 py-2 text-[14.5px] transition-colors ${
-                por === v.chave
-                  ? "bg-[var(--superficie-inversa)] font-medium text-[var(--tinta-inversa)]"
-                  : "text-[var(--tinta-2)] hover:text-[var(--tinta-1)]"
-              }`}
-            >
-              {v.rotulo}
-            </Link>
-          ))}
-        </nav>
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmentos
+            rotulo="Ver agenda por"
+            opcoes={TIPOS}
+            atual={tipo}
+            href={(t) => linkAgenda({ por: t, periodo })}
+          />
+          <Segmentos
+            rotulo="Período"
+            opcoes={PERIODOS}
+            atual={periodo}
+            href={(p) => linkAgenda({ por: tipo, periodo: p, recurso })}
+          />
+        </div>
 
         <BarraAgenda
           dia={dia}
-          por={por}
+          tipo={tipo}
+          periodo={periodo}
           hoje={hoje}
           anterior={diaAnterior}
           seguinte={diaSeguinte}
           status={status}
-          recurso={semana ? recurso : ""}
-          recursos={todosRecursos}
+          recurso={recurso}
+          recursos={colunasDe(tipo)}
           semana={diasDaSemana(dia)}
           resumo={resumo}
         />
@@ -208,6 +264,7 @@ export default async function AgendaPage(props: {
         {mes ? (
           <AgendaMes
             dia={dia}
+            tipo={tipo}
             hoje={hoje}
             agendamentos={agendamentos}
             capacidade={capacidade}

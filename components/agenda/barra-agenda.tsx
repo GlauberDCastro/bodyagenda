@@ -19,15 +19,19 @@ const DIA_LONGO = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
   timeZone: "UTC",
 });
-const MES_LONGO = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
+const MES_LONGO = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 const CURTO = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
 
 /** "Quinta-feira, 01 de outubro" · "Semana de 28 set a 04 out" · "Outubro de 2026" */
-function rotuloDaData(dia: string, por: string, semana: string[]): string {
+function rotuloDaData(dia: string, periodo: string, semana: string[]): string {
   const d = new Date(`${dia}T12:00:00Z`);
   const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  if (por === "mes") return maiuscula(MES_LONGO.format(d));
-  if (por === "semana") {
+  if (periodo === "mes") return maiuscula(MES_LONGO.format(d));
+  if (periodo === "semana") {
     const de = CURTO.format(new Date(`${semana[0]}T12:00:00Z`)).replace(".", "");
     const ate = CURTO.format(new Date(`${semana[6]}T12:00:00Z`)).replace(".", "");
     return `Semana de ${de} a ${ate}`;
@@ -42,9 +46,21 @@ const pilula =
  * Navegação e filtros da agenda. Tudo vive na URL: qualquer visão é
  * compartilhável por link e o botão voltar do navegador funciona.
  */
+const TODOS: Record<string, string> = {
+  sala: "Todas as salas",
+  equipamento: "Todos os equipamentos",
+  profissional: "Todos os profissionais",
+};
+const ROTULO_TIPO: Record<string, string> = {
+  sala: "Sala",
+  equipamento: "Equipamento",
+  profissional: "Profissional",
+};
+
 export function BarraAgenda({
   dia,
-  por,
+  tipo,
+  periodo,
   hoje,
   anterior,
   seguinte,
@@ -55,7 +71,8 @@ export function BarraAgenda({
   resumo,
 }: {
   dia: string;
-  por: string;
+  tipo: string;
+  periodo: string;
   hoje: string;
   anterior: string;
   seguinte: string;
@@ -67,7 +84,13 @@ export function BarraAgenda({
 }) {
   const router = useRouter();
   const ir = (mudar: Record<string, string>) => {
-    const q = new URLSearchParams({ dia, por, ...(status && { status }), ...(recurso && { recurso }) });
+    const q = new URLSearchParams({
+      dia,
+      por: tipo,
+      ...(periodo !== "dia" && { periodo }),
+      ...(status && { status }),
+      ...(recurso && { recurso }),
+    });
     for (const [k, v] of Object.entries(mudar)) {
       if (v) q.set(k, v);
       else q.delete(k);
@@ -99,7 +122,7 @@ export function BarraAgenda({
         </button>
         {/* A data por extenso é o próprio seletor: o input fica por cima, invisível. */}
         <label className={`${pilula} relative cursor-pointer font-medium`}>
-          {rotuloDaData(dia, por, semana)}
+          {rotuloDaData(dia, periodo, semana)}
           <input
             type="date"
             value={dia}
@@ -126,32 +149,23 @@ export function BarraAgenda({
         </select>
       </label>
 
-      {por === "semana" && (
+      {/* Semana e mês podem mostrar a agenda de um recurso só. */}
+      {periodo !== "dia" && (
         <label className="flex flex-col gap-1.5">
-          <span className="px-1 text-[13px] font-medium text-[var(--tinta-2)]">Recurso</span>
+          <span className="px-1 text-[13px] font-medium text-[var(--tinta-2)]">
+            {ROTULO_TIPO[tipo]}
+          </span>
           <select
             value={recurso}
             onChange={(e) => ir({ recurso: e.target.value })}
-            aria-label="Filtrar a semana por recurso"
+            aria-label={`Escolher ${ROTULO_TIPO[tipo].toLowerCase()}`}
             className={`${pilula} pr-9`}
           >
-            <option value="">Todos os recursos</option>
-            {(
-              [
-                ["sala", "Salas"],
-                ["equipamento", "Equipamentos"],
-                ["profissional", "Profissionais"],
-              ] as const
-            ).map(([tipo, rotulo]) => (
-              <optgroup key={tipo} label={rotulo}>
-                {recursos
-                  .filter((r) => r.tipo === tipo)
-                  .map((r) => (
-                    <option key={r.id} value={`${r.tipo}:${r.id}`}>
-                      {r.subtitulo && r.tipo === "sala" ? `${r.rotulo} — ${r.subtitulo}` : r.rotulo}
-                    </option>
-                  ))}
-              </optgroup>
+            <option value="">{TODOS[tipo]}</option>
+            {recursos.map((r) => (
+              <option key={r.id} value={`${r.tipo}:${r.id}`}>
+                {r.subtitulo && r.tipo === "sala" ? `${r.rotulo} — ${r.subtitulo}` : r.rotulo}
+              </option>
             ))}
           </select>
         </label>

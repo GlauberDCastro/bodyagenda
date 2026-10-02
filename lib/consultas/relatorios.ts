@@ -132,9 +132,19 @@ export async function retornoEquipamentos(inicio: Date, fim: Date) {
 }
 
 /** RF-75 · ocupação efetiva dia a dia. */
-export async function serieOcupacao(tipo: TipoRecurso, de: string, ate: string) {
+export async function serieOcupacao(
+  tipo: TipoRecurso,
+  de: string,
+  ate: string,
+  recursoId?: string,
+) {
   const supabase = await createServerSupabase();
-  const { data } = await supabase.rpc("serie_ocupacao", { p_tipo: tipo, p_inicio: de, p_fim: ate });
+  const { data } = await supabase.rpc("serie_ocupacao", {
+    p_tipo: tipo,
+    p_inicio: de,
+    p_fim: ate,
+    ...(recursoId && { p_recurso: recursoId }),
+  });
   return (data ?? []).map((d) => ({
     dia: String(d.dia).slice(0, 10),
     capacidade: Number(d.capacidade_h),

@@ -24,14 +24,17 @@ export function semanasDoMes(dia: string): string[][] {
  */
 export function AgendaMes({
   dia,
+  tipo,
   hoje,
   agendamentos,
   capacidade = [],
 }: {
   dia: string;
+  /** Tipo de recurso da agenda: o clique no dia abre o dia por esse tipo. */
+  tipo: string;
   hoje: string;
   agendamentos: AgendamentoNaAgenda[];
-  /** Capacidade de sala por dia, em horas: denominador da ocupação. */
+  /** Capacidade do tipo (ou do recurso filtrado) por dia, em horas: denominador da ocupação. */
   capacidade?: { dia: string; capacidade: number }[];
 }) {
   const capacidadeDoDia = new Map(capacidade.map((c) => [c.dia, c.capacidade]));
@@ -53,7 +56,10 @@ export function AgendaMes({
         ))}
       </div>
       {semanasDoMes(dia).map((semana) => (
-        <div key={semana[0]} className="grid grid-cols-7 border-b border-[var(--traco)] last:border-0">
+        <div
+          key={semana[0]}
+          className="grid grid-cols-7 border-b border-[var(--traco)] last:border-0"
+        >
           {semana.map((d) => {
             const lista = porDia.get(d) ?? [];
             const realizados = lista.filter((a) => a.status === "realizado").length;
@@ -69,7 +75,7 @@ export function AgendaMes({
             return (
               <Link
                 key={d}
-                href={`/agenda?dia=${d}&por=sala`}
+                href={`/agenda?dia=${d}&por=${tipo}`}
                 aria-label={`${d}: ${lista.length} atendimento(s)`}
                 className={`flex min-h-32 flex-col gap-1.5 border-l border-[var(--traco)] p-3 transition-colors first:border-l-0 hover:bg-[var(--superficie-2)] ${
                   foraDoMes ? "opacity-45" : ""
@@ -101,7 +107,9 @@ export function AgendaMes({
                 )}
                 {lista.length > 0 && (
                   <div className="space-y-0.5 text-[13px] leading-snug">
-                    <p className="font-semibold text-[var(--tinta-1)]">{lista.length} atendimento(s)</p>
+                    <p className="font-semibold text-[var(--tinta-1)]">
+                      {lista.length} atendimento(s)
+                    </p>
                     {realizados > 0 && (
                       <p className="text-[var(--tinta-2)]">{realizados} realizado(s)</p>
                     )}
