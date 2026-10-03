@@ -85,8 +85,8 @@ export function Timeline({
   agendamentos,
   semana = false,
   hoje,
-  horaInicio = 7,
-  horaFim = 20,
+  horaInicio,
+  horaFim,
 }: {
   colunas: ColunaGrade[];
   agendamentos: AgendamentoNaAgenda[];
@@ -94,8 +94,9 @@ export function Timeline({
   semana?: boolean;
   /** "2026-10-01": a coluna de hoje ganha a linha da hora atual. */
   hoje?: string;
-  horaInicio?: number;
-  horaFim?: number;
+  /** Limites da grade: o expediente cadastrado em Configurações › Horários. */
+  horaInicio: number;
+  horaFim: number;
 }) {
   const { abrir } = useAgendamento();
   const [sobre, setSobre] = useState<{ coluna: string; minuto: number } | null>(null);

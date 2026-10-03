@@ -101,8 +101,15 @@ export function distribuirEmFaixas(
   return resultado;
 }
 
-/** Próximo dia de atendimento depois de `dia`: pula o domingo. */
-export function proximoDiaUtil(dia: string): string {
-  const seguinte = somarDias(dia, 1);
-  return new Date(`${seguinte}T12:00:00Z`).getUTCDay() === 0 ? somarDias(seguinte, 1) : seguinte;
+/**
+ * Dia de atendimento mais próximo depois (passo 1) ou antes (passo -1) de
+ * `dia`, pelos dias em que a clínica abre. Sem dias cadastrados, o vizinho.
+ */
+export function diaDeAtendimento(dia: string, dias: readonly number[], passo: 1 | -1 = 1): string {
+  let d = somarDias(dia, passo);
+  for (let i = 0; i < 7 && dias.length > 0; i++) {
+    if (dias.includes(new Date(`${d}T12:00:00Z`).getUTCDay())) return d;
+    d = somarDias(d, passo);
+  }
+  return somarDias(dia, passo);
 }

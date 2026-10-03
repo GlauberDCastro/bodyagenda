@@ -29,12 +29,15 @@ function passo(intensidade: number): string {
 
 export function MapaCalor({
   celulas,
-  horaInicio = 8,
-  horaFim = 19,
+  horaInicio,
+  horaFim,
+  dias,
 }: {
   celulas: CelulaCalor[];
-  horaInicio?: number;
-  horaFim?: number;
+  /** Expediente da clínica (Configurações › Horários): só os dias e horas em que abre. */
+  horaInicio: number;
+  horaFim: number;
+  dias: readonly number[];
 }) {
   const horas = Array.from({ length: horaFim - horaInicio }, (_, i) => horaInicio + i);
   const mapa = new Map(celulas.map((c) => [`${c.dia_semana}-${c.hora}`, c]));
@@ -58,7 +61,7 @@ export function MapaCalor({
             </tr>
           </thead>
           <tbody>
-            {DIAS_SEMANA.map((d) => (
+            {DIAS_SEMANA.filter((d) => dias.length === 0 || dias.includes(d.valor)).map((d) => (
               <tr key={d.valor}>
                 <td className="pr-2 text-right text-[var(--tinta-3)]">{d.curto}</td>
                 {horas.map((h) => {

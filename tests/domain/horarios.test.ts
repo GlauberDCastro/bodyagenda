@@ -5,6 +5,7 @@ import {
   padraoMaisComum,
   resumirHorario,
   semanaDasJanelas,
+  expedienteDasJanelas,
   validarSemana,
   type Janela,
 } from "@/lib/horarios";
@@ -43,8 +44,41 @@ describe("padraoMaisComum", () => {
     expect(padraoMaisComum([segSex, segSex, comSabado])).toEqual(segSex);
   });
 
-  it("sem recursos, cai em seg–sex 08–18", () => {
-    expect(padraoMaisComum([])).toEqual(segSex);
+  it("sem recursos, não inventa horário: nada a sugerir", () => {
+    expect(padraoMaisComum([])).toEqual([]);
+  });
+});
+
+describe("expedienteDasJanelas", () => {
+  it("dias e limites vêm do horário cadastrado", () => {
+    const clinica: Janela[] = [1, 2, 3, 4, 5].map((dia) => ({ dia, inicio: "08:00", fim: "20:00" }));
+    const tarde: Janela[] = [{ dia: 3, inicio: "13:00", fim: "19:30" }];
+    expect(expedienteDasJanelas([...clinica, ...tarde])).toEqual({
+      dias: [1, 2, 3, 4, 5],
+      horaInicio: 8,
+      horaFim: 20,
+    });
+  });
+
+  it("fim quebrado arredonda para cima; sábado entra se algum recurso atende", () => {
+    expect(expedienteDasJanelas([...segSex, { dia: 6, inicio: "07:30", fim: "18:30" }])).toEqual({
+      dias: [1, 2, 3, 4, 5, 6],
+      horaInicio: 7,
+      horaFim: 19,
+    });
+  });
+
+  it("sem horário cadastrado, mostra o dia inteiro em vez de supor um", () => {
+    expect(expedienteDasJanelas([])).toEqual({ dias: [], horaInicio: 0, horaFim: 24 });
+  });
+});
+
+describe("dia fechado ao abrir no editor", () => {
+  it("sugere a faixa mais usada, não um horário fixo", () => {
+    const semana = semanaDasJanelas(
+      [1, 2, 3, 4, 5].map((dia) => ({ dia, inicio: "08:00", fim: "20:00" })),
+    );
+    expect(semana.find((d) => d.dia === 6)?.faixas).toEqual([{ inicio: "08:00", fim: "20:00" }]);
   });
 });
 

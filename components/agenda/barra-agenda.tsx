@@ -33,7 +33,7 @@ function rotuloDaData(dia: string, periodo: string, semana: string[]): string {
   if (periodo === "mes") return maiuscula(MES_LONGO.format(d));
   if (periodo === "semana") {
     const de = CURTO.format(new Date(`${semana[0]}T12:00:00Z`)).replace(".", "");
-    const ate = CURTO.format(new Date(`${semana[6]}T12:00:00Z`)).replace(".", "");
+    const ate = CURTO.format(new Date(`${semana.at(-1)}T12:00:00Z`)).replace(".", "");
     return `Semana de ${de} a ${ate}`;
   }
   return maiuscula(DIA_LONGO.format(d));

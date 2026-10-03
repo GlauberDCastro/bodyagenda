@@ -6,6 +6,7 @@ import {
   podeArrastar,
   dentroDoExpedienteExibido,
   diasDaSemana,
+  diaDeAtendimento,
   distribuirEmFaixas,
   somarDias,
 } from "@/lib/grade-agenda";
@@ -102,5 +103,21 @@ describe("distribuirEmFaixas", () => {
     expect(r.get("b")).toEqual({ faixa: 1, total: 2 });
     // b terminou às 580: c reaproveita a faixa 1.
     expect(r.get("c")).toEqual({ faixa: 1, total: 2 });
+  });
+});
+
+describe("diaDeAtendimento", () => {
+  const segSex = [1, 2, 3, 4, 5];
+  it("sexta → segunda: pula o fim de semana em que a clínica não abre", () => {
+    expect(diaDeAtendimento("2026-10-02", segSex)).toBe("2026-10-05");
+  });
+  it("segunda → sexta anterior, voltando", () => {
+    expect(diaDeAtendimento("2026-10-05", segSex, -1)).toBe("2026-10-02");
+  });
+  it("se a clínica abrir sábado, sexta → sábado", () => {
+    expect(diaDeAtendimento("2026-10-02", [...segSex, 6])).toBe("2026-10-03");
+  });
+  it("sem dias cadastrados, o dia seguinte", () => {
+    expect(diaDeAtendimento("2026-10-02", [])).toBe("2026-10-03");
   });
 });

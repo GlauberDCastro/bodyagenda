@@ -28,12 +28,6 @@ export const NOMES_DIA = DIAS_SEMANA.map((d) => d.curto);
 /** Segunda primeiro: é como a recepção lê a semana. */
 export const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0] as const;
 
-const PADRAO_SEM_DADOS: Janela[] = [1, 2, 3, 4, 5].map((dia) => ({
-  dia,
-  inicio: "08:00",
-  fim: "18:00",
-}));
-
 /** "08:00:00" do Postgres → "08:00". */
 const hhmm = (h: string) => h.slice(0, 5);
 const posicao = (dia: number) => ORDEM_SEMANA.indexOf(dia as never);
@@ -93,17 +87,56 @@ export function padraoMaisComum(porRecurso: Janela[][]): Janela[] {
   }
   let melhor: { n: number; janelas: Janela[] } | undefined;
   for (const c of contagem.values()) if (!melhor || c.n > melhor.n) melhor = c;
-  return melhor?.janelas ?? PADRAO_SEM_DADOS;
+  // Sem nenhum horário cadastrado não há padrão a sugerir: o editor abre vazio.
+  return melhor?.janelas ?? [];
+}
+
+/** Faixa mais usada nas janelas: a sugestão quando se abre um dia fechado. */
+function faixaMaisComum(janelas: Janela[]): Faixa {
+  const contagem = new Map<string, number>();
+  for (const j of janelas) {
+    const chave = `${j.inicio}-${j.fim}`;
+    contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+  }
+  const [melhor] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] ?? [""];
+  const [inicio = "", fim = ""] = melhor ? melhor.split("-") : [];
+  return { inicio, fim };
+}
+
+/**
+ * Expediente da clínica, derivado do horário cadastrado dos recursos: os dias
+ * em que algum recurso atende e a hora mais cedo e mais tarde entre eles. É o
+ * que a grade da agenda, o mapa de calor e as confirmações mostram — nada
+ * disso fica fixo no código; muda quando o horário muda em Configurações.
+ */
+export interface Expediente {
+  dias: number[];
+  horaInicio: number;
+  horaFim: number;
+}
+
+export function expedienteDasJanelas(janelas: Janela[]): Expediente {
+  const lista = normalizar(janelas);
+  if (lista.length === 0) return { dias: [], horaInicio: 0, horaFim: 24 };
+  const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const inicio = Math.min(...lista.map((j) => minutos(j.inicio)));
+  const fim = Math.max(...lista.map((j) => minutos(j.fim)));
+  return {
+    dias: [...new Set(lista.map((j) => j.dia))].sort((a, b) => a - b),
+    horaInicio: Math.floor(inicio / 60),
+    horaFim: Math.min(24, Math.ceil(fim / 60)),
+  };
 }
 
 export function semanaDasJanelas(janelas: Janela[]): DiaDaSemana[] {
   const lista = normalizar(janelas);
+  const sugestao = faixaMaisComum(lista);
   return ORDEM_SEMANA.map((dia) => {
     const faixas = lista.filter((j) => j.dia === dia).map(({ inicio, fim }) => ({ inicio, fim }));
     return {
       dia,
       aberto: faixas.length > 0,
-      faixas: faixas.length > 0 ? faixas : [{ inicio: "08:00", fim: "18:00" }],
+      faixas: faixas.length > 0 ? faixas : [sugestao],
     };
   });
 }

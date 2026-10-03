@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { agendamentosDoPeriodo } from "@/lib/consultas/agenda";
 import { hojeNaClinica } from "@/lib/consultas/caixa";
-import { proximoDiaUtil, somarDias } from "@/lib/grade-agenda";
+import { diaDeAtendimento } from "@/lib/grade-agenda";
+import { expedienteDaClinica } from "@/lib/consultas/horarios";
 import { ListaConfirmacoes } from "@/components/agenda/lista-confirmacoes";
 import { Vazio } from "@/components/ui/primitivos";
 
@@ -19,7 +20,8 @@ const seta =
 
 export default async function ConfirmacoesPage(props: { searchParams: Promise<{ dia?: string }> }) {
   const hoje = hojeNaClinica();
-  const amanha = proximoDiaUtil(hoje);
+  const { dias: diasAbertos } = await expedienteDaClinica();
+  const amanha = diaDeAtendimento(hoje, diasAbertos);
   const { dia = amanha } = await props.searchParams;
 
   const inicio = new Date(`${dia}T00:00:00-03:00`);
@@ -52,7 +54,7 @@ export default async function ConfirmacoesPage(props: { searchParams: Promise<{ 
         </div>
         <div className="flex items-center gap-1">
           <Link
-            href={`/agenda/confirmacoes?dia=${somarDias(dia, -1)}`}
+            href={`/agenda/confirmacoes?dia=${diaDeAtendimento(dia, diasAbertos, -1)}`}
             aria-label="Dia anterior"
             className={seta}
           >
@@ -63,7 +65,7 @@ export default async function ConfirmacoesPage(props: { searchParams: Promise<{ 
             {dia === amanha && <span className="text-[var(--tinta-3)]"> · próximo dia</span>}
           </span>
           <Link
-            href={`/agenda/confirmacoes?dia=${somarDias(dia, 1)}`}
+            href={`/agenda/confirmacoes?dia=${diaDeAtendimento(dia, diasAbertos)}`}
             aria-label="Próximo dia"
             className={seta}
           >

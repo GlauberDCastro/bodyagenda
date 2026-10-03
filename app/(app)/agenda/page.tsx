@@ -20,7 +20,8 @@ import { serieOcupacao } from "@/lib/consultas/relatorios";
 import type { StatusAgendamento } from "@/lib/types/database";
 import { AgendaMes, semanasDoMes } from "@/components/agenda/mes";
 import type { ColunaGrade } from "@/components/agenda/timeline";
-import { diasDaSemana, proximoDiaUtil, somarDias, usaRecurso } from "@/lib/grade-agenda";
+import { diaDeAtendimento, diasDaSemana, somarDias, usaRecurso } from "@/lib/grade-agenda";
+import { expedienteDaClinica } from "@/lib/consultas/horarios";
 
 export const metadata = { title: "Agenda" };
 
@@ -115,7 +116,11 @@ export default async function AgendaPage(props: {
   const { inicio, fim } = limites(dias[0], dias[dias.length - 1]);
 
   // Atalho da véspera: quantos do próximo dia de atendimento faltam confirmar.
-  const diaConfirmar = proximoDiaUtil(hoje);
+  const expediente = await expedienteDaClinica();
+  const diaConfirmar = diaDeAtendimento(hoje, expediente.dias);
+  // Semana sem os dias em que a clínica não abre (Configurações › Horários).
+  const abre = (d: string) =>
+    expediente.dias.length === 0 || expediente.dias.includes(new Date(`${d}T12:00:00Z`).getUTCDay());
   const limitesConfirmar = limites(diaConfirmar, diaConfirmar);
   const [
     salas,
@@ -183,7 +188,7 @@ export default async function AgendaPage(props: {
 
   // Dia: uma coluna por recurso. Semana: uma coluna por dia, como no Google Calendar.
   const colunas: ColunaGrade[] = semana
-    ? dias.map((d) => ({
+    ? dias.filter(abre).map((d) => ({
         chave: d,
         rotulo: rotuloDia(d),
         subtitulo: d === hoje ? "Hoje" : undefined,
@@ -283,7 +288,7 @@ export default async function AgendaPage(props: {
           status={status}
           recurso={recurso}
           recursos={colunasDe(tipo)}
-          semana={diasDaSemana(dia)}
+          semana={diasDaSemana(dia).filter(abre)}
           resumo={resumo}
         />
 
@@ -296,7 +301,14 @@ export default async function AgendaPage(props: {
             capacidade={capacidade}
           />
         ) : (
-          <Timeline colunas={colunas} agendamentos={agendamentos} semana={semana} hoje={hoje} />
+          <Timeline
+            colunas={colunas}
+            agendamentos={agendamentos}
+            semana={semana}
+            hoje={hoje}
+            horaInicio={expediente.horaInicio}
+            horaFim={expediente.horaFim}
+          />
         )}
       </div>
     </ProvedorAgendamento>

@@ -220,6 +220,10 @@ async function apagarTudo() {
   }
   if (m.proc) await del(`delete from agendamento where procedimento_id = $1`, [m.proc.id]);
   await del(`delete from paciente where nome like 'TESTE RLS%'`);
+  await del(
+    `delete from recurso_disponibilidade
+      where recurso_id in (select id from profissional where nome like 'TESTE RLS%')`,
+  );
   await del(`delete from profissional where nome like 'TESTE RLS%'`);
   await del(`delete from recurso_disponibilidade where recurso_id = $1`, [m.sala?.id]);
   await del(`delete from procedimento where nome = 'TESTE RLS'`);

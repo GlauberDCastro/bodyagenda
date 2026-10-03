@@ -15,6 +15,7 @@ import {
 import { AvisoBanco, Aviso, Secao, Botao } from "@/components/ui/primitivos";
 import { Cartao, TabelaRecursos, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
 import { MapaCalor } from "@/components/painel/mapa-calor";
+import { expedienteDaClinica } from "@/lib/consultas/horarios";
 import type { TipoRecurso } from "@/lib/types/database";
 import { Exportar } from "@/components/relatorios/exportar";
 
@@ -64,12 +65,13 @@ export default async function PainelPage(props: {
     .maybeSingle();
 
   const anterior = periodoAnterior(periodo.de, periodo.ate);
-  const [painel, calor, gargalosLista, serieAtual, serieAnterior] = await Promise.all([
+  const [painel, calor, gargalosLista, serieAtual, serieAnterior, expediente] = await Promise.all([
     carregarPainel(tipo, periodo),
     mapaDeCalor(tipo, periodo),
     gargalos(periodo),
     serieDiaria(tipo, periodo.de, periodo.ate),
     serieDiaria(tipo, anterior.de, anterior.ate),
+    expedienteDaClinica(),
   ]);
   const comoTaxa = (s: Awaited<ReturnType<typeof serieDiaria>>) =>
     s.map((d) => ({ dia: d.dia, taxa: d.capacidade > 0 ? d.realizadas / d.capacidade : null }));
@@ -254,7 +256,12 @@ export default async function PainelPage(props: {
 
       <Secao titulo="Quando a clínica está cheia">
         <div className="cartao p-5">
-          <MapaCalor celulas={calor} />
+          <MapaCalor
+            celulas={calor}
+            horaInicio={expediente.horaInicio}
+            horaFim={expediente.horaFim}
+            dias={expediente.dias}
+          />
         </div>
       </Secao>
 

@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { Janela } from "@/lib/horarios";
+import { cache } from "react";
+import { expedienteDasJanelas, type Expediente, type Janela } from "@/lib/horarios";
 import type { MotivoBloqueio, TipoRecurso } from "@/lib/types/database";
 
 export interface RecursoComHorario {
@@ -85,3 +86,27 @@ export async function carregarHorarios(): Promise<{
     })),
   };
 }
+
+/**
+ * Expediente da clínica a partir do horário dos recursos ativos. `cache`:
+ * várias partes da mesma página pedem e o banco é consultado uma vez só.
+ */
+export const expedienteDaClinica = cache(async (): Promise<Expediente> => {
+  const supabase = await createServerSupabase();
+  const [salas, equipamentos, profissionais, janelas] = await Promise.all([
+    supabase.from("sala").select("id").eq("ativo", true),
+    supabase.from("equipamento").select("id").eq("ativo", true),
+    supabase.from("profissional").select("id").eq("ativo", true),
+    supabase.from("recurso_disponibilidade").select("recurso_id, dia_semana, hora_inicio, hora_fim"),
+  ]);
+  const ativos = new Set(
+    [...(salas.data ?? []), ...(equipamentos.data ?? []), ...(profissionais.data ?? [])].map(
+      (r) => r.id,
+    ),
+  );
+  return expedienteDasJanelas(
+    (janelas.data ?? [])
+      .filter((j) => ativos.has(j.recurso_id))
+      .map((j) => ({ dia: j.dia_semana, inicio: j.hora_inicio, fim: j.hora_fim })),
+  );
+});

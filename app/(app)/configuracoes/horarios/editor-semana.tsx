@@ -74,7 +74,7 @@ export function EditorSemana({
                 onClick={() => {
                   const ultima = d.faixas.at(-1);
                   atualizar(d.dia, {
-                    faixas: [...d.faixas, { inicio: ultima?.fim ?? "13:00", fim: "18:00" }],
+                    faixas: [...d.faixas, { inicio: ultima?.fim ?? "", fim: "" }],
                   });
                 }}
                 className="text-[12.5px] text-[var(--tinta-3)] underline-offset-4 hover:text-[var(--tinta-1)] hover:underline"
