@@ -433,3 +433,22 @@ export async function apagarMassa() {
   }
   rmSync(ARQUIVO);
 }
+
+export async function nomeDaClinicaNoBanco(): Promise<string> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(`select nome from clinica`);
+    return rows[0].nome;
+  } finally {
+    await db.end();
+  }
+}
+
+export async function definirNomeDaClinica(nome: string) {
+  const db = await conectar();
+  try {
+    await db.query(`update clinica set nome = $1`, [nome]);
+  } finally {
+    await db.end();
+  }
+}

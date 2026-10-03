@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { Navegacao, Migalha } from "@/components/shell/navegacao";
 import { BuscaPaciente } from "@/components/shell/busca-paciente";
-import { NOME_CLINICA } from "@/components/ui/logo";
+import { nomeDaClinica } from "@/lib/consultas/clinica";
 import { MenuUsuario } from "@/components/shell/menu-usuario";
 import { ROTULO_PERFIL } from "@/lib/perfis";
 
@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 className="size-2 rounded-full"
                 style={{ background: "var(--status-bom)" }}
               />
-              <span className="text-[15px] text-[var(--tinta-1)]">{NOME_CLINICA}</span>
+              <span className="text-[15px] text-[var(--tinta-1)]">{await nomeDaClinica()}</span>
             </div>
 
             <MenuUsuario nome={nome} perfil={ROTULO_PERFIL[perfil?.perfil ?? ""] ?? "Sem perfil"} />

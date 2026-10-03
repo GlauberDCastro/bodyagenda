@@ -792,6 +792,12 @@ export type Database = {
           },
         ];
       };
+      clinica: {
+        Row: { id: string; unica: boolean; nome: string; updated_at: string };
+        Insert: { id?: string; unica?: boolean; nome: string; updated_at?: string };
+        Update: { id?: string; unica?: boolean; nome?: string; updated_at?: string };
+        Relationships: [];
+      };
       convite_profissional: {
         Row: {
           id: string;

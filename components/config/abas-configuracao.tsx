@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const ABAS_CONFIGURACAO = [
+  { href: "/configuracoes/clinica", rotulo: "Clínica" },
   { href: "/configuracoes/salas", rotulo: "Salas" },
   { href: "/configuracoes/equipamentos", rotulo: "Equipamentos" },
   { href: "/configuracoes/profissionais", rotulo: "Profissionais" },

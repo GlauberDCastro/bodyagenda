@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { horarioDaSala, lerMassa } from "./massa";
+import { definirNomeDaClinica, horarioDaSala, lerMassa, nomeDaClinicaNoBanco } from "./massa";
 import { agendar, entrar } from "./acoes";
 
 /** Terça seguinte ao DIA dos fluxos: o bloqueio não interfere neles. */
@@ -11,13 +11,28 @@ test.describe.serial("configurações", () => {
   test("uma entrada só na barra lateral, com todas as abas", async ({ page }) => {
     await entrar(page, m.gestao.email, m.gestao.senha);
     await page.getByRole("link", { name: "Configurações" }).click();
-    await expect(page).toHaveURL(/\/configuracoes\/salas$/);
-    await expect(page.getByRole("link", { name: "Salas", exact: true })).toHaveAttribute(
+    await expect(page).toHaveURL(/\/configuracoes\/clinica$/);
+    await expect(page.getByRole("link", { name: "Clínica", exact: true })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    for (const aba of ["Horários e bloqueios", "Despesas fixas", "Usuários"]) {
+    for (const aba of ["Salas", "Horários e bloqueios", "Despesas fixas", "Usuários"]) {
       await expect(page.getByRole("link", { name: aba })).toBeVisible();
+    }
+  });
+
+  test("nome da clínica é editável e aparece no topo", async ({ page }) => {
+    const original = await nomeDaClinicaNoBanco();
+    try {
+      await entrar(page, m.gestao.email, m.gestao.senha);
+      await page.goto("/configuracoes/clinica");
+      await page.locator('input[name="nome"]').fill(`${original} E2E`);
+      await page.getByRole("button", { name: "Salvar" }).click();
+      await expect(page.getByText("Dados da clínica salvos.")).toBeVisible();
+      await expect(page.getByRole("banner")).toContainText(`${original} E2E`);
+    } finally {
+      // Banco de produção: o nome real volta mesmo se o teste falhar no meio.
+      await definirNomeDaClinica(original);
     }
   });
 

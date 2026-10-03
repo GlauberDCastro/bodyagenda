@@ -4,6 +4,7 @@ import {
   perfilDoUsuario,
 } from "@/lib/consultas/recursos";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { nomeDaClinica } from "@/lib/consultas/clinica";
 import { ConviteProfissional } from "@/components/config/convite-profissional";
 import { AvisoBanco, Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { FormularioProfissional } from "./formulario-profissional";
@@ -14,7 +15,7 @@ export const metadata = { title: "Profissionais" };
 
 export default async function ProfissionaisPage() {
   const supabase = await createServerSupabase();
-  const [profissionais, procedimentos, perfil, { data: convites }] = await Promise.all([
+  const [profissionais, procedimentos, perfil, { data: convites }, clinica] = await Promise.all([
     listarProfissionais(),
     listarProcedimentos(),
     perfilDoUsuario(),
@@ -25,6 +26,7 @@ export default async function ProfissionaisPage() {
       .is("usado_em", null)
       .is("revogado_em", null)
       .gt("expira_em", new Date().toISOString()),
+    nomeDaClinica(),
   ]);
   const pendentes = new Map((convites ?? []).map((c) => [c.profissional_id, c.expira_em]));
 
@@ -89,6 +91,7 @@ export default async function ProfissionaisPage() {
                       }}
                       pendenteAte={pendentes.get(p.id) ?? null}
                       podeConvidar={perfil === "admin"}
+                      nomeClinica={clinica}
                     />
                   </td>
                   <td className="px-4 py-2.5 tabular-nums text-[var(--tinta-2)]">

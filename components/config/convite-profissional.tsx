@@ -21,6 +21,7 @@ export function ConviteProfissional({
   profissional,
   pendenteAte,
   podeConvidar,
+  nomeClinica,
 }: {
   profissional: {
     id: string;
@@ -33,6 +34,7 @@ export function ConviteProfissional({
   pendenteAte: string | null;
   /** Só o admin cria acesso. */
   podeConvidar: boolean;
+  nomeClinica: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export function ConviteProfissional({
     link &&
     linkWhatsApp(
       profissional.telefone,
-      `Olá, ${profissional.nome.split(" ")[0]}! Este é seu convite para criar o acesso ao sistema da Body Prime, onde você acompanha sua agenda e suas comissões: ${link}`,
+      `Olá, ${profissional.nome.split(" ")[0]}! Este é seu convite para criar o acesso ao sistema da ${nomeClinica}, onde você acompanha sua agenda e suas comissões: ${link}`,
     );
 
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logotipo } from "@/components/ui/logo";
 import { situacaoDoConvite } from "@/lib/auth/convites";
+import { nomeDaClinicaPublico } from "@/lib/consultas/clinica";
 import { formatarCpf } from "@/lib/domain/cpf";
 import { FormularioConvite } from "./formulario-convite";
 
@@ -23,7 +24,7 @@ const dataLonga = new Intl.DateTimeFormat("pt-BR", {
 
 export default async function ConvitePage(props: { params: Promise<{ token: string }> }) {
   const { token } = await props.params;
-  const situacao = await situacaoDoConvite(token);
+  const [situacao, clinica] = await Promise.all([situacaoDoConvite(token), nomeDaClinicaPublico()]);
 
   return (
     <main className="grid min-h-dvh place-items-center px-4 py-10">
@@ -35,7 +36,7 @@ export default async function ConvitePage(props: { params: Promise<{ token: stri
         {situacao.ok ? (
           <>
             <div className="text-center">
-              <h1 className="titulo-xl">Bem-vindo(a) à Body Prime</h1>
+              <h1 className="titulo-xl">Bem-vindo(a){clinica ? ` à ${clinica}` : ""}</h1>
               <p className="mt-2 text-[15px] text-[var(--tinta-2)]">
                 Crie seu acesso para ver sua agenda e suas comissões. Confira seus dados e complete
                 o que faltar.
