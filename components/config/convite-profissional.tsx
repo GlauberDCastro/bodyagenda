@@ -81,7 +81,7 @@ export function ConviteProfissional({
     link &&
     linkWhatsApp(
       profissional.telefone,
-      `Olá, ${profissional.nome.split(" ")[0]}! Este é seu convite para criar o acesso ao sistema da ${nomeClinica}, onde você acompanha sua agenda e suas comissões: ${link}`,
+      `Olá, ${profissional.nome.split(" ")[0]}! Este é seu convite para criar o acesso ao sistema da ${nomeClinica}, onde você acompanha sua agenda e suas bonificações: ${link}`,
     );
 
   return (
@@ -110,7 +110,7 @@ export function ConviteProfissional({
         aberto={aberto}
         aoFechar={() => setAberto(false)}
         titulo={`Convidar ${profissional.nome}`}
-        descricao="O profissional recebe um link, cria a senha e completa os próprios dados. Comissão, habilitações e horários continuam com você."
+        descricao="O profissional recebe um link, cria a senha e completa os próprios dados. Bonificação, habilitações e horários continuam com você."
       >
         <div className="space-y-4">
           {link ? (

@@ -63,7 +63,7 @@ const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
     itens: [
       { href: "/recebimentos", rotulo: "Recebimentos", icone: "recebimentos" },
       { href: "/relatorios/financeiro", rotulo: "Financeiro", icone: "financeiro" },
-      { href: "/comissoes", rotulo: "Comissões", icone: "comissoes" },
+      { href: "/bonificacoes", rotulo: "Bonificações", icone: "comissoes" },
     ],
   },
 ];

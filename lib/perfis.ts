@@ -20,7 +20,7 @@ export const PERFIS = [
   {
     valor: "financeiro",
     rotulo: "Financeiro",
-    descricao: "Recebimentos, comissões, despesas e relatórios. Não opera a agenda.",
+    descricao: "Recebimentos, bonificações, despesas e relatórios. Não opera a agenda.",
   },
   {
     valor: "recepcao",
@@ -30,7 +30,7 @@ export const PERFIS = [
   {
     valor: "profissional",
     rotulo: "Profissional",
-    descricao: "Própria agenda e própria comissão.",
+    descricao: "Própria agenda e própria bonificação.",
   },
 ] as const;
 

@@ -187,7 +187,7 @@ export interface ComissaoDetalhada {
   } | null;
 }
 
-/** RF-98 · comissões da competência com a sessão de cada uma. */
+/** RF-98 · bonificações da competência com a sessão de cada uma. */
 export async function comissoesDetalhadas(competencia: string): Promise<ComissaoDetalhada[]> {
   const supabase = await createServerSupabase();
   const { data } = await supabase

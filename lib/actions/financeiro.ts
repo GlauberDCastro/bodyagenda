@@ -39,7 +39,7 @@ export async function lancarDespesa(_anterior: Resultado, formData: FormData): P
 }
 
 /**
- * RF-85 · fechar a competência: as comissões previstas viram apuradas, o
+ * RF-85 · fechar a competência: as bonificações previstas viram apuradas, o
  * valor que vai ser pago. Pagar vem depois, por profissional.
  */
 export async function fecharComissoes(competencia: string): Promise<Resultado> {
@@ -50,11 +50,11 @@ export async function fecharComissoes(competencia: string): Promise<Resultado> {
     .eq("competencia", competencia)
     .eq("status", "prevista");
   if (error) return erroComissao(error);
-  revalidatePath("/comissoes");
+  revalidatePath("/bonificacoes");
   return { ok: true };
 }
 
-/** RF-85 · registra o pagamento das comissões de um profissional na competência. */
+/** RF-85 · registra o pagamento das bonificações de um profissional na competência. */
 export async function pagarComissoes(
   competencia: string,
   profissionalId: string,
@@ -67,14 +67,14 @@ export async function pagarComissoes(
     .eq("profissional_id", profissionalId)
     .neq("status", "paga");
   if (error) return erroComissao(error);
-  revalidatePath("/comissoes");
+  revalidatePath("/bonificacoes");
   revalidatePath("/relatorios/financeiro");
   return { ok: true };
 }
 
 function erroComissao(erro: { code?: string; message: string }): Resultado {
   if (erro.code === "42501" || erro.message.includes("row-level security")) {
-    return { erro: "Só o financeiro e o administrador fecham e pagam comissões." };
+    return { erro: "Só o financeiro e o administrador fecham e pagam bonificações." };
   }
   return { erro: erro.message };
 }

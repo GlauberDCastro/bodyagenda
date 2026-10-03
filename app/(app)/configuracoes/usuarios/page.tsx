@@ -59,7 +59,7 @@ export default async function UsuariosPage() {
           {semAcesso.length} profissional(is) sem login:{" "}
           {semAcesso.map((p) => p.nome).join(", ")}. Elas aparecem na agenda
           normalmente — o login só é necessário para consultarem a própria
-          agenda e comissão.
+          agenda e bonificação.
         </Aviso>
       )}
 

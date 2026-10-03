@@ -27,5 +27,5 @@ export const ROTULO_STATUS: Record<StatusAgendamento, string> = {
   cancelado: "Cancelado",
 };
 
-/** Status que encerram o atendimento: já geraram cobrança, comissão ou baixa. */
+/** Status que encerram o atendimento: já geraram cobrança, bonificação ou baixa. */
 export const FINALIZADOS: StatusAgendamento[] = ["realizado", "falta", "cancelado"];

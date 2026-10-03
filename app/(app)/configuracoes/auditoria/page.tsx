@@ -10,7 +10,7 @@ const ENTIDADES: Record<string, string> = {
   paciente: "Paciente",
   pacote: "Pacote",
   lancamento: "Cobrança / lançamento",
-  comissao: "Comissão",
+  comissao: "Bonificação",
   despesa_fixa: "Despesa fixa",
   procedimento: "Procedimento",
   procedimento_custo: "Custo de procedimento",

@@ -104,7 +104,7 @@ export async function salvarUsuario(
   if (error) return { erro: error.message };
 
   // Vínculo com o profissional: é o que faz o perfil `profissional` ver a
-  // própria agenda e a própria comissão.
+  // própria agenda e a própria bonificação.
   await admin.from("profissional").update({ usuario_id: null }).eq("usuario_id", idUsuario);
   if (profissional_id) {
     const { error: erroVinculo } = await admin

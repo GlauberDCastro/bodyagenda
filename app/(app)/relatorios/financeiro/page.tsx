@@ -85,7 +85,7 @@ export default async function FinanceiroPage(props: {
               <Cartao
                 rotulo="Margem de contribuição"
                 valor={brl.format(Number(resultado.margem_contrib))}
-                apoio="Receita − custos diretos − comissões"
+                apoio="Receita − custos diretos − bonificações"
               />
               <Cartao
                 rotulo="Despesas fixas"
@@ -130,7 +130,7 @@ export default async function FinanceiroPage(props: {
                   <th className="px-4 py-2.5 text-right font-medium">Sessões</th>
                   <th className="px-4 py-2.5 text-right font-medium">Receita</th>
                   <th className="px-4 py-2.5 text-right font-medium">Custo</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Comissão</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Bonificação</th>
                   <th className="px-4 py-2.5 text-right font-medium">Margem</th>
                   <th className="px-4 py-2.5 text-right font-medium">%</th>
                   <th className="px-4 py-2.5 text-right font-medium">Margem/hora</th>
@@ -408,14 +408,14 @@ export default async function FinanceiroPage(props: {
         )}
       </section>
 
-      {/* RF-98 · comissões por profissional */}
+      {/* RF-98 · bonificações por profissional */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Comissões · {competencia}</h2>
-          <Exportar relatorio="comissoes" params={{ competencia }} />
+          <h2 className="text-sm font-semibold">Bonificações · {competencia}</h2>
+          <Exportar relatorio="bonificacoes" params={{ competencia }} />
         </div>
         {comissoes.length === 0 ? (
-          <Vazio>Nenhuma comissão apurada nesta competência.</Vazio>
+          <Vazio>Nenhuma bonificação apurada nesta competência.</Vazio>
         ) : (
           <div className="cartao overflow-x-auto">
             <table className="w-full text-sm">

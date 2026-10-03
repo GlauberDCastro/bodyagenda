@@ -108,14 +108,14 @@ export const profissionalSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["comissao_valor"],
-        message: "Percentual de comissão não pode passar de 100",
+        message: "Percentual de bonificação não pode passar de 100",
       });
     }
     if (dados.comissao_tipo !== "nenhuma" && dados.comissao_valor <= 0) {
       ctx.addIssue({
         code: "custom",
         path: ["comissao_valor"],
-        message: "Informe o valor da comissão",
+        message: "Informe o valor da bonificação",
       });
     }
   });

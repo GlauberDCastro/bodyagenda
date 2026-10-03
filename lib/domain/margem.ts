@@ -19,7 +19,7 @@ export interface EntradaMargem {
   /** Soma dos custos/hora dos aparelhos que o procedimento usa. */
   custoHoraEquipamento?: number;
   custoHoraProfissional?: number;
-  /** Percentual de comissão, quando houver. */
+  /** Percentual de bonificação, quando houver. */
   comissaoPct?: number;
   comissaoFixa?: number;
 }

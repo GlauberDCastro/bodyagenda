@@ -291,7 +291,7 @@ export async function salvarObservacoes(id: string, observacoes: string): Promis
  * RF-50 a RF-52 · transições de status.
  *
  * Marcar `realizado` faz o pacote baixar a sessão (a contagem é derivada dos
- * agendamentos não cancelados) e é onde a comissão será gerada no M6.
+ * agendamentos não cancelados) e é onde a bonificação será gerada no M6.
  */
 export async function mudarStatus(_anterior: Resultado, formData: FormData): Promise<Resultado> {
   const parsed = mudancaStatusSchema.safeParse(Object.fromEntries(formData));

@@ -15,7 +15,7 @@ const hora = new Intl.DateTimeFormat("pt-BR", {
  * Bloco da timeline que abre as ações do atendimento.
  *
  * Sem ele a agenda era só leitura: nada marcava `realizado`, e sem realizado
- * não há receita, comissão nem ocupação efetiva.
+ * não há receita, bonificação nem ocupação efetiva.
  */
 export interface Arrasto {
   /** Quantas colunas dá para andar para cada lado (0 = só vertical). */

@@ -99,13 +99,13 @@ export function CamposProfissional({
       </Campo>
 
       <div className="grid grid-cols-2 gap-3">
-        <Campo label="Tipo de comissão">
+        <Campo label="Tipo de bonificação">
           <Select
             name="comissao_tipo"
             value={comissao}
             onChange={(e) => setComissao(e.target.value as "percentual" | "valor_fixo" | "nenhuma")}
           >
-            <option value="nenhuma">Sem comissão</option>
+            <option value="nenhuma">Sem bonificação</option>
             <option value="percentual">Percentual</option>
             <option value="valor_fixo">Valor fixo</option>
           </Select>
@@ -128,7 +128,7 @@ export function CamposProfissional({
       <Campo
         label="Custo por hora"
         erro={estado.campos?.custo_hora}
-        dica="Opcional. Entra no custo direto da sessão, separado da comissão."
+        dica="Opcional. Entra no custo direto da sessão, separado da bonificação."
       >
         <Input name="custo_hora" type="number" step="0.01" min="0" defaultValue={inicial?.custo_hora ?? 0} />
       </Campo>

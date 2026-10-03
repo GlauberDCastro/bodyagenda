@@ -144,7 +144,7 @@ export const RELATORIOS: Record<string, Gerador> = {
         { chave: "horas", rotulo: "Horas", tipo: "numero" },
         { chave: "receita", rotulo: "Receita", tipo: "moeda" },
         { chave: "custo_direto", rotulo: "Custo direto", tipo: "moeda" },
-        { chave: "comissao", rotulo: "Comissões", tipo: "moeda" },
+        { chave: "comissao", rotulo: "Bonificações", tipo: "moeda" },
         { chave: "margem", rotulo: "Margem", tipo: "moeda" },
         { chave: "margem_pct", rotulo: "Margem", tipo: "pct" },
         { chave: "margem_por_hora", rotulo: "Margem por hora", tipo: "moeda" },
@@ -247,11 +247,11 @@ export const RELATORIOS: Record<string, Gerador> = {
     };
   },
 
-  comissoes: async (p) => {
+  bonificacoes: async (p) => {
     const competencia = p.get("competencia") ?? competenciaAtual();
     const lista = await comissoesDetalhadas(competencia);
     return {
-      titulo: `Comissões ${competencia}`,
+      titulo: `Bonificações ${competencia}`,
       colunas: [
         { chave: "profissional", rotulo: "Profissional" },
         { chave: "sessao", rotulo: "Sessão" },
@@ -259,7 +259,7 @@ export const RELATORIOS: Record<string, Gerador> = {
         { chave: "procedimento", rotulo: "Procedimento" },
         { chave: "base", rotulo: "Base", tipo: "moeda" },
         { chave: "percentual", rotulo: "Percentual", tipo: "numero" },
-        { chave: "valor", rotulo: "Comissão", tipo: "moeda" },
+        { chave: "valor", rotulo: "Bonificação", tipo: "moeda" },
         { chave: "status", rotulo: "Situação" },
       ],
       linhas: lista.map((c) => ({
@@ -299,7 +299,7 @@ export const RELATORIOS: Record<string, Gerador> = {
       ? [
           { item: "Receita realizada", valor: r.receita_realizada },
           { item: "(−) Custos diretos", valor: -Number(r.custos_diretos) },
-          { item: "(−) Comissões", valor: -Number(r.comissoes) },
+          { item: "(−) Bonificações", valor: -Number(r.comissoes) },
           { item: "= Margem de contribuição", valor: r.margem_contrib },
           { item: "(−) Despesas fixas", valor: -Number(r.despesas_fixas) },
           { item: "= Resultado", valor: r.resultado },
@@ -315,3 +315,6 @@ export const RELATORIOS: Record<string, Gerador> = {
     };
   },
 };
+
+/** Endereço antigo da exportação, de antes de "Comissões" virar "Bonificações". */
+RELATORIOS.comissoes = RELATORIOS.bonificacoes;

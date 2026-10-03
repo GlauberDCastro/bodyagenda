@@ -449,7 +449,7 @@ test.describe.serial("fluxos críticos", () => {
     await expect(page.getByText("Inativo", { exact: true })).toHaveCount(0);
   });
 
-  test("comissões: realizar, fechar a competência e pagar", async ({ page }) => {
+  test("bonificações: realizar, fechar a competência e pagar", async ({ page }) => {
     const [, b] = m.profissionais;
     await entrarComo(page);
     // O atendimento das 14:00 ficou com a profissional B (teste de arrastar).
@@ -464,7 +464,7 @@ test.describe.serial("fluxos críticos", () => {
 
     await page.context().clearCookies();
     await entrar(page, m.financeiro.email, m.financeiro.senha);
-    await page.goto("/comissoes?competencia=2030-01");
+    await page.goto("/bonificacoes?competencia=2030-01");
     await expect(page.getByText(b.nome)).toBeVisible();
     await page.getByRole("button", { name: "Fechar competência" }).click();
     await expect.poll(() => statusDasComissoes(m)).toContain("apurada 35.00");

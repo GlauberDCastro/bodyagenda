@@ -15,7 +15,7 @@ export interface Massa {
   usuarioId: string;
   /** Gestão: configura horários e bloqueios, que a recepção não pode. */
   gestao: { email: string; senha: string; usuarioId: string };
-  /** Financeiro: fecha e paga comissões, lança despesas. */
+  /** Financeiro: fecha e paga bonificações, lança despesas. */
   financeiro: { email: string; senha: string; usuarioId: string };
   paciente: string;
   pacienteId: string;
@@ -127,7 +127,7 @@ export async function criarMassa(): Promise<Massa> {
         `insert into profissional_habilitacao (profissional_id, procedimento_id) values ($1, $2)`,
         [p.id, proc.id],
       );
-      // 10% sobre a sessão: o teste de comissões fecha e paga.
+      // 10% sobre a sessão: o teste de bonificações fecha e paga.
       await db.query(
         `insert into profissional_remuneracao (profissional_id, custo_hora, comissao_tipo, comissao_valor)
          values ($1, 0, 'percentual', 10)`,
@@ -301,7 +301,7 @@ export async function cobrancasDePacote(m: Massa): Promise<string[]> {
   }
 }
 
-/** Status das comissões dos atendimentos da massa. */
+/** Status das bonificações dos atendimentos da massa. */
 export async function statusDasComissoes(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {

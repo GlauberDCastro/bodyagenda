@@ -55,7 +55,7 @@ function CamposUsuario({
 
   // Um profissional só pode estar ligado a um login. Os já vinculados a OUTRO
   // usuário saem da lista — senão dois logins veriam a mesma agenda como
-  // "sua", e a comissão apareceria para os dois.
+  // "sua", e a bonificação apareceria para os dois.
   const disponiveis = profissionais.filter(
     (p) => !p.usuario_id || p.usuario_id === inicial?.id,
   );
@@ -110,7 +110,7 @@ function CamposUsuario({
         <Campo
           label="Vincular ao profissional"
           erro={estado.campos?.profissional_id}
-          dica="É o vínculo que faz este login ver a própria agenda e a própria comissão."
+          dica="É o vínculo que faz este login ver a própria agenda e a própria bonificação."
         >
           <Select name="profissional_id" defaultValue={vinculado?.id ?? ""}>
             <option value="">Sem vínculo</option>

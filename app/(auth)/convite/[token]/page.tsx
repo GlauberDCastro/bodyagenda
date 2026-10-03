@@ -38,7 +38,7 @@ export default async function ConvitePage(props: { params: Promise<{ token: stri
             <div className="text-center">
               <h1 className="titulo-xl">Bem-vindo(a){clinica ? ` à ${clinica}` : ""}</h1>
               <p className="mt-2 text-[15px] text-[var(--tinta-2)]">
-                Crie seu acesso para ver sua agenda e suas comissões. Confira seus dados e complete
+                Crie seu acesso para ver sua agenda e suas bonificações. Confira seus dados e complete
                 o que faltar.
               </p>
             </div>
