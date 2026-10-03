@@ -1,4 +1,12 @@
-import type { ComponentProps, ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useId,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 /* ── Campos ─────────────────────────────────────────────────────────────── */
 
@@ -9,6 +17,31 @@ const campoBase =
   "focus:border-[var(--marca)] focus:bg-[var(--superficie)] " +
   "disabled:opacity-45";
 
+/** O que pode receber o rótulo do Campo: os campos do sistema e os nativos. */
+function ehControle(no: ReactNode): no is ReactElement<ControleProps> {
+  if (!isValidElement(no)) return false;
+  const tipo = no.type as unknown;
+  const controle =
+    tipo === Input || tipo === Select || tipo === Textarea || tipo === "input" ||
+    tipo === "select" || tipo === "textarea";
+  return controle && (no.props as ControleProps).type !== "hidden";
+}
+
+interface ControleProps {
+  id?: string;
+  type?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean | "true" | "false";
+}
+
+/**
+ * Rótulo, campo, dica e erro.
+ *
+ * O rótulo aponta para o primeiro campo dentro dele (htmlFor + id gerado), e
+ * a dica ou o erro são anunciados junto (aria-describedby): leitor de tela
+ * diz "Nome da clínica, campo de texto" em vez de só "campo de texto". Sem
+ * campo único dentro (lista de caixas de marcar), o rótulo vira o nome do grupo.
+ */
 export function Campo({
   label,
   erro,
@@ -20,13 +53,21 @@ export function Campo({
   dica?: string;
   children: ReactNode;
 }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-[13px] font-medium text-[var(--tinta-1)]">{label}</label>
-      {children}
-      {dica && !erro && <p className="text-[12px] leading-snug text-[var(--tinta-3)]">{dica}</p>}
+  const base = useId();
+  const idDescricao = erro || dica ? `${base}-descricao` : undefined;
+  const itens = Children.toArray(children);
+  const i = itens.findIndex(ehControle);
+
+  const descricao = (
+    <>
+      {dica && !erro && (
+        <p id={idDescricao} className="text-[12px] leading-snug text-[var(--tinta-3)]">
+          {dica}
+        </p>
+      )}
       {erro && (
         <p
+          id={idDescricao}
           role="alert"
           className="text-[12px] leading-snug"
           style={{ color: "var(--status-critico)" }}
@@ -34,6 +75,41 @@ export function Campo({
           {erro}
         </p>
       )}
+    </>
+  );
+
+  if (i >= 0) {
+    const controle = itens[i] as ReactElement<ControleProps>;
+    const id = controle.props.id ?? `${base}-campo`;
+    itens[i] = cloneElement(controle, {
+      id,
+      "aria-describedby":
+        [controle.props["aria-describedby"], idDescricao].filter(Boolean).join(" ") || undefined,
+      "aria-invalid": erro ? true : controle.props["aria-invalid"],
+    });
+    return (
+      <div className="space-y-1.5">
+        <label htmlFor={id} className="block text-[13px] font-medium text-[var(--tinta-1)]">
+          {label}
+        </label>
+        {itens}
+        {descricao}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="group"
+      aria-labelledby={`${base}-rotulo`}
+      aria-describedby={idDescricao}
+      className="space-y-1.5"
+    >
+      <span id={`${base}-rotulo`} className="block text-[13px] font-medium text-[var(--tinta-1)]">
+        {label}
+      </span>
+      {itens}
+      {descricao}
     </div>
   );
 }

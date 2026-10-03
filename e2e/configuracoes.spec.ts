@@ -26,7 +26,7 @@ test.describe.serial("configurações", () => {
     try {
       await entrar(page, m.gestao.email, m.gestao.senha);
       await page.goto("/configuracoes/clinica");
-      await page.locator('input[name="nome"]').fill(`${original} E2E`);
+      await page.getByLabel("Nome da clínica").fill(`${original} E2E`);
       await page.getByRole("button", { name: "Salvar" }).click();
       await expect(page.getByText("Dados da clínica salvos.")).toBeVisible();
       await expect(page.getByRole("banner")).toContainText(`${original} E2E`);
