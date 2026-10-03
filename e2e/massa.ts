@@ -19,6 +19,8 @@ export interface Massa {
   financeiro: { email: string; senha: string; usuarioId: string };
   paciente: string;
   pacienteId: string;
+  /** Paciente só dos testes de comercial/upsell: não interfere nos fluxos. */
+  pacienteComercial: string;
   /** Nome que NÃO existe no banco: o E2E o cadastra pelo agendamento. */
   pacienteNovo: string;
   procedimento: string;
@@ -33,6 +35,8 @@ export interface Massa {
   profissionais: { id: string; nome: string }[];
   /** Admin: único perfil que convida profissionais. */
   admin: { email: string; senha: string; usuarioId: string };
+  /** SDR: time comercial, agenda direto sem avaliação. */
+  sdr: { email: string; senha: string; usuarioId: string };
   /** Profissional sem login, reservado para o teste de convite. */
   profissionalConvite: { id: string; nome: string };
 }
@@ -93,6 +97,7 @@ export async function criarMassa(): Promise<Massa> {
     const gestao = await criarUsuario(db, sufixo, "gestao", "Gestão E2E");
     const financeiro = await criarUsuario(db, sufixo, "financeiro", "Financeiro E2E");
     const admin = await criarUsuario(db, sufixo, "admin", "Admin E2E");
+    const sdr = await criarUsuario(db, sufixo, "sdr", "SDR E2E");
     const nomeConvite = `TESTE E2E Prof Convite ${sufixo}`;
     const {
       rows: [profConvite],
@@ -138,6 +143,12 @@ export async function criarMassa(): Promise<Massa> {
          select 'profissional', $1, d, '08:00', '18:00' from generate_series(1, 5) d`,
         [p.id],
       );
+      // Avaliação inicial (procedimento real, 0041): o teste agenda uma.
+      await db.query(
+        `insert into profissional_habilitacao (profissional_id, procedimento_id)
+         select $1, id from procedimento where avaliacao`,
+        [p.id],
+      );
       profissionais.push({ id: p.id, nome });
     }
 
@@ -176,6 +187,9 @@ export async function criarMassa(): Promise<Massa> {
       rows: [pac],
     } = await db.query(`insert into paciente (nome) values ($1) returning id`, [paciente]);
 
+    const pacienteComercial = `Paciente Comercial E2E ${sufixo}`;
+    await db.query(`insert into paciente (nome) values ($1)`, [pacienteComercial]);
+
     const massa: Massa = {
       email,
       senha,
@@ -183,10 +197,12 @@ export async function criarMassa(): Promise<Massa> {
       gestao,
       financeiro,
       admin,
+      sdr,
       profissionalConvite: { id: profConvite.id, nome: nomeConvite },
       paciente,
       pacienteId: pac.id,
       pacienteNovo: `Paciente Novo E2E ${sufixo}`,
+      pacienteComercial,
       procedimento,
       sala: `Sala ${sala.numero} — ${nomeSala}`,
       salaId: sala.id,
@@ -349,8 +365,9 @@ export async function statusDoAgendamento(m: Massa): Promise<string[]> {
   const db = await conectar();
   try {
     const { rows } = await db.query(
-      `select status from agendamento where procedimento_id = $1 order by inicio`,
-      [m.procedimentoId],
+      `select status from agendamento
+        where procedimento_id = $1 and paciente_id = $2 order by inicio`,
+      [m.procedimentoId, m.pacienteId],
     );
     return rows.map((r) => r.status);
   } finally {
@@ -375,10 +392,16 @@ export async function apagarMassa() {
     );
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from pacote where procedimento_id = $1`, [m.procedimentoId]);
+    // Atendimentos dos pacientes de teste em procedimentos reais (avaliação inicial).
+    await db.query(
+      `delete from agendamento where paciente_id in
+         (select id from paciente where nome = any($1::text[]))`,
+      [[m.paciente, m.pacienteNovo, m.pacienteComercial].filter(Boolean)],
+    );
     // Pacientes criados pelo teste de importação: "<paciente> Importado A", "... B".
     await db.query(`delete from paciente where nome like $1 || ' Importado%'`, [m.paciente]);
     await db.query(`delete from paciente where nome = any($1::text[])`, [
-      [m.paciente, m.pacienteNovo].filter(Boolean),
+      [m.paciente, m.pacienteNovo, m.pacienteComercial].filter(Boolean),
     ]);
     const profIds = [
       ...(m.profissionais ?? []).map((p) => p.id),
@@ -390,7 +413,14 @@ export async function apagarMassa() {
       [profIds],
     );
     contas.push(...contasConvite.map((c) => c.usuario_id as string));
-    await db.query(`delete from convite_profissional where profissional_id = any($1::uuid[])`, [
+    // Contas criadas por convite de usuário no teste, e os convites do admin de teste.
+    const { rows: contasDeUsuario } = await db.query(
+      `select usuario_id from convite where criado_por = $1 and usuario_id is not null`,
+      [m.admin?.usuarioId],
+    );
+    contas.push(...contasDeUsuario.map((c) => c.usuario_id as string));
+    await db.query(`delete from convite where criado_por = $1`, [m.admin?.usuarioId]);
+    await db.query(`delete from convite where profissional_id = any($1::uuid[])`, [
       profIds,
     ]);
     await db.query(`delete from recurso_disponibilidade where recurso_id = any($1::uuid[])`, [
@@ -420,9 +450,13 @@ export async function apagarMassa() {
     // A auditoria referencia o usuário: as linhas do teste saem junto.
     await db.query(`delete from despesa_fixa where descricao like 'TESTE E2E%'`);
     contas.push(
-      ...[m.usuarioId, m.gestao?.usuarioId, m.financeiro?.usuarioId, m.admin?.usuarioId].filter(
-        Boolean,
-      ),
+      ...[
+        m.usuarioId,
+        m.gestao?.usuarioId,
+        m.financeiro?.usuarioId,
+        m.admin?.usuarioId,
+        m.sdr?.usuarioId,
+      ].filter(Boolean),
     );
     const ids = contas;
     await db.query(`delete from auditoria where usuario_id = any($1::uuid[])`, [ids]);
@@ -450,6 +484,46 @@ export async function definirNomeDaClinica(nome: string) {
   const db = await conectar();
   try {
     await db.query(`update clinica set nome = $1`, [nome]);
+  } finally {
+    await db.end();
+  }
+}
+
+/** Atendimentos do paciente no dia: "HH:MM origem vendedor origem_id?". */
+export async function origensNoDia(paciente: string, dia: string): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select to_char(a.inicio at time zone 'America/Sao_Paulo', 'HH24:MI') || ' ' || a.origem
+              || ' ' || coalesce(u.perfil::text, '-')
+              || case when a.atendimento_origem_id is not null then ' com-origem' else '' end as s
+         from agendamento a
+         join paciente p on p.id = a.paciente_id
+         left join usuario u on u.id = a.vendido_por
+        where p.nome = $1
+          and (a.inicio at time zone 'America/Sao_Paulo')::date = $2::date
+        order by a.inicio`,
+      [paciente, dia],
+    );
+    return rows.map((r) => r.s);
+  } finally {
+    await db.end();
+  }
+}
+
+/** Apaga os atendimentos de um paciente de teste (e as cobranças deles). */
+export async function apagarAtendimentosDe(paciente: string) {
+  const db = await conectar();
+  try {
+    await db.query(
+      `delete from lancamento where origem_tipo = 'agendamento' and origem_id in
+         (select a.id from agendamento a join paciente p on p.id = a.paciente_id where p.nome = $1)`,
+      [paciente],
+    );
+    await db.query(
+      `delete from agendamento where paciente_id in (select id from paciente where nome = $1)`,
+      [paciente],
+    );
   } finally {
     await db.end();
   }

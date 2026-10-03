@@ -18,8 +18,11 @@ function Criar() {
 export function FormularioConvite({
   token,
   inicial,
+  completo,
 }: {
   token: string;
+  /** Convite de profissional: pede também CPF, telefone, especialidade… */
+  completo: boolean;
   inicial: {
     nome: string;
     cpf: string | null;
@@ -59,33 +62,38 @@ export function FormularioConvite({
         <Campo label="Nome completo" erro={erro("nome")}>
           <Input {...campo("nome")} required autoComplete="name" />
         </Campo>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo label="CPF" erro={erro("cpf")}>
-            <Input {...campo("cpf")} required inputMode="numeric" />
-          </Campo>
-          <Campo label="Data de nascimento" erro={erro("data_nascimento")}>
-            <Input {...campo("data_nascimento")} type="date" autoComplete="bday" />
-          </Campo>
-          <Campo label="Telefone (WhatsApp)" erro={erro("telefone")}>
-            <Input
-              {...campo("telefone")}
-              type="tel"
-              required
-              placeholder="(11) 90000-0000"
-              autoComplete="tel"
-            />
-          </Campo>
-          <Campo label="Especialidade" erro={erro("especialidade")}>
-            <Input {...campo("especialidade")} />
-          </Campo>
-        </div>
-        <Campo
-          label="Registro no conselho"
-          erro={erro("registro_conselho")}
-          dica="Ex.: CRM-SP 123456, COREN-SP 654321, CRBM 1234. Deixe em branco se não tiver."
-        >
-          <Input {...campo("registro_conselho")} />
-        </Campo>
+        {/* Só o profissional completa o cadastro; os demais perfis, só o nome. */}
+        {completo && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="CPF" erro={erro("cpf")}>
+                <Input {...campo("cpf")} required inputMode="numeric" />
+              </Campo>
+              <Campo label="Data de nascimento" erro={erro("data_nascimento")}>
+                <Input {...campo("data_nascimento")} type="date" autoComplete="bday" />
+              </Campo>
+              <Campo label="Telefone (WhatsApp)" erro={erro("telefone")}>
+                <Input
+                  {...campo("telefone")}
+                  type="tel"
+                  required
+                  placeholder="(11) 90000-0000"
+                  autoComplete="tel"
+                />
+              </Campo>
+              <Campo label="Especialidade" erro={erro("especialidade")}>
+                <Input {...campo("especialidade")} />
+              </Campo>
+            </div>
+            <Campo
+              label="Registro no conselho"
+              erro={erro("registro_conselho")}
+              dica="Ex.: CRM-SP 123456, COREN-SP 654321, CRBM 1234. Deixe em branco se não tiver."
+            >
+              <Input {...campo("registro_conselho")} />
+            </Campo>
+          </>
+        )}
       </fieldset>
 
       <hr className="border-[var(--traco)]" />

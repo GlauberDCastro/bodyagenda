@@ -237,6 +237,7 @@ async function apagarTudo() {
 
 try {
   for (const p of PERFIS) await criarUsuario(p);
+  await criarUsuario("sdr"); // time comercial (0041): opera como a recepção
   await criarMassa();
   const t = Object.fromEntries(PERFIS.map((p) => [p, usuarios[p].token]));
 
@@ -438,6 +439,77 @@ try {
     `select valor from comissao where agendamento_id = $1`, [m.agMeu.id],
   );
   checar("comissao paga NAO e recalculada", Number(paga.valor) === 7, `valor ${paga.valor}`);
+
+  console.log("\n-- time comercial e upsell (0041) --");
+  const sdr = usuarios.sdr.token;
+  checar("sdr le paciente",
+    (await linhas(`paciente?select=id&id=eq.${m.pacMeu.id}`, sdr)) === 1);
+  checar("sdr NAO le bonificacao (comissao)",
+    (await linhas(`comissao?select=id`, sdr)) === 0);
+  checar("sdr NAO le despesa fixa",
+    (await linhas(`despesa_fixa?select=id`, sdr)) === 0);
+  const agSdr = await api("rpc/criar_agendamento", {
+    token: sdr,
+    metodo: "POST",
+    corpo: {
+      p_paciente: m.pacOutro.id,
+      p_procedimento: m.proc.id,
+      p_inicio: "2030-01-07T14:00:00-03:00",
+      p_sala: m.sala.id,
+      p_profissionais: [m.profOutro.id],
+      p_valor_avulso: 100,
+    },
+  });
+  checar("sdr agenda", agSdr.ok, JSON.stringify(agSdr.dados));
+  if (agSdr.ok) {
+    const { rows: [o] } = await db.query(
+      `select origem, vendido_por from agendamento where id = $1`, [agSdr.dados],
+    );
+    checar("agendamento do sdr sai como comercial, vendido pelo sdr",
+      o.origem === "comercial" && o.vendido_por === usuarios.sdr.id, JSON.stringify(o));
+  }
+
+  const upsell = (token, origem, hora) =>
+    api("rpc/registrar_upsell", {
+      token,
+      metodo: "POST",
+      corpo: {
+        p_origem: origem,
+        p_procedimento: m.proc.id,
+        p_inicio: `2030-01-07T${hora}:00-03:00`,
+        p_sala: m.sala.id,
+        p_profissionais: [m.profMeu.id],
+        p_valor_avulso: 100,
+      },
+    });
+  const meu = await upsell(t.profissional, m.agMeu.id, "12");
+  checar("profissional registra upsell no PROPRIO atendimento", meu.ok, JSON.stringify(meu.dados));
+  if (meu.ok) {
+    const { rows: [u] } = await db.query(
+      `select origem, atendimento_origem_id, vendido_por from agendamento where id = $1`,
+      [meu.dados],
+    );
+    checar("upsell fica ligado a origem e a quem vendeu",
+      u.origem === "upsell" && u.atendimento_origem_id === m.agMeu.id &&
+        u.vendido_por === usuarios.profissional.id, JSON.stringify(u));
+  }
+  const alheio = await upsell(t.profissional, m.agOutro.id, "13");
+  checar("profissional NAO registra upsell no atendimento de outra", !alheio.ok,
+    `status ${alheio.status}`);
+  const financeiro = await upsell(t.financeiro, m.agMeu.id, "15");
+  checar("financeiro NAO registra upsell", !financeiro.ok, `status ${financeiro.status}`);
+  checar("profissional continua sem agendar direto (fora do upsell)",
+    !(await api("rpc/criar_agendamento", {
+      token: t.profissional,
+      metodo: "POST",
+      corpo: {
+        p_paciente: m.pacMeu.id,
+        p_procedimento: m.proc.id,
+        p_inicio: "2030-01-07T16:00:00-03:00",
+        p_sala: m.sala.id,
+        p_valor_avulso: 100,
+      },
+    })).ok);
 } catch (e) {
   falharam++;
   console.log(`\n  ERRO  ${e.message}`);

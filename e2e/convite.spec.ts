@@ -83,6 +83,42 @@ test.describe.serial("convite de profissional", () => {
     await expect(linha).toContainText("Biomedicina estética");
   });
 
+  test("admin convida um Closer por link; a pessoa entra com esse perfil", async ({
+    page,
+    browser,
+  }) => {
+    await entrar(page, m.admin.email, m.admin.senha);
+    await page.goto("/configuracoes/usuarios");
+    await page.getByRole("button", { name: "Convidar por link" }).click();
+    const dialogo = page.getByRole("dialog");
+    await dialogo.getByLabel("Perfil").selectOption({ label: "Closer (vendas)" });
+    await dialogo.getByLabel("Nome (opcional)").fill("Closer Convidado E2E");
+    await dialogo.getByRole("button", { name: "Gerar link de convite" }).click();
+    const linkUsuario = await dialogo.getByLabel("Link do convite").inputValue();
+    await dialogo.getByRole("button", { name: "Concluir" }).click();
+    await expect(page.getByLabel("Convites pendentes")).toContainText("Closer Convidado E2E");
+
+    const contexto = await browser.newContext();
+    const visitante = await contexto.newPage();
+    await visitante.goto(linkUsuario);
+    await expect(visitante.getByText("Você foi convidado(a) como Closer (vendas)")).toBeVisible();
+    await expect(visitante.locator('input[name="cpf"]')).toHaveCount(0);
+    await expect(visitante.locator('input[name="nome"]')).toHaveValue("Closer Convidado E2E");
+    const senha = randomBytes(12).toString("base64url");
+    await visitante
+      .locator('input[name="email"]')
+      .fill(`teste-e2e-closer-${randomBytes(3).toString("hex")}@exemplo.invalid`);
+    await visitante.locator('input[name="senha"]').fill(senha);
+    await visitante.locator('input[name="confirmacao"]').fill(senha);
+    await visitante.getByRole("button", { name: "Criar meu acesso" }).click();
+    await visitante.waitForURL((u) => u.pathname === "/");
+    await expect(visitante.getByText("Closer (vendas)", { exact: true })).toBeVisible();
+    await contexto.close();
+
+    await page.reload();
+    await expect(page.getByLabel("Convites pendentes")).toHaveCount(0);
+  });
+
   test("link inválido explica e leva ao login", async ({ page }) => {
     await page.goto(`/convite/${"x".repeat(43)}`);
     await expect(page.getByText("não é válido")).toBeVisible();

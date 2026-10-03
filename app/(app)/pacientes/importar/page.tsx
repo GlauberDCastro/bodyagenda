@@ -5,8 +5,8 @@ import { Importador } from "@/components/pacientes/importador";
 
 export const metadata = { title: "Importar pacientes" };
 
-/** Quem cadastra paciente (RLS): administração e recepção. */
-const PODEM_IMPORTAR = ["admin", "recepcao"];
+/** Quem cadastra paciente (RLS): administração, recepção e time comercial. */
+const PODEM_IMPORTAR = ["admin", "recepcao", "sdr", "closer"];
 
 export default async function ImportarPacientesPage() {
   const perfil = await perfilDoUsuario();
@@ -28,7 +28,7 @@ export default async function ImportarPacientesPage() {
       {PODEM_IMPORTAR.includes(perfil ?? "") ? (
         <Importador />
       ) : (
-        <Aviso>Só administração e recepção cadastram pacientes.</Aviso>
+        <Aviso>Só administração, recepção e time comercial cadastram pacientes.</Aviso>
       )}
     </div>
   );

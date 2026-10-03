@@ -1,7 +1,9 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { listarUsuarios } from "@/lib/actions/usuarios";
 import { Aviso, Etiqueta, Vazio } from "@/components/ui/primitivos";
-import { PERFIS } from "@/lib/perfis";
+import { PERFIS, ROTULO_PERFIL } from "@/lib/perfis";
+import { nomeDaClinica } from "@/lib/consultas/clinica";
+import { CancelarConvite, ConvidarUsuario } from "@/components/config/convite-usuario";
 import {
   FormularioUsuario,
   AcoesUsuario,
@@ -36,7 +38,18 @@ export default async function UsuariosPage() {
     );
   }
 
-  const { usuarios, profissionais } = await listarUsuarios();
+  const [{ usuarios, profissionais }, { data: convites }, clinica] = await Promise.all([
+    listarUsuarios(),
+    supabase
+      .from("convite")
+      .select("id, perfil, nome, expira_em")
+      .not("perfil", "is", null)
+      .is("usado_em", null)
+      .is("revogado_em", null)
+      .gt("expira_em", new Date().toISOString())
+      .order("criado_em", { ascending: false }),
+    nomeDaClinica(),
+  ]);
 
   const semAcesso = profissionais.filter((p) => !p.usuario_id);
 
@@ -51,8 +64,36 @@ export default async function UsuariosPage() {
             O perfil define o que a pessoa vê. É aplicado no banco, não na tela.
           </p>
         </div>
-        <FormularioUsuario profissionais={profissionais} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ConvidarUsuario nomeClinica={clinica} />
+          <FormularioUsuario profissionais={profissionais} />
+        </div>
       </div>
+
+      {(convites ?? []).length > 0 && (
+        <section className="cartao divide-y divide-[var(--traco)]" aria-label="Convites pendentes">
+          <p className="px-5 py-3 text-[13px] font-medium text-[var(--tinta-2)]">
+            Convites pendentes
+          </p>
+          {(convites ?? []).map((c) => (
+            <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <span className="text-[14px]">
+                <span className="font-medium">{c.nome || "Sem nome"}</span>
+                <span className="text-[var(--tinta-2)]">
+                  {" "}
+                  · {ROTULO_PERFIL[c.perfil ?? ""] ?? c.perfil} · vale até{" "}
+                  {new Intl.DateTimeFormat("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    timeZone: "America/Sao_Paulo",
+                  }).format(new Date(c.expira_em))}
+                </span>
+              </span>
+              <CancelarConvite id={c.id} />
+            </div>
+          ))}
+        </section>
+      )}
 
       {semAcesso.length > 0 && (
         <Aviso tom="neutro">

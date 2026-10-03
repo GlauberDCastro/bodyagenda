@@ -37,6 +37,14 @@ const cobranca = (a: AgendamentoNaAgenda) =>
       ? `Avulsa · ${brl.format(a.valor_avulso)}`
       : "Avulsa";
 
+/** De onde veio o atendimento, quando não foi a agenda da clínica. */
+const origem = (a: AgendamentoNaAgenda) =>
+  a.origem === "upsell"
+    ? `Upsell${a.vendedor ? ` · ${a.vendedor.nome.split(" ")[0]}` : ""}`
+    : a.origem === "comercial"
+      ? `Comercial${a.vendedor ? ` · ${a.vendedor.nome.split(" ")[0]}` : ""}`
+      : null;
+
 const quem = (a: AgendamentoNaAgenda) =>
   [a.profissionais.map((p) => p.nome.split(" ")[0]).join(", "), a.sala && `Sala ${a.sala.numero}`]
     .filter(Boolean)
@@ -88,6 +96,7 @@ export function AtendimentosPaciente({
                       <span className="block truncate text-[13.5px] text-[var(--tinta-2)]">
                         {semana.format(d).replace(".", "")}, {hora.format(d)} · {quem(a)} ·{" "}
                         {cobranca(a)}
+                        {origem(a) && ` · ${origem(a)}`}
                       </span>
                     </span>
                     <Status a={a} />
@@ -136,7 +145,14 @@ export function AtendimentosPaciente({
                         {hora.format(new Date(a.inicio))}
                       </button>
                     </td>
-                    <td className="px-5 py-3 font-medium">{a.procedimento?.nome ?? "—"}</td>
+                    <td className="px-5 py-3 font-medium">
+                      {a.procedimento?.nome ?? "—"}
+                      {origem(a) && (
+                        <span className="block text-[12.5px] font-normal text-[var(--tinta-3)]">
+                          {origem(a)}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-[var(--tinta-2)]">{quem(a) || "—"}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-[var(--tinta-2)]">
                       {cobranca(a)}

@@ -21,7 +21,7 @@ export default async function ProfissionaisPage() {
     perfilDoUsuario(),
     // RLS: só o admin enxerga convites; para os demais a lista vem vazia.
     supabase
-      .from("convite_profissional")
+      .from("convite")
       .select("profissional_id, expira_em")
       .is("usado_em", null)
       .is("revogado_em", null)

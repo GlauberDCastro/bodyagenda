@@ -28,6 +28,18 @@ export const PERFIS = [
     descricao: "Agenda, pacientes e recebimentos. Não vê custo nem margem.",
   },
   {
+    valor: "sdr",
+    rotulo: "SDR (qualificação)",
+    descricao:
+      "Time comercial: cadastra paciente, agenda (inclusive sem avaliação) e vende pacote. Não vê custo, margem nem bonificações.",
+  },
+  {
+    valor: "closer",
+    rotulo: "Closer (vendas)",
+    descricao:
+      "Time comercial: cadastra paciente, agenda (inclusive sem avaliação) e vende pacote. Não vê custo, margem nem bonificações.",
+  },
+  {
     valor: "profissional",
     rotulo: "Profissional",
     descricao: "Própria agenda e própria bonificação.",

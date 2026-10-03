@@ -21,6 +21,12 @@ export interface PresetAgendamento {
   duracao_min?: number | null;
   observacoes?: string | null;
   valor_avulso?: number | null;
+  /** Presente = procedimento vendido durante este atendimento (upsell). */
+  upsell?: {
+    origemId: string;
+    /** "Toxina Botulínica de 01/10, 15:00" — de onde veio a venda. */
+    descricao: string;
+  };
   /** Presente = editar este atendimento em vez de criar outro. */
   edicao?: {
     id: string;

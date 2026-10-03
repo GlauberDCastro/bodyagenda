@@ -3,6 +3,7 @@ import { Logotipo } from "@/components/ui/logo";
 import { situacaoDoConvite } from "@/lib/auth/convites";
 import { nomeDaClinicaPublico } from "@/lib/consultas/clinica";
 import { formatarCpf } from "@/lib/domain/cpf";
+import { ROTULO_PERFIL } from "@/lib/perfis";
 import { FormularioConvite } from "./formulario-convite";
 
 export const metadata = { title: "Criar acesso" };
@@ -38,19 +39,32 @@ export default async function ConvitePage(props: { params: Promise<{ token: stri
             <div className="text-center">
               <h1 className="titulo-xl">Bem-vindo(a){clinica ? ` à ${clinica}` : ""}</h1>
               <p className="mt-2 text-[15px] text-[var(--tinta-2)]">
-                Crie seu acesso para ver sua agenda e suas bonificações. Confira seus dados e complete
-                o que faltar.
+                {situacao.convite.profissional
+                  ? "Crie seu acesso para ver sua agenda e suas bonificações. Confira seus dados e complete o que faltar."
+                  : `Você foi convidado(a) como ${ROTULO_PERFIL[situacao.convite.perfil] ?? situacao.convite.perfil}. Crie seu e-mail e senha para entrar.`}
               </p>
             </div>
             <div className="cartao p-6">
               <FormularioConvite
                 token={token}
-                inicial={{
-                  ...situacao.convite.profissional,
-                  cpf: situacao.convite.profissional.cpf
-                    ? formatarCpf(situacao.convite.profissional.cpf)
-                    : null,
-                }}
+                completo={Boolean(situacao.convite.profissional)}
+                inicial={
+                  situacao.convite.profissional
+                    ? {
+                        ...situacao.convite.profissional,
+                        cpf: situacao.convite.profissional.cpf
+                          ? formatarCpf(situacao.convite.profissional.cpf)
+                          : null,
+                      }
+                    : {
+                        nome: situacao.convite.nome ?? "",
+                        cpf: null,
+                        especialidade: null,
+                        telefone: null,
+                        data_nascimento: null,
+                        registro_conselho: null,
+                      }
+                }
               />
             </div>
             <p className="text-center text-[12.5px] text-[var(--tinta-3)]">

@@ -425,7 +425,7 @@ export function Timeline({
                             left: `calc(${(faixa / total) * 100}% + 6px)`,
                             width: `calc(${100 / total}% - 12px)`,
                           }}
-                          titulo={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${ROTULO_STATUS[a.status]}`}
+                          titulo={`${a.paciente?.nome ?? "—"} · ${a.procedimento?.nome ?? "—"} · ${hora.format(new Date(a.inicio))}–${hora.format(new Date(a.fim))} · ${ROTULO_STATUS[a.status]}${a.sem_avaliacao ? " · sem avaliação inicial" : ""}${a.origem === "upsell" ? " · upsell" : a.origem === "comercial" ? " · comercial" : ""}`}
                         />
                       );
                     })}

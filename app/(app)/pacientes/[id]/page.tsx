@@ -179,6 +179,11 @@ export default async function PacientePage(props: { params: Promise<{ id: string
   const realizados = agendamentos.filter((a) => a.status === "realizado").length;
   const faltas = agendamentos.filter((a) => a.status === "falta").length;
   const ultimoRealizado = agendamentos.find((a) => a.status === "realizado");
+  // Avaliação inicial: feita, só agendada, ou nenhuma (comum quando o comercial vendeu direto).
+  const avaliacaoFeita = agendamentos.find(
+    (a) => a.procedimento?.avaliacao && a.status === "realizado",
+  );
+  const avaliacaoAgendada = proximos.find((a) => a.procedimento?.avaliacao);
 
   // RF-13 · situação financeira na ficha.
   const abertas = financeiro.filter(emAberto);
@@ -250,6 +255,18 @@ export default async function PacientePage(props: { params: Promise<{ id: string
                     <Etiqueta tom="bom">LGPD assinado</Etiqueta>
                   ) : (
                     <Etiqueta tom="atencao">Consentimento LGPD pendente</Etiqueta>
+                  )}
+                  {avaliacaoFeita ? (
+                    <Etiqueta tom="bom">
+                      Avaliação em {diaCurto.format(new Date(avaliacaoFeita.inicio))}
+                    </Etiqueta>
+                  ) : avaliacaoAgendada ? (
+                    <Etiqueta tom="marca">
+                      Avaliação agendada para{" "}
+                      {diaCurto.format(new Date(avaliacaoAgendada.inicio))}
+                    </Etiqueta>
+                  ) : (
+                    <Etiqueta tom="atencao">Sem avaliação inicial</Etiqueta>
                   )}
                   {totalAtraso > 0 && (
                     <Etiqueta tom="critico">Em atraso: {brl.format(totalAtraso)}</Etiqueta>

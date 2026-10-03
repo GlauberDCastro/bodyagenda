@@ -10,12 +10,12 @@ export async function entrar(page: Page, email: string, senha: string, esperarEn
 }
 
 /** Abre "Novo agendamento" e envia para a sala de teste às 09:00 do dia. */
-export async function agendar(page: Page, m: Massa, dia: string) {
+export async function agendar(page: Page, m: Massa, dia: string, paciente = m.paciente) {
   await page.goto(`/agenda?dia=${dia}`);
   await page.getByRole("button", { name: "Novo agendamento" }).click();
   const dialogo = page.getByRole("dialog");
-  await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(m.paciente);
-  await dialogo.locator('select[name="paciente_id"]').selectOption({ label: m.paciente });
+  await dialogo.getByPlaceholder("Digite o nome para buscar…").fill(paciente);
+  await dialogo.locator('select[name="paciente_id"]').selectOption({ label: paciente });
   await dialogo
     .locator('select[name="procedimento_id"]')
     .selectOption({ label: `${m.procedimento} — 30 min` });

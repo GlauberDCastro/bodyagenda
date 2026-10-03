@@ -5,6 +5,7 @@ import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import {
   criarAgendamento,
   editarAgendamento,
+  registrarUpsell,
   type ResultadoAgendamento,
 } from "@/lib/actions/agenda";
 import {
@@ -26,7 +27,7 @@ interface PacoteOpcao {
   rotulo: string;
 }
 
-function Salvar({ editando }: { editando: boolean }) {
+function Salvar({ editando, upsell }: { editando: boolean; upsell: boolean }) {
   const { pending } = useEnvioFormulario();
   return (
     <Botao type="submit" disabled={pending}>
@@ -36,7 +37,9 @@ function Salvar({ editando }: { editando: boolean }) {
           : "Salvar alterações"
         : pending
           ? "Agendando…"
-          : "Agendar"}
+          : upsell
+            ? "Agendar upsell"
+            : "Agendar"}
     </Botao>
   );
 }
@@ -79,11 +82,13 @@ export function NovoAgendamento({
   return (
     <GatilhoModal
       rotulo={rotulo}
-      titulo={editando ? "Editar atendimento" : "Novo agendamento"}
+      titulo={editando ? "Editar atendimento" : preset.upsell ? "Registrar upsell" : "Novo agendamento"}
       descricao={
         editando
           ? "As mesmas regras do agendamento valem aqui: conflito, habilitação e aparelhos."
-          : "Sala, equipamentos e profissionais são checados contra conflito."
+          : preset.upsell
+            ? `Vendido durante ${preset.upsell.descricao}. Para fazer hoje, mantenha o horário logo em seguida; para outro dia, troque a data ou use "Buscar horário livre".`
+            : "Sala, equipamentos e profissionais são checados contra conflito."
       }
       aberto={aberto}
       aoMudar={(v) => (v ? abrir(presetPadrao) : fechar())}
@@ -217,7 +222,9 @@ function FormularioAgendamento({
     async (anterior, formData) => {
       const r = editando
         ? await editarAgendamento(anterior, formData)
-        : await criarAgendamento(anterior, formData);
+        : preset.upsell
+          ? await registrarUpsell(anterior, formData)
+          : await criarAgendamento(anterior, formData);
       if (r.ok) aoConcluir();
       return r;
     },
@@ -265,17 +272,22 @@ function FormularioAgendamento({
   return (
     <Formulario acao={acao} enviando={enviando} estado={estado} className="space-y-4">
       {editando && <input type="hidden" name="id" value={editando.id} />}
-      {editando ? (
+      {preset.upsell && (
+        <input type="hidden" name="atendimento_origem_id" value={preset.upsell.origemId} />
+      )}
+      {editando || preset.upsell ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--traco)] bg-[var(--superficie-2)] px-3.5 py-2.5">
           <div>
             <p className="text-[12px] text-[var(--tinta-3)]">Paciente</p>
             <p className="text-[14.5px] font-medium">{preset.paciente?.nome}</p>
           </div>
           <p className="text-[13px] text-[var(--tinta-2)]">
-            {editando.pacote ?? "Sessão avulsa"}
+            {editando ? (editando.pacote ?? "Sessão avulsa") : "Upsell"}
           </p>
           <input type="hidden" name="paciente_id" value={pacienteId} />
-          {preset.pacote_id && <input type="hidden" name="pacote_id" value={preset.pacote_id} />}
+          {editando && preset.pacote_id && (
+            <input type="hidden" name="pacote_id" value={preset.pacote_id} />
+          )}
         </div>
       ) : (
       <Campo label="Paciente" erro={estado.campos?.paciente_id}>
@@ -405,7 +417,11 @@ function FormularioAgendamento({
           label="Valor da sessão avulsa"
           erro={estado.campos?.valor_avulso}
           dica={
-            procedimento ? `Tabela: ${brl.format(Number(procedimento.valor_sessao))}` : undefined
+            procedimento?.avaliacao
+              ? "Avaliação inicial: sem cobrança."
+              : procedimento
+                ? `Tabela: ${brl.format(Number(procedimento.valor_sessao))}`
+                : undefined
           }
         >
           <Input
@@ -573,7 +589,7 @@ function FormularioAgendamento({
       )}
 
       <AcoesModal aoCancelar={aoConcluir}>
-        <Salvar editando={Boolean(editando)} />
+        <Salvar editando={Boolean(editando)} upsell={Boolean(preset.upsell)} />
       </AcoesModal>
     </Formulario>
   );

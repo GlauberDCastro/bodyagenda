@@ -161,11 +161,33 @@ export function BlocoAgendamento({
             </p>
           );
           const status = a.status === "agendado" ? "a confirmar" : rotuloStatus.toLowerCase();
+          // Marcas que a profissional precisa ver de longe.
+          const marcas = [
+            a.sem_avaliacao && { texto: "1ª vez", cor: "var(--status-atencao)" },
+            a.origem === "upsell" && { texto: "Upsell", cor: "var(--status-bom)" },
+            a.origem === "comercial" && { texto: "Comercial", cor: "var(--serie-1)" },
+          ].filter((m): m is { texto: string; cor: string } => Boolean(m));
+          const etiquetas = marcas.length > 0 && (
+            <span className="flex shrink-0 gap-1">
+              {marcas.map((m) => (
+                <span
+                  key={m.texto}
+                  className="rounded-[5px] px-1 text-[11px] font-semibold leading-[18px] text-[var(--tinta-1)]"
+                  style={{ background: `color-mix(in oklab, ${m.cor} 28%, var(--superficie))` }}
+                >
+                  {m.texto}
+                </span>
+              ))}
+            </span>
+          );
           // Bloco curto: nome e horário numa linha só.
           if (Number(estilo.height ?? 0) < 64) {
             return (
               <div className="flex items-start justify-between gap-2 px-2.5 py-1.5">
-                {nome}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {nome}
+                  {etiquetas}
+                </span>
                 <span className="shrink-0 pt-0.5 text-[12.5px] tabular-nums text-[var(--tinta-2)]">
                   {horario}
                 </span>
@@ -174,7 +196,10 @@ export function BlocoAgendamento({
           }
           return (
             <div className="flex h-full flex-col px-2.5 py-2">
-              {nome}
+              <span className="flex min-w-0 items-start justify-between gap-1.5">
+                {nome}
+                {etiquetas}
+              </span>
               <p className="truncate text-[13px] text-[var(--tinta-2)]">
                 {[a.procedimento?.nome, ...a.profissionais.map((p) => p.nome)]
                   .filter(Boolean)

@@ -143,6 +143,25 @@ export function DetalheAtendimento({
     });
   };
 
+  /**
+   * Upsell: a profissional vendeu outro procedimento durante o atendimento.
+   * "Agora" começa no fim deste (mesma sala, mesma profissional); "outro dia"
+   * sugere a semana seguinte. O formulário escolhe aparelhos e confere conflito.
+   */
+  const upsell = (agora: boolean) => {
+    fechar();
+    abrir({
+      paciente,
+      sala_id: a.sala_id,
+      profissionais: a.profissionais.map((p) => p.id),
+      inicio: paraLocal(agora ? fim : new Date(inicio.getTime() + 7 * 86_400_000)),
+      upsell: {
+        origemId: a.id,
+        descricao: `${a.procedimento?.nome ?? "o atendimento"} de ${diaCurto.format(inicio)}, ${hora.format(inicio)}`,
+      },
+    });
+  };
+
   const proximaSessao = () => {
     fechar();
     // Mesmo dia da semana e horário, uma semana depois: o ponto de partida mais comum.
@@ -197,6 +216,15 @@ export function DetalheAtendimento({
         </div>
 
         {/* Alertas antes de tudo: é o que não pode passar despercebido. */}
+        {a.sem_avaliacao && (
+          <Aviso>
+            <span className="font-medium">Primeira vez, sem avaliação inicial.</span>{" "}
+            {a.origem === "comercial"
+              ? `Vendido pelo comercial${a.vendedor ? ` (${a.vendedor.nome})` : ""} direto para o procedimento.`
+              : "O paciente ainda não passou por uma avaliação na clínica."}{" "}
+            Confirme a indicação antes de começar.
+          </Aviso>
+        )}
         {resumo && (resumo.observacoes || resumo.emAtraso > 0 || !resumo.consentimento_lgpd) && (
           <div className="space-y-2">
             {resumo.observacoes && (
@@ -228,6 +256,15 @@ export function DetalheAtendimento({
               (a.valor_avulso ? `Avulsa · ${brl.format(a.valor_avulso)}` : "Avulsa · sem valor")}
           </Item>
           <Item rotulo="Sala">{a.sala ? `Sala ${a.sala.numero} — ${a.sala.nome}` : "—"}</Item>
+          <Item rotulo="Origem">
+            {a.origem === "upsell"
+              ? `Upsell${a.vendedor ? ` · vendido por ${a.vendedor.nome}` : ""}`
+              : a.origem === "comercial"
+                ? `Comercial${a.vendedor ? ` · vendido por ${a.vendedor.nome}` : ""}`
+                : a.procedimento?.avaliacao
+                  ? "Avaliação inicial"
+                  : "Agenda da clínica"}
+          </Item>
           <Item rotulo={a.profissionais.length > 1 ? "Profissionais" : "Profissional"}>
             {a.profissionais.length ? a.profissionais.map((p) => p.nome).join(", ") : "Nenhum"}
           </Item>
@@ -396,6 +433,21 @@ export function DetalheAtendimento({
                   : "Nenhum"}
               </p>
             </div>
+          </div>
+        )}
+
+        {a.status !== "cancelado" && a.status !== "falta" && (
+          <div className="flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] bg-[var(--superficie-2)] px-4 py-3">
+            <p className="mr-auto text-[13.5px]">
+              <span className="font-medium">Vendeu outro procedimento?</span>{" "}
+              <span className="text-[var(--tinta-2)]">Registre o upsell e já agende.</span>
+            </p>
+            <Botao type="button" variante="secundario" onClick={() => upsell(true)}>
+              Upsell: fazer agora
+            </Botao>
+            <Botao type="button" variante="secundario" onClick={() => upsell(false)}>
+              Upsell: outro dia
+            </Botao>
           </div>
         )}
 

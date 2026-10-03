@@ -34,18 +34,9 @@ export const agendamentoSchema = z
       (v) => (v === "" || v === undefined ? null : Number(v)),
       z.number().int().positive("Duração deve ser maior que zero").nullable(),
     ),
-  })
-  .superRefine((d, ctx) => {
-    // Avulso sem valor vira receita fantasma: a sessão acontece, ocupa a
-    // agenda e nunca aparece no financeiro.
-    if (!d.pacote_id && (d.valor_avulso === null || d.valor_avulso === 0)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["valor_avulso"],
-        message: "Sessão avulsa exige um valor de cobrança",
-      });
-    }
   });
+// "Avulsa exige valor" é checado no servidor (valorFaltando, em lib/actions/agenda):
+// depende de o procedimento ser avaliação inicial, que é gratuita.
 
 export const mudancaStatusSchema = z.object({
   id: z.uuid(),

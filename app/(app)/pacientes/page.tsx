@@ -76,7 +76,7 @@ export default async function PacientesPage(props: {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {(perfil === "admin" || perfil === "recepcao") && (
+          {["admin", "recepcao", "sdr", "closer"].includes(perfil ?? "") && (
             <Link
               href="/pacientes/importar"
               className="rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)]"

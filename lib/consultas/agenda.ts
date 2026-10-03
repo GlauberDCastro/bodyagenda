@@ -14,7 +14,19 @@ export interface AgendamentoNaAgenda {
   observacoes: string | null;
   motivo_cancelamento: string | null;
   paciente: { id: string; nome: string; telefone: string | null } | null;
-  procedimento: { id: string; nome: string; duracao_min: number; buffer_min: number } | null;
+  procedimento: {
+    id: string;
+    nome: string;
+    duracao_min: number;
+    buffer_min: number;
+    avaliacao: boolean;
+  } | null;
+  /** agenda, comercial (SDR/closer) ou upsell (vendido num atendimento). */
+  origem: "agenda" | "comercial" | "upsell";
+  vendedor: { id: string; nome: string } | null;
+  atendimento_origem_id: string | null;
+  /** Paciente nunca fez avaliação inicial (e este atendimento não é uma). */
+  sem_avaliacao: boolean;
   sala_id: string;
   sala: { numero: number; nome: string } | null;
   equipamentos: { id: string; nome: string }[];
@@ -22,15 +34,19 @@ export interface AgendamentoNaAgenda {
 }
 
 const CAMPOS_AGENDA = `id, inicio, fim, status, numero_sessao, sala_id, pacote_id, valor_avulso,
-       observacoes, motivo_cancelamento,
+       observacoes, motivo_cancelamento, origem, atendimento_origem_id, vendido_por,
        pacote:pacote_id (quantidade_sessoes),
        sala:sala_id (numero, nome),
        paciente:paciente_id (id, nome, telefone),
-       procedimento:procedimento_id (id, nome, duracao_min, buffer_min),
+       procedimento:procedimento_id (id, nome, duracao_min, buffer_min, avaliacao),
        agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
        agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`;
 
-type LinhaAgenda = Omit<AgendamentoNaAgenda, "sessoes_pacote" | "equipamentos" | "profissionais"> & {
+type LinhaAgenda = Omit<
+  AgendamentoNaAgenda,
+  "sessoes_pacote" | "equipamentos" | "profissionais" | "sem_avaliacao" | "vendedor"
+> & {
+  vendido_por: string | null;
   pacote: { quantidade_sessoes: number } | null;
   agendamento_equipamento: { equipamento: { id: string; nome: string } | null }[];
   agendamento_profissional: {
@@ -39,11 +55,14 @@ type LinhaAgenda = Omit<AgendamentoNaAgenda, "sessoes_pacote" | "equipamentos" |
 };
 
 function paraAgenda(linha: LinhaAgenda): AgendamentoNaAgenda {
-  const { pacote, agendamento_equipamento, agendamento_profissional, ...resto } = linha;
+  const { pacote, agendamento_equipamento, agendamento_profissional, vendido_por, ...resto } =
+    linha;
   return {
     ...resto,
     valor_avulso: resto.valor_avulso === null ? null : Number(resto.valor_avulso),
     sessoes_pacote: pacote?.quantidade_sessoes ?? null,
+    sem_avaliacao: false,
+    vendedor: vendido_por ? { id: vendido_por, nome: "" } : null,
     equipamentos: agendamento_equipamento
       .map((x) => x.equipamento)
       .filter((x): x is { id: string; nome: string } => x !== null),
@@ -61,6 +80,36 @@ export interface ColunaRecurso {
   subtitulo?: string;
 }
 
+/**
+ * Marca quem nunca fez avaliação inicial: o comercial agenda procedimento
+ * direto, e a profissional precisa saber que é a primeira vez do paciente.
+ */
+async function marcarSemAvaliacao(lista: AgendamentoNaAgenda[]): Promise<AgendamentoNaAgenda[]> {
+  const pacientes = [...new Set(lista.map((a) => a.paciente?.id).filter((x): x is string => !!x))];
+  if (pacientes.length === 0) return lista;
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("agendamento")
+    .select("paciente_id, procedimento:procedimento_id!inner (avaliacao)")
+    .eq("procedimento.avaliacao", true)
+    .eq("status", "realizado")
+    .in("paciente_id", pacientes);
+  const avaliados = new Set((data ?? []).map((a) => a.paciente_id));
+
+  // Nome de quem vendeu, pela função que só expõe o nome (0043).
+  const vendedores = [...new Set(lista.map((a) => a.vendedor?.id).filter((x): x is string => !!x))];
+  const { data: nomes } = vendedores.length
+    ? await supabase.rpc("nomes_da_equipe", { p_ids: vendedores })
+    : { data: [] as { id: string; nome: string }[] };
+  const nomeDe = new Map((nomes ?? []).map((n) => [n.id, n.nome]));
+
+  return lista.map((a) => ({
+    ...a,
+    vendedor: a.vendedor ? { id: a.vendedor.id, nome: nomeDe.get(a.vendedor.id) ?? "equipe" } : null,
+    sem_avaliacao: !!a.paciente && !a.procedimento?.avaliacao && !avaliados.has(a.paciente.id),
+  }));
+}
+
 export async function agendamentosDoPeriodo(
   inicio: Date,
   fim: Date,
@@ -75,7 +124,7 @@ export async function agendamentosDoPeriodo(
     .neq("status", "cancelado")
     .order("inicio");
 
-  return ((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda);
+  return marcarSemAvaliacao(((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda));
 }
 
 /** Todos os atendimentos do paciente, no mesmo formato da agenda (inclui cancelados). */
@@ -89,7 +138,7 @@ export async function agendamentosDoPacienteNaAgenda(
     .eq("paciente_id", pacienteId)
     .order("inicio", { ascending: false })
     .limit(200);
-  return ((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda);
+  return marcarSemAvaliacao(((data ?? []) as unknown as LinhaAgenda[]).map(paraAgenda));
 }
 
 /**

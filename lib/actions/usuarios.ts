@@ -13,7 +13,7 @@ const vazioParaNulo = <T extends z.ZodTypeAny>(schema: T) =>
 const usuarioSchema = z.object({
   nome: z.string().min(2, "Informe o nome"),
   email: z.email("E-mail inválido"),
-  perfil: z.enum(["admin", "gestao", "financeiro", "recepcao", "profissional"]),
+  perfil: z.enum(["admin", "gestao", "financeiro", "recepcao", "sdr", "closer", "profissional"]),
   senha: vazioParaNulo(z.string().min(8, "A senha precisa de ao menos 8 caracteres")),
   profissional_id: vazioParaNulo(z.uuid()),
   ativo: z.preprocess((v) => v === "on" || v === true || v === "true", z.boolean()),

@@ -20,6 +20,9 @@ export type Database = {
       };
       agendamento: {
         Row: {
+          origem: string;
+          vendido_por: string | null;
+          atendimento_origem_id: string | null;
           created_at: string;
           criado_por: string | null;
           fim: string;
@@ -37,6 +40,9 @@ export type Database = {
           valor_avulso: number | null;
         };
         Insert: {
+          origem?: string;
+          vendido_por?: string | null;
+          atendimento_origem_id?: string | null;
           created_at?: string;
           criado_por?: string | null;
           fim: string;
@@ -54,6 +60,9 @@ export type Database = {
           valor_avulso?: number | null;
         };
         Update: {
+          origem?: string;
+          vendido_por?: string | null;
+          atendimento_origem_id?: string | null;
           created_at?: string;
           criado_por?: string | null;
           fim?: string;
@@ -616,6 +625,7 @@ export type Database = {
       };
       procedimento: {
         Row: {
+          avaliacao: boolean;
           ativo: boolean;
           buffer_min: number;
           created_at: string;
@@ -630,6 +640,7 @@ export type Database = {
           valor_tabela: number | null;
         };
         Insert: {
+          avaliacao?: boolean;
           ativo?: boolean;
           buffer_min?: number;
           created_at?: string;
@@ -644,6 +655,7 @@ export type Database = {
           valor_tabela?: number | null;
         };
         Update: {
+          avaliacao?: boolean;
           ativo?: boolean;
           buffer_min?: number;
           created_at?: string;
@@ -798,10 +810,12 @@ export type Database = {
         Update: { id?: string; unica?: boolean; nome?: string; updated_at?: string };
         Relationships: [];
       };
-      convite_profissional: {
+      convite: {
         Row: {
           id: string;
-          profissional_id: string;
+          profissional_id: string | null;
+          perfil: Database["public"]["Enums"]["perfil_usuario"] | null;
+          nome: string | null;
           token_hash: string;
           criado_por: string | null;
           criado_em: string;
@@ -812,7 +826,9 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          profissional_id: string;
+          profissional_id?: string | null;
+          perfil?: Database["public"]["Enums"]["perfil_usuario"] | null;
+          nome?: string | null;
           token_hash: string;
           criado_por?: string | null;
           criado_em?: string;
@@ -823,7 +839,9 @@ export type Database = {
         };
         Update: {
           id?: string;
-          profissional_id?: string;
+          profissional_id?: string | null;
+          perfil?: Database["public"]["Enums"]["perfil_usuario"] | null;
+          nome?: string | null;
           token_hash?: string;
           criado_por?: string | null;
           criado_em?: string;
@@ -1262,6 +1280,25 @@ export type Database = {
           em_atraso: number;
         }[];
       };
+      nomes_da_equipe: {
+        Args: { p_ids: string[] };
+        Returns: { id: string; nome: string }[];
+      };
+      registrar_upsell: {
+        Args: {
+          p_origem: string;
+          p_procedimento: string;
+          p_inicio: string;
+          p_sala: string;
+          p_equipamentos?: string[];
+          p_profissionais?: string[];
+          p_pacote?: string;
+          p_observacoes?: string;
+          p_valor_avulso?: number;
+          p_duracao?: number;
+        };
+        Returns: string;
+      };
       editar_agendamento: {
         Args: {
           p_agendamento: string;
@@ -1548,7 +1585,7 @@ export type Database = {
       alocacao_equipamento: "fixo" | "movel";
       alocacao_sala: "dedicada" | "flexivel";
       motivo_bloqueio: "manutencao" | "ferias" | "folga" | "outro";
-      perfil_usuario: "admin" | "recepcao" | "profissional" | "gestao" | "financeiro";
+      perfil_usuario: "admin" | "recepcao" | "profissional" | "gestao" | "financeiro" | "sdr" | "closer";
       status_agendamento:
         | "agendado"
         | "confirmado"
@@ -1682,7 +1719,7 @@ export const Constants = {
       alocacao_equipamento: ["fixo", "movel"],
       alocacao_sala: ["dedicada", "flexivel"],
       motivo_bloqueio: ["manutencao", "ferias", "folga", "outro"],
-      perfil_usuario: ["admin", "recepcao", "profissional", "gestao", "financeiro"],
+      perfil_usuario: ["admin", "recepcao", "profissional", "gestao", "financeiro", "sdr", "closer"],
       status_agendamento: [
         "agendado",
         "confirmado",

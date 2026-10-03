@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { agendamentoSchema, horarioDaClinica, mudancaStatusSchema } from "@/lib/schemas/agenda";
+import {
+  agendamentoSchema,
+  horarioDaClinica,
+  mudancaStatusSchema,
+  type AgendamentoInput,
+} from "@/lib/schemas/agenda";
 import type { Resultado } from "./recursos";
 import type { TipoRecurso } from "@/lib/types/database";
 
@@ -118,6 +123,69 @@ async function requisitoObrigatorioFaltando(
   return null;
 }
 
+/**
+ * Avulso sem valor vira receita fantasma: a sessão acontece, ocupa a agenda
+ * e nunca aparece no financeiro. A exceção é a avaliação inicial, gratuita.
+ */
+async function valorFaltando(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  d: { pacote_id?: string | null; valor_avulso?: number | null; procedimento_id: string },
+): Promise<ResultadoAgendamento | null> {
+  if (d.pacote_id || (d.valor_avulso ?? 0) > 0) return null;
+  const { data } = await supabase
+    .from("procedimento")
+    .select("avaliacao")
+    .eq("id", d.procedimento_id)
+    .maybeSingle();
+  if (data?.avaliacao) return null;
+  const msg = "Sessão avulsa exige um valor de cobrança";
+  return { erro: msg, campos: { valor_avulso: msg } };
+}
+
+/** Erro do banco ao criar atendimento (agenda ou upsell), em português e acionável. */
+async function erroAoCriar(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  error: { code?: string; message: string },
+  d: AgendamentoInput,
+): Promise<ResultadoAgendamento> {
+  // RF-78 · recusa registrada: é a demanda que o gargalo fez a clínica perder.
+  if (error.code === "23P01" || error.code === "23514") {
+    await supabase.from("agendamento_recusa").insert({
+      procedimento_id: d.procedimento_id,
+      inicio: d.inicio,
+      sala_id: d.sala_id,
+      equipamentos: d.equipamentos,
+      profissionais: d.profissionais,
+      codigo: error.code,
+    });
+  }
+  if (error.code === "23P01") {
+    // Precisa do fim para consultar o conflito; recalcula pela duração.
+    const { data: proc } = await supabase
+      .from("procedimento")
+      .select("duracao_min, buffer_min")
+      .eq("id", d.procedimento_id)
+      .single();
+
+    const minutos = (d.duracao_min ?? proc?.duracao_min ?? 0) + (proc?.buffer_min ?? 0);
+    const fim = new Date(new Date(d.inicio).getTime() + minutos * 60_000);
+
+    return detalharConflito(supabase, {
+      inicio: d.inicio,
+      fim: fim.toISOString(),
+      sala_id: d.sala_id,
+      equipamentos: d.equipamentos,
+      profissionais: d.profissionais,
+    });
+  }
+
+  if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
+  if (error.code === "42501" || error.message.includes("row-level security")) {
+    return { erro: "Seu perfil não tem permissão para agendar." };
+  }
+  return { erro: error.message };
+}
+
 export async function criarAgendamento(
   _anterior: ResultadoAgendamento,
   formData: FormData,
@@ -139,6 +207,8 @@ export async function criarAgendamento(
 
   const faltando = await requisitoObrigatorioFaltando(supabase, d);
   if (faltando) return { erro: faltando };
+  const semValor = await valorFaltando(supabase, d);
+  if (semValor) return semValor;
 
   // RPC transacional: agendamento + equipamentos + profissionais numa chamada
   // só. Três inserts do lado do Next deixariam janela para um agendamento
@@ -156,44 +226,7 @@ export async function criarAgendamento(
     p_duracao: d.duracao_min ?? undefined,
   });
 
-  if (error) {
-    // RF-78 · recusa registrada: é a demanda que o gargalo fez a clínica perder.
-    if (error.code === "23P01" || error.code === "23514") {
-      await supabase.from("agendamento_recusa").insert({
-        procedimento_id: d.procedimento_id,
-        inicio: d.inicio,
-        sala_id: d.sala_id,
-        equipamentos: d.equipamentos,
-        profissionais: d.profissionais,
-        codigo: error.code,
-      });
-    }
-    if (error.code === "23P01") {
-      // Precisa do fim para consultar o conflito; recalcula pela duração.
-      const { data: proc } = await supabase
-        .from("procedimento")
-        .select("duracao_min, buffer_min")
-        .eq("id", d.procedimento_id)
-        .single();
-
-      const minutos = (d.duracao_min ?? proc?.duracao_min ?? 0) + (proc?.buffer_min ?? 0);
-      const fim = new Date(new Date(d.inicio).getTime() + minutos * 60_000);
-
-      return detalharConflito(supabase, {
-        inicio: d.inicio,
-        fim: fim.toISOString(),
-        sala_id: d.sala_id,
-        equipamentos: d.equipamentos,
-        profissionais: d.profissionais,
-      });
-    }
-
-    if (error.code === "23514") return { erro: mensagemDeJanela(error.message) };
-    if (error.code === "42501" || error.message.includes("row-level security")) {
-      return { erro: "Seu perfil não tem permissão para agendar." };
-    }
-    return { erro: error.message };
-  }
+  if (error) return erroAoCriar(supabase, error, d);
 
   revalidatePath("/agenda");
   return { ok: true, id: String(id) } as ResultadoAgendamento & { id: string };
@@ -225,6 +258,8 @@ export async function editarAgendamento(
 
   const faltando = await requisitoObrigatorioFaltando(supabase, d);
   if (faltando) return { erro: faltando };
+  const semValor = await valorFaltando(supabase, d);
+  if (semValor) return semValor;
 
   const { error } = await supabase.rpc("editar_agendamento", {
     p_agendamento: id,
@@ -263,6 +298,57 @@ export async function editarAgendamento(
       return { erro: "Seu perfil não pode editar este atendimento." };
     }
     return { erro: error.message };
+  }
+
+  revalidatePath("/agenda");
+  revalidatePath(`/pacientes/${d.paciente_id}`);
+  return { ok: true };
+}
+
+/**
+ * Upsell: procedimento vendido durante um atendimento, agendado logo em
+ * seguida ou em outro dia. Mesmas regras do agendamento; a origem e quem
+ * vendeu ficam registrados. A profissional do atendimento pode registrar
+ * (a RPC confere a permissão), mesmo sem poder agendar no resto da agenda.
+ */
+export async function registrarUpsell(
+  _anterior: ResultadoAgendamento,
+  formData: FormData,
+): Promise<ResultadoAgendamento> {
+  const origem = String(formData.get("atendimento_origem_id") ?? "");
+  const parsed = agendamentoSchema.safeParse({
+    ...Object.fromEntries(formData),
+    equipamentos: formData.getAll("equipamentos"),
+    profissionais: formData.getAll("profissionais"),
+  });
+  if (!origem || !parsed.success) {
+    const campos: Record<string, string> = {};
+    for (const i of parsed.error?.issues ?? []) campos[String(i.path[0] ?? "_")] ??= i.message;
+    return { erro: parsed.error?.issues[0].message ?? "Atendimento de origem inválido", campos };
+  }
+
+  const d = parsed.data;
+  const supabase = await createServerSupabase();
+  const faltando = await requisitoObrigatorioFaltando(supabase, d);
+  if (faltando) return { erro: faltando };
+  const semValor = await valorFaltando(supabase, d);
+  if (semValor) return semValor;
+
+  const { error } = await supabase.rpc("registrar_upsell", {
+    p_origem: origem,
+    p_procedimento: d.procedimento_id,
+    p_inicio: d.inicio,
+    p_sala: d.sala_id,
+    p_equipamentos: d.equipamentos,
+    p_profissionais: d.profissionais,
+    p_pacote: d.pacote_id ?? undefined,
+    p_observacoes: d.observacoes ?? undefined,
+    p_valor_avulso: d.valor_avulso ?? undefined,
+    p_duracao: d.duracao_min ?? undefined,
+  });
+  if (error) {
+    if (error.code === "42501") return { erro: "Seu perfil não pode registrar upsell neste atendimento." };
+    return erroAoCriar(supabase, error, d);
   }
 
   revalidatePath("/agenda");
