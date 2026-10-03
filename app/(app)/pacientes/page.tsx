@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { listarPacientesResumo, type LinhaPaciente } from "@/lib/consultas/pacientes";
+import { perfilDoUsuario } from "@/lib/consultas/recursos";
 import { hojeNaClinica } from "@/lib/consultas/caixa";
 import { Etiqueta, Vazio } from "@/components/ui/primitivos";
 import { CampoBusca } from "@/components/pacientes/campo-busca";
@@ -57,7 +58,7 @@ export default async function PacientesPage(props: {
   searchParams: Promise<{ q?: string; filtro?: string }>;
 }) {
   const { q = "", filtro = "" } = await props.searchParams;
-  const todos = await listarPacientesResumo(q);
+  const [todos, perfil] = await Promise.all([listarPacientesResumo(q), perfilDoUsuario()]);
   const hoje = hojeNaClinica();
   const ativo = FILTROS.find((f) => f.chave === filtro) ?? FILTROS[0];
   const lista = todos.filter(ativo.aplica);
@@ -74,7 +75,17 @@ export default async function PacientesPage(props: {
             {todos.filter((p) => p.ativo).length} paciente(s) ativo(s). Clique para abrir a ficha.
           </p>
         </div>
-        <FormularioPaciente />
+        <div className="flex flex-wrap items-center gap-2">
+          {(perfil === "admin" || perfil === "recepcao") && (
+            <Link
+              href="/pacientes/importar"
+              className="rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)]"
+            >
+              Importar planilha
+            </Link>
+          )}
+          <FormularioPaciente />
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">

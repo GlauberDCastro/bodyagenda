@@ -375,6 +375,8 @@ export async function apagarMassa() {
     );
     await db.query(`delete from agendamento where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from pacote where procedimento_id = $1`, [m.procedimentoId]);
+    // Pacientes criados pelo teste de importação: "<paciente> Importado A", "... B".
+    await db.query(`delete from paciente where nome like $1 || ' Importado%'`, [m.paciente]);
     await db.query(`delete from paciente where nome = any($1::text[])`, [
       [m.paciente, m.pacienteNovo].filter(Boolean),
     ]);
