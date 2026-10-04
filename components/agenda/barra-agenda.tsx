@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { ColunaRecurso } from "@/lib/consultas/agenda";
+import { SeletorData } from "./seletor-data";
 
 /** Filtro de status: o que a recepção procura no dia a dia. */
 export const FILTROS_STATUS = [
@@ -69,6 +70,7 @@ export function BarraAgenda({
   recursos,
   semana,
   resumo,
+  diasAbertos,
 }: {
   dia: string;
   tipo: string;
@@ -81,6 +83,8 @@ export function BarraAgenda({
   recursos: ColunaRecurso[];
   semana: string[];
   resumo: string;
+  /** Dias em que a clínica abre: o mini-calendário apaga os demais. */
+  diasAbertos: readonly number[];
 }) {
   const router = useRouter();
   const ir = (mudar: Record<string, string>) => {
@@ -120,17 +124,15 @@ export function BarraAgenda({
         >
           ›
         </button>
-        {/* A data por extenso é o próprio seletor: o input fica por cima, invisível. */}
-        <label className={`${pilula} relative cursor-pointer font-medium`}>
-          {rotuloDaData(dia, periodo, semana)}
-          <input
-            type="date"
-            value={dia}
-            onChange={(e) => e.target.value && ir({ dia: e.target.value })}
-            aria-label="Escolher data"
-            className="absolute inset-0 cursor-pointer opacity-0"
-          />
-        </label>
+        {/* A data por extenso abre o mini-calendário: um clique leva ao dia. */}
+        <SeletorData
+          dia={dia}
+          hoje={hoje}
+          periodo={periodo}
+          rotulo={rotuloDaData(dia, periodo, semana)}
+          diasAbertos={diasAbertos}
+          aoEscolher={(d) => ir({ dia: d })}
+        />
       </div>
 
       <label className="flex flex-col gap-1.5">

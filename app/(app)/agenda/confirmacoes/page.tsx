@@ -4,6 +4,7 @@ import { hojeNaClinica } from "@/lib/consultas/caixa";
 import { diaDeAtendimento } from "@/lib/grade-agenda";
 import { expedienteDaClinica } from "@/lib/consultas/horarios";
 import { ListaConfirmacoes } from "@/components/agenda/lista-confirmacoes";
+import { NavegarData } from "@/components/agenda/navegar-data";
 import { Vazio } from "@/components/ui/primitivos";
 
 export const metadata = { title: "Confirmações" };
@@ -60,10 +61,13 @@ export default async function ConfirmacoesPage(props: { searchParams: Promise<{ 
           >
             ‹
           </Link>
-          <span className="rounded-full bg-[var(--superficie)] px-5 py-2.5 text-[15px] font-medium shadow-[var(--sombra-1)]">
-            {rotulo.charAt(0).toUpperCase() + rotulo.slice(1)}
-            {dia === amanha && <span className="text-[var(--tinta-3)]"> · próximo dia</span>}
-          </span>
+          <NavegarData
+            caminho="/agenda/confirmacoes"
+            dia={dia}
+            hoje={hoje}
+            rotulo={`${rotulo.charAt(0).toUpperCase()}${rotulo.slice(1)}${dia === amanha ? " · próximo dia" : ""}`}
+            diasAbertos={diasAbertos}
+          />
           <Link
             href={`/agenda/confirmacoes?dia=${diaDeAtendimento(dia, diasAbertos)}`}
             aria-label="Próximo dia"

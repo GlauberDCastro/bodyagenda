@@ -290,6 +290,7 @@ export default async function AgendaPage(props: {
           recursos={colunasDe(tipo)}
           semana={diasDaSemana(dia).filter(abre)}
           resumo={resumo}
+          diasAbertos={expediente.dias}
         />
 
         {mes ? (

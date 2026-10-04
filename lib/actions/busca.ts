@@ -8,6 +8,7 @@ import {
 } from "@/lib/consultas/pacientes";
 import { carenciaViolada, horariosLivres } from "@/lib/consultas/agenda";
 import { horarioDaClinica } from "@/lib/schemas/agenda";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -78,4 +79,29 @@ export async function resumoPacienteAction(
   atendimentoAtual?: string,
 ): Promise<ResumoPaciente | null> {
   return resumoDoPaciente(pacienteId, atendimentoAtual);
+}
+
+/**
+ * Quantos atendimentos há em cada dia do mês ("2026-10"), para marcar os dias
+ * no mini-calendário da agenda. Passa pelo RLS: cada perfil conta o que vê.
+ */
+export async function atendimentosPorDiaAction(mes: string): Promise<Record<string, number>> {
+  if (!/^\d{4}-\d{2}$/.test(mes)) return {};
+  const [a, m] = mes.split("-").map(Number);
+  const fim = new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 10);
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("agendamento")
+    .select("inicio")
+    .gte("inicio", horarioDaClinica(`${mes}-01T00:00`))
+    .lt("inicio", horarioDaClinica(`${fim}T00:00`))
+    .neq("status", "cancelado")
+    .limit(5000);
+  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
+  const contagem: Record<string, number> = {};
+  for (const { inicio } of data ?? []) {
+    const d = dia.format(new Date(inicio));
+    contagem[d] = (contagem[d] ?? 0) + 1;
+  }
+  return contagem;
 }
