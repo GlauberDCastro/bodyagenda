@@ -37,6 +37,7 @@ const ICONES = {
   financeiro: "M3 7h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Zm0 0 2.5-3h13L21 7M8 12h8",
   relatorios: "M5 20V10m7 10V4m7 16v-7",
   configuracoes: "M4 6h9m4 0h3M15 4v4M4 12h3m4 0h9M9 10v4M4 18h11m4 0h1M17 16v4",
+  gestao: "M12 3a9 9 0 1 0 9 9M12 3v9h9M12 3a9 9 0 0 1 9 9",
 } as const;
 
 interface ItemNav {
@@ -45,7 +46,13 @@ interface ItemNav {
   icone: keyof typeof ICONES;
 }
 
-const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
+const GRUPOS: { titulo: string; itens: ItemNav[]; perfis?: string[] }[] = [
+  {
+    titulo: "Gestão",
+    // Vendas por pessoa e conversão: leitura da administração e da gestão.
+    perfis: ["admin", "gestao"],
+    itens: [{ href: "/gestao", rotulo: "Central 360", icone: "gestao" }],
+  },
   {
     titulo: "Atendimento",
     itens: [
@@ -114,7 +121,14 @@ function ItemMenu({
 /** Cookie, não localStorage: o servidor já renderiza o menu no estado certo. */
 const COOKIE_RECOLHIDO = "hd_menu_recolhido";
 
-export function Navegacao({ recolhidoInicial = false }: { recolhidoInicial?: boolean }) {
+export function Navegacao({
+  recolhidoInicial = false,
+  perfil,
+}: {
+  recolhidoInicial?: boolean;
+  /** Esconde grupos restritos a outros perfis (o acesso em si é checado na página). */
+  perfil?: string;
+}) {
   const caminho = usePathname();
   const [recolhido, setRecolhido] = useState(recolhidoInicial);
 
@@ -124,7 +138,10 @@ export function Navegacao({ recolhidoInicial = false }: { recolhidoInicial?: boo
     document.cookie = `${COOKIE_RECOLHIDO}=${novo ? 1 : 0}; path=/; max-age=31536000; samesite=lax`;
   }
 
-  const grupos = [...GRUPOS, { titulo: "Sistema", itens: [CONFIGURACOES] }];
+  const grupos = [
+    ...GRUPOS.filter((g) => !g.perfis || g.perfis.includes(perfil ?? "")),
+    { titulo: "Sistema", itens: [CONFIGURACOES] },
+  ];
 
   return (
     <aside

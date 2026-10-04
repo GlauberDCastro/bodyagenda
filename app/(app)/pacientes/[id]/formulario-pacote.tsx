@@ -24,12 +24,15 @@ export function FormularioPacote({
   pacienteId,
   procedimentos,
   variante,
+  abertoInicial = false,
 }: {
   pacienteId: string;
   procedimentos: Procedimento[];
   variante?: "primario" | "secundario";
+  /** Já abre a venda: vindo do "Vender pacote" do atendimento. */
+  abertoInicial?: boolean;
 }) {
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(abertoInicial);
   const [procId, setProcId] = useState("");
   const [sessoes, setSessoes] = useState(1);
   const [valor, setValor] = useState(0);

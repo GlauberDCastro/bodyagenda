@@ -29,7 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
   return (
     <div className="flex min-h-dvh gap-5 p-3 lg:p-4">
-      <Navegacao recolhidoInicial={(await cookies()).get("hd_menu_recolhido")?.value === "1"} />
+      <Navegacao
+        recolhidoInicial={(await cookies()).get("hd_menu_recolhido")?.value === "1"}
+        perfil={perfil?.perfil}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         {/* Topo solto sobre o fundo: sem cartão, cada controle é a sua pílula. */}

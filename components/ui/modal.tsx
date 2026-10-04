@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 /**
  * Modal de cadastro.
@@ -26,6 +26,9 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Um id por modal: com id fixo, vários modais na página se anunciavam
+  // com o título do primeiro.
+  const idTitulo = useId();
 
   useEffect(() => {
     const d = ref.current;
@@ -50,7 +53,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="titulo-modal"
+      aria-labelledby={idTitulo}
       onClick={(e) => {
         // Clique no backdrop fecha; clique dentro do cartão não.
         if (e.target === ref.current) aoFechar();
@@ -62,7 +65,7 @@ export function Modal({
     >
       <div className="flex items-start justify-between gap-4 px-6 pb-2 pt-5">
         <div>
-          <h2 id="titulo-modal" className="titulo-lg">
+          <h2 id={idTitulo} className="titulo-lg">
             {titulo}
           </h2>
           {descricao && (

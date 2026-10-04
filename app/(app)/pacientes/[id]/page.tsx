@@ -142,8 +142,12 @@ function CartaoPacote({ p, pacienteId }: { p: PacoteComSaldo; pacienteId: string
   );
 }
 
-export default async function PacientePage(props: { params: Promise<{ id: string }> }) {
+export default async function PacientePage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ vender?: string }>;
+}) {
   const { id } = await props.params;
+  const { vender } = await props.searchParams;
 
   const [
     paciente,
@@ -282,6 +286,7 @@ export default async function PacientePage(props: { params: Promise<{ id: string
                 pacienteId={paciente.id}
                 procedimentos={procedimentos.dados.filter((p) => p.ativo)}
                 variante="secundario"
+                abertoInicial={vender === "1"}
               />
               {paciente.ativo && (
                 <NovoAgendamento

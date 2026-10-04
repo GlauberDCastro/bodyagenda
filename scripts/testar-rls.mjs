@@ -498,6 +498,66 @@ try {
     `status ${alheio.status}`);
   const financeiro = await upsell(t.financeiro, m.agMeu.id, "15");
   checar("financeiro NAO registra upsell", !financeiro.ok, `status ${financeiro.status}`);
+  console.log("\n-- venda de pacote pela profissional (0045) --");
+  const vender = (token, paciente) =>
+    api("rpc/vender_pacote", {
+      token,
+      metodo: "POST",
+      corpo: {
+        p_paciente: paciente,
+        p_procedimento: m.proc.id,
+        p_sessoes: 3,
+        p_valor_total: 300,
+        p_desconto: 0,
+        p_validade: null,
+        p_regiao: null,
+        p_parcelas: 1,
+        p_primeiro_vencimento: "2030-01-07",
+        p_forma: "Pix",
+        p_primeira_paga: false,
+      },
+    });
+  const vendaMinha = await vender(t.profissional, m.pacMeu.id);
+  checar("profissional vende pacote a paciente que atende", vendaMinha.ok,
+    JSON.stringify(vendaMinha.dados));
+  if (vendaMinha.ok) {
+    const { rows: [pc] } = await db.query(`select vendido_por from pacote where id = $1`,
+      [vendaMinha.dados]);
+    checar("pacote registra a profissional como vendedora",
+      pc.vendido_por === usuarios.profissional.id);
+  }
+  checar("profissional NAO vende pacote a paciente de outra",
+    !(await vender(t.profissional, m.pacOutro.id)).ok);
+  checar("gestao continua sem vender pacote", !(await vender(t.gestao, m.pacMeu.id)).ok);
+  checar("sdr vende pacote", (await vender(sdr, m.pacOutro.id)).ok);
+
+  console.log("\n-- relatorio de vendas (0046) --");
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  const vendasGestao = await api("rpc/vendas_periodo", {
+    token: t.gestao,
+    metodo: "POST",
+    corpo: { p_de: hoje, p_ate: hoje },
+  });
+  const minhas = (vendasGestao.dados ?? []).filter((v) =>
+    [m.pacMeu.id, m.pacOutro.id].includes(v.paciente_id),
+  );
+  const canalDe = (perfil, tipo) =>
+    minhas.find((v) => v.vendedor_perfil === perfil && v.tipo === tipo)?.canal;
+  checar("venda da profissional entra como canal clinica", canalDe("profissional", "pacote") === "clinica",
+    JSON.stringify(minhas.map((v) => [v.tipo, v.vendedor_perfil, v.canal])));
+  checar("pacote do sdr entra como canal comercial", canalDe("sdr", "pacote") === "comercial");
+  checar("sessao avulsa agendada pelo sdr entra como comercial", canalDe("sdr", "avulsa") === "comercial");
+  checar("upsell entra como canal clinica",
+    minhas.some((v) => v.tipo === "avulsa" && v.vendedor_perfil === "profissional" && v.canal === "clinica"));
+  checar("gestao ve quem vendeu", minhas.every((v) => v.vendedor_nome !== null || v.vendedor_perfil === null));
+  const vendasProf = await api("rpc/vendas_periodo", {
+    token: t.profissional,
+    metodo: "POST",
+    corpo: { p_de: hoje, p_ate: hoje },
+  });
+  checar("profissional NAO ve o nome de quem vendeu (usuario fechado pelo RLS)",
+    (vendasProf.dados ?? []).every((v) => v.vendedor_id === null || v.vendedor_id === usuarios.profissional.id));
+
   checar("profissional continua sem agendar direto (fora do upsell)",
     !(await api("rpc/criar_agendamento", {
       token: t.profissional,

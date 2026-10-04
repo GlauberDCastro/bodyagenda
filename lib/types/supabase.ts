@@ -1280,6 +1280,26 @@ export type Database = {
           em_atraso: number;
         }[];
       };
+      vendas_periodo: {
+        Args: { p_de: string; p_ate: string };
+        Returns: {
+          tipo: string;
+          id: string;
+          dia: string;
+          valor: number;
+          paciente_id: string;
+          paciente_nome: string;
+          procedimento_nome: string;
+          vendedor_id: string | null;
+          vendedor_nome: string | null;
+          vendedor_perfil: string | null;
+          canal: string;
+        }[];
+      };
+      funil_avaliacao: {
+        Args: { p_de: string; p_ate: string };
+        Returns: { avaliados: number; compraram: number; dias_ate_compra: number | null }[];
+      };
       nomes_da_equipe: {
         Args: { p_ids: string[] };
         Returns: { id: string; nome: string }[];

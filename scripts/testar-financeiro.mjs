@@ -385,6 +385,64 @@ checar(
   JSON.stringify(pend),
 );
 
+// ── 0046 · funil da avaliação e vendas do período ───────────────────────────
+console.log("\n-- funil da avaliacao e vendas (0046) --");
+const { rows: [procAval] } = await cli.query(
+  `insert into procedimento (nome, duracao_min, valor_sessao, avaliacao)
+   values ('TESTE avaliacao', 30, 0, true) returning id`,
+);
+const novoPaciente = async (nome) =>
+  (await cli.query(`insert into paciente (nome) values ($1) returning id`, [nome])).rows[0].id;
+const [pA, pB, pC, pD] = [
+  await novoPaciente("Funil A"),
+  await novoPaciente("Funil B"),
+  await novoPaciente("Funil C"),
+  await novoPaciente("Funil D"),
+];
+const avaliacao = (paciente, quando, status) =>
+  cli.query(
+    `insert into agendamento (paciente_id, procedimento_id, sala_id, inicio, fim, status)
+     values ($1, $2, $3, $4::timestamptz, $4::timestamptz + interval '30 min', $5)`,
+    [paciente, procAval.id, sala.id, quando, status],
+  );
+const pacoteVendido = (paciente, dia, status = "ativo") =>
+  cli.query(
+    `insert into pacote (paciente_id, procedimento_id, quantidade_sessoes, valor_total, desconto,
+                         data_venda, status)
+     values ($1, $2, 3, 900, 100, $3, $4)`,
+    [paciente, procPacote.id, dia, status],
+  );
+// A: avaliada 04/02, compra 06/02 (converte em 2 dias). B: avaliada, não compra.
+// C: avaliação só agendada (não conta). D: comprou ANTES da avaliação (não converte).
+await avaliacao(pA, "2030-02-04T09:00:00-03:00", "realizado");
+await pacoteVendido(pA, "2030-02-06");
+await avaliacao(pB, "2030-02-05T09:00:00-03:00", "realizado");
+await avaliacao(pC, "2030-02-06T09:00:00-03:00", "agendado");
+await pacoteVendido(pD, "2030-02-01");
+await avaliacao(pD, "2030-02-07T09:00:00-03:00", "realizado");
+await pacoteVendido(pB, "2030-02-03", "cancelado"); // cancelado não é venda nem conversão
+
+const { rows: [funil] } = await cli.query(`select * from funil_avaliacao('2030-02-04', '2030-02-08')`);
+checar(
+  "funil: 3 avaliados, 1 comprou depois, 2 dias ate a compra",
+  funil.avaliados === 3 && funil.compraram === 1 && Number(funil.dias_ate_compra) === 2,
+  JSON.stringify(funil),
+);
+const { rows: vendasFunil } = await cli.query(
+  `select tipo, dia::text, valor::numeric, canal from vendas_periodo('2030-02-01', '2030-02-08')
+    where paciente_id = any($1::uuid[]) order by dia`,
+  [[pA, pB, pC, pD]],
+);
+checar(
+  "vendas: pacotes pelo valor liquido, cancelado e avaliacao fora",
+  JSON.stringify(vendasFunil.map((v) => [v.tipo, v.dia, Number(v.valor), v.canal])) ===
+    JSON.stringify([
+      ["pacote", "2030-02-01", 800, "recepcao"],
+      ["pacote", "2030-02-06", 800, "recepcao"],
+    ]),
+  JSON.stringify(vendasFunil),
+);
+
 await cli.query("rollback");
 await cli.end();
 

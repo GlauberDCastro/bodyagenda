@@ -440,7 +440,9 @@ export function DetalheAtendimento({
           <div className="flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] bg-[var(--superficie-2)] px-4 py-3">
             <p className="mr-auto text-[13.5px]">
               <span className="font-medium">Vendeu outro procedimento?</span>{" "}
-              <span className="text-[var(--tinta-2)]">Registre o upsell e já agende.</span>
+              <span className="text-[var(--tinta-2)]">
+                Registre o upsell e já agende, ou venda um pacote.
+              </span>
             </p>
             <Botao type="button" variante="secundario" onClick={() => upsell(true)}>
               Upsell: fazer agora
@@ -448,6 +450,14 @@ export function DetalheAtendimento({
             <Botao type="button" variante="secundario" onClick={() => upsell(false)}>
               Upsell: outro dia
             </Botao>
+            {paciente.id && (
+              <Link
+                href={`/pacientes/${paciente.id}?vender=1`}
+                className="inline-flex items-center rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)]"
+              >
+                Vender pacote
+              </Link>
+            )}
           </div>
         )}
 

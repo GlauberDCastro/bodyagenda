@@ -17,6 +17,9 @@ import {
 import { cobrancas, diasDeAtraso, emAberto, receitaPorForma } from "@/lib/consultas/caixa";
 import type { StatusAgendamento, TipoRecurso } from "@/lib/types/database";
 import type { Planilha } from "./formato";
+import { vendasDoPeriodo } from "@/lib/consultas/gestao";
+import { perfilDoUsuario } from "@/lib/consultas/recursos";
+import { ROTULO_CANAL } from "@/lib/domain/vendas";
 
 /**
  * RF-102 · todo relatório exporta para CSV e XLSX.
@@ -243,6 +246,40 @@ export const RELATORIOS: Record<string, Gerador> = {
       linhas: lista.map((c) => ({
         ...c,
         atraso: emAberto(c) ? diasDeAtraso(c.vencimento) : null,
+      })),
+    };
+  },
+
+  vendas: async (p) => {
+    const periodo = resolverPeriodo(p.get("de") ?? undefined, p.get("ate") ?? undefined);
+    const colunas = [
+      { chave: "dia", rotulo: "Data", tipo: "data" as const },
+      { chave: "paciente_nome", rotulo: "Paciente" },
+      { chave: "procedimento_nome", rotulo: "Procedimento" },
+      { chave: "tipo", rotulo: "Tipo" },
+      { chave: "canal", rotulo: "Canal" },
+      { chave: "vendedor_nome", rotulo: "Vendido por" },
+      { chave: "valor", rotulo: "Valor", tipo: "moeda" as const },
+    ];
+    // Relatório da gestão: os demais perfis recebem o arquivo vazio.
+    const perfil = await perfilDoUsuario();
+    if (perfil !== "admin" && perfil !== "gestao") {
+      return { titulo: `Vendas ${periodo.rotulo}`, colunas, linhas: [] };
+    }
+    const canal = p.get("canal");
+    const vendedor = p.get("vendedor");
+    const lista = (await vendasDoPeriodo(periodo))
+      .filter((v) => !canal || v.canal === canal)
+      .filter((v) => !vendedor || (v.vendedor_id ?? "sem") === vendedor)
+      .sort((a, b) => a.dia.localeCompare(b.dia));
+    return {
+      titulo: `Vendas ${periodo.rotulo}`,
+      colunas,
+      linhas: lista.map((v) => ({
+        ...v,
+        tipo: v.tipo === "pacote" ? "Pacote" : "Sessão avulsa",
+        canal: ROTULO_CANAL[v.canal],
+        vendedor_nome: v.vendedor_nome ?? "",
       })),
     };
   },
