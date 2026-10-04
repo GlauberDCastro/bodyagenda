@@ -181,7 +181,9 @@ body {
 }
 
 /* Foco visível e consistente — requisito de acessibilidade, não enfeite. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+/* O <dialog> recebe o foco ao abrir só para o Tab começar dentro dele; não é
+   um controle, então não ganha contorno (nem o arredondamento do foco). */
+:where(a, button, input, select, textarea, [tabindex]:not(dialog)):focus-visible {
   outline: 2px solid var(--marca);
   outline-offset: 2px;
   border-radius: var(--r-sm);

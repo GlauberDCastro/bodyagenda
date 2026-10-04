@@ -16,6 +16,8 @@ export function Modal({
   titulo,
   descricao,
   largura = "max-w-lg",
+  topo,
+  rodape,
   children,
 }: {
   aberto: boolean;
@@ -23,6 +25,10 @@ export function Modal({
   titulo: string;
   descricao?: string;
   largura?: string;
+  /** Linha sob o título, no cabeçalho fixo: status, atalhos. */
+  topo?: ReactNode;
+  /** Ações fixas no pé, fora da rolagem: sempre à vista. */
+  rodape?: ReactNode;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -33,7 +39,12 @@ export function Modal({
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (aberto && !d.open) d.showModal();
+    if (aberto && !d.open) {
+      d.showModal();
+      // O foco vai para o próprio modal, não para o primeiro botão (o X):
+      // assim ele não abre com o contorno de foco, e Tab segue a ordem.
+      d.focus();
+    }
     if (!aberto && d.open) d.close();
   }, [aberto]);
 
@@ -58,27 +69,27 @@ export function Modal({
         // Clique no backdrop fecha; clique dentro do cartão não.
         if (e.target === ref.current) aoFechar();
       }}
-      className={`w-[calc(100vw-2rem)] ${largura} rounded-[var(--r-xl)] border-0 bg-[var(--superficie)] p-0
-        text-[var(--tinta-1)] shadow-[var(--sombra-3)]
-        backdrop:bg-[oklch(0.15_0.02_285_/_0.45)] backdrop:backdrop-blur-[2px]
-        open:animate-[surgir_160ms_ease-out]`}
+      tabIndex={-1}
+      className={`w-[calc(100vw-2rem)] ${largura} flex-col overflow-hidden rounded-[var(--r-xl)] border border-[var(--traco)] bg-[var(--superficie)] p-0
+        text-[var(--tinta-1)] shadow-[0_24px_64px_-16px_oklch(0.15_0.02_285/0.45)] outline-none focus-visible:outline-none
+        backdrop:bg-[oklch(0.12_0.02_285_/_0.58)] backdrop:backdrop-blur-[3px]
+        open:flex open:animate-[surgir_160ms_ease-out]`}
     >
-      <div className="flex items-start justify-between gap-4 px-6 pb-2 pt-5">
-        <div>
+      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--traco)] px-6 pb-4 pt-5">
+        <div className="min-w-0 flex-1">
           <h2 id={idTitulo} className="titulo-lg">
             {titulo}
           </h2>
           {descricao && (
-            <p className="mt-1 text-[13px] leading-snug text-[var(--tinta-3)]">
-              {descricao}
-            </p>
+            <p className="mt-1 text-[13.5px] leading-snug text-[var(--tinta-2)]">{descricao}</p>
           )}
+          {topo && <div className="mt-3">{topo}</div>}
         </div>
         <button
           type="button"
           onClick={aoFechar}
           aria-label="Fechar"
-          className="-mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-[var(--tinta-3)] transition-colors hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
+          className="-mr-1.5 -mt-1 grid size-9 shrink-0 place-items-center rounded-full text-[var(--tinta-2)] transition-colors hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
         >
           <svg
             width="16"
@@ -97,9 +108,14 @@ export function Modal({
 
       {/* O corpo rola sozinho: formulário longo não pode empurrar os botões
           para fora da tela em notebook de tela baixa. */}
-      <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto px-6 pb-6 pt-2">
+      <div className="max-h-[calc(100dvh-12rem)] min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {children}
       </div>
+      {rodape && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--traco)] bg-[var(--superficie-2)] px-6 py-3.5">
+          {rodape}
+        </div>
+      )}
     </dialog>
   );
 }
@@ -162,7 +178,10 @@ export function GatilhoModal({
   );
 }
 
-/** Rodapé padrão dos formulários em modal. */
+/**
+ * Rodapé padrão dos formulários em modal: gruda no pé da área que rola, então
+ * Salvar e Cancelar ficam à vista mesmo num formulário longo.
+ */
 export function AcoesModal({
   children,
   aoCancelar,
@@ -171,11 +190,11 @@ export function AcoesModal({
   aoCancelar: () => void;
 }) {
   return (
-    <div className="mt-6 flex justify-end gap-2 border-t border-[var(--traco)] pt-4">
+    <div className="sticky -bottom-5 z-10 -mx-6 -mb-5 mt-6 flex justify-end gap-2 border-t border-[var(--traco)] bg-[var(--superficie-2)] px-6 py-3.5">
       <button
         type="button"
         onClick={aoCancelar}
-        className="rounded-full px-4 py-2.5 text-[13.5px] font-medium text-[var(--tinta-2)] transition-colors hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]"
+        className="rounded-full border border-[var(--traco-forte)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium text-[var(--tinta-1)] transition-colors hover:bg-[var(--superficie-2)]"
       >
         Cancelar
       </button>

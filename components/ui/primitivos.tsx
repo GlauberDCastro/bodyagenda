@@ -128,29 +128,46 @@ export function Textarea(props: ComponentProps<"textarea">) {
 
 /* ── Botões ─────────────────────────────────────────────────────────────── */
 
+/**
+ * Botão. A cor diz o que acontece: preto = a ação principal da tela, azul =
+ * seguir em frente no fluxo, verde = concluir, vermelho = desfazer ou
+ * cancelar. Os coloridos levam texto branco com contraste AA.
+ */
 export function Botao({
   variante = "primario",
+  tamanho = "md",
   ...props
 }: ComponentProps<"button"> & {
-  variante?: "primario" | "secundario" | "fantasma" | "perigo";
+  variante?: "primario" | "secundario" | "fantasma" | "perigo" | "marca" | "sucesso";
+  tamanho?: "md" | "sm";
 }) {
   const estilos: Record<string, string> = {
     primario:
       "bg-[var(--superficie-inversa)] text-[var(--tinta-inversa)] shadow-[var(--sombra-1)] " +
       "hover:opacity-90 active:scale-[0.985]",
     secundario:
-      "bg-[var(--superficie)] text-[var(--tinta-1)] border border-[var(--traco)] " +
+      "bg-[var(--superficie)] text-[var(--tinta-1)] border border-[var(--traco-forte)] " +
       "shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)] active:scale-[0.985]",
     fantasma: "text-[var(--tinta-2)] hover:bg-[var(--superficie-2)] hover:text-[var(--tinta-1)]",
-    perigo: "bg-[var(--superficie)] border border-[var(--traco)] hover:bg-[var(--superficie-2)]",
+    perigo:
+      "bg-[var(--superficie)] border border-[color-mix(in_oklab,var(--status-critico)_40%,var(--traco))] " +
+      "text-[color-mix(in_oklab,var(--status-critico)_85%,var(--tinta-1))] " +
+      "hover:bg-[color-mix(in_oklab,var(--status-critico)_8%,var(--superficie))] active:scale-[0.985]",
+    // Escurecido nos dois temas: o azul claro do tema escuro não sustenta texto branco.
+    marca:
+      "bg-[color-mix(in_oklab,var(--marca)_82%,black)] text-white shadow-[var(--sombra-1)] " +
+      "hover:brightness-110 active:scale-[0.985]",
+    sucesso:
+      "bg-[color-mix(in_oklab,var(--status-bom)_72%,black)] text-white shadow-[var(--sombra-1)] " +
+      "hover:brightness-110 active:scale-[0.985]",
   };
+  const medidas = tamanho === "sm" ? "px-3.5 py-2 text-[13px]" : "px-4 py-2.5 text-[13.5px]";
 
   return (
     <button
       {...props}
-      style={variante === "perigo" ? { color: "var(--status-critico)" } : props.style}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5
-        text-[13.5px] font-medium transition-all duration-150
+      className={`inline-flex items-center justify-center gap-2 rounded-full ${medidas}
+        font-medium transition-all duration-150
         disabled:pointer-events-none disabled:opacity-45
         ${estilos[variante]} ${props.className ?? ""}`}
     />
@@ -267,6 +284,17 @@ export function Vazio({ children }: { children: ReactNode }) {
   );
 }
 
+const ICONE_AVISO = {
+  atencao: "M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
+  critico: "M12 8v5m0 3h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z",
+  neutro: "M12 11v5m0-8h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z",
+} as const;
+
+/**
+ * Aviso: ícone + texto, faixa colorida à esquerda. Compacto de propósito —
+ * dois ou três avisos empilhados não podem empurrar o conteúdo para fora.
+ * O texto fica em tinta de leitura (contraste pleno); a cor marca o tipo.
+ */
 export function Aviso({
   children,
   tom = "atencao",
@@ -278,17 +306,32 @@ export function Aviso({
     tom === "critico"
       ? "var(--status-critico)"
       : tom === "neutro"
-        ? "var(--tinta-3)"
+        ? "var(--marca)"
         : "var(--status-atencao)";
   return (
     <div
-      className="rounded-[var(--r-md)] px-4 py-3 text-[13px] leading-relaxed"
+      className="flex gap-2.5 rounded-[var(--r-md)] border-l-[3px] px-3.5 py-2.5 text-[13.5px] leading-snug text-[var(--tinta-1)]"
       style={{
-        background: `color-mix(in oklab, ${cor} 9%, transparent)`,
-        color: `color-mix(in oklab, ${cor} 45%, var(--tinta-1))`,
+        borderLeftColor: cor,
+        background: `color-mix(in oklab, ${cor} 10%, var(--superficie))`,
       }}
     >
-      {children}
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="mt-px shrink-0"
+        style={{ color: `color-mix(in oklab, ${cor} 85%, var(--tinta-1))` }}
+      >
+        <path d={ICONE_AVISO[tom]} />
+      </svg>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
