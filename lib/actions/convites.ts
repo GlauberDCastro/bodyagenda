@@ -10,6 +10,7 @@ import { exigirAdmin } from "@/lib/auth/exigir-admin";
 import { hashDoToken, novoToken, situacaoDoConvite } from "@/lib/auth/convites";
 import { cpfValido, limparCpf } from "@/lib/domain/cpf";
 import type { Resultado } from "./recursos";
+import { marcarAtividade } from "./auth";
 
 /** Endereço público da aplicação, para montar o link (vale em produção e local). */
 async function origem(): Promise<string> {
@@ -225,6 +226,7 @@ export async function aceitarConvite(
   // Já entra: a sessão nasce aqui, com os cookies da resposta.
   const supabase = await createServerSupabase();
   await supabase.auth.signInWithPassword({ email: d.email, password: d.senha });
+  await marcarAtividade();
   redirect("/");
 }
 

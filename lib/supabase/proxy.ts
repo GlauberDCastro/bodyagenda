@@ -7,7 +7,14 @@ const PUBLICAS = ["/login", "/auth", "/convite"];
 
 /** RF-05 · sessão expira após 8 h sem nenhuma requisição. */
 const INATIVIDADE_MAX_MS = 8 * 60 * 60 * 1000;
-const COOKIE_ATIVIDADE = "hd_ultima_atividade";
+export const COOKIE_ATIVIDADE = "hd_ultima_atividade";
+
+export const opcoesCookieAtividade = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+} as const;
 
 /**
  * Renova a sessão do Supabase e faz o redirecionamento otimista.
@@ -68,12 +75,7 @@ export async function atualizarSessao(request: NextRequest) {
       redirecionar.cookies.delete(COOKIE_ATIVIDADE);
       return redirecionar;
     }
-    response.cookies.set(COOKIE_ATIVIDADE, String(Date.now()), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-    });
+    response.cookies.set(COOKIE_ATIVIDADE, String(Date.now()), opcoesCookieAtividade);
   }
 
   if (user && caminho === "/login") {
