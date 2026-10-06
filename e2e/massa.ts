@@ -444,6 +444,8 @@ export async function apagarMassa() {
     );
     await db.query(`delete from sala where nome like $1 || ' (cópia)%'`, [m.procedimento]);
     await db.query(`delete from sala where id = $1`, [m.salaId]);
+    // Meta que sobrou de um E2E interrompido aponta para o procedimento de teste.
+    await db.query(`delete from meta_venda where procedimento_id = $1`, [m.procedimentoId]);
     await db.query(`delete from procedimento where id = $1`, [m.procedimentoId]);
     // Cópias feitas pelo teste de duplicar procedimento.
     await db.query(`delete from procedimento where nome like $1 || ' (cópia)%'`, [m.procedimento]);
@@ -524,6 +526,31 @@ export async function apagarAtendimentosDe(paciente: string) {
       `delete from agendamento where paciente_id in (select id from paciente where nome = $1)`,
       [paciente],
     );
+  } finally {
+    await db.end();
+  }
+}
+
+/** Metas de um mês de teste (o E2E usa um mês longe do real). */
+export async function apagarMetasDoMes(mes: string) {
+  const db = await conectar();
+  try {
+    await db.query(`delete from meta_venda where mes = $1`, [mes]);
+    await db.query(`delete from meta_mes where mes = $1`, [mes]);
+  } finally {
+    await db.end();
+  }
+}
+
+export async function metasNoBanco(mes: string): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select rotulo || ' ' || contagem || ' ' || por_dia_min::float || '-' || coalesce(por_dia_max::float::text, '') as s
+         from meta_venda where mes = $1 order by ordem`,
+      [mes],
+    );
+    return rows.map((r) => r.s);
   } finally {
     await db.end();
   }

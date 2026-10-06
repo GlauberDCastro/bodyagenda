@@ -11,6 +11,7 @@ export const ABAS_CONFIGURACAO = [
   { href: "/configuracoes/procedimentos", rotulo: "Procedimentos" },
   { href: "/configuracoes/horarios", rotulo: "Horários e bloqueios" },
   { href: "/configuracoes/despesas", rotulo: "Despesas fixas" },
+  { href: "/configuracoes/metas", rotulo: "Metas" },
   { href: "/configuracoes/usuarios", rotulo: "Usuários" },
   { href: "/configuracoes/auditoria", rotulo: "Auditoria" },
 ] as const;

@@ -15,6 +15,8 @@ import {
 import { AvisoBanco, Aviso, Secao, Botao } from "@/components/ui/primitivos";
 import { Cartao, TabelaRecursos, brl, brlExato, pct, horas } from "@/components/painel/indicadores";
 import { MapaCalor } from "@/components/painel/mapa-calor";
+import { andamentoDasMetas } from "@/lib/consultas/metas";
+import { PainelMetas } from "@/components/gestao/painel-metas";
 import { expedienteDaClinica } from "@/lib/consultas/horarios";
 import type { TipoRecurso } from "@/lib/types/database";
 import { Exportar } from "@/components/relatorios/exportar";
@@ -60,9 +62,13 @@ export default async function PainelPage(props: {
   } = await supabase.auth.getUser();
   const { data: perfil } = await supabase
     .from("usuario")
-    .select("nome")
+    .select("nome, perfil")
     .eq("id", user?.id ?? "")
     .maybeSingle();
+  // Meta do dia para o time que vende e agenda; a profissional só enxerga as
+  // próprias vendas e veria um número enganoso.
+  const veMetas = ["admin", "gestao", "recepcao", "sdr", "closer"].includes(perfil?.perfil ?? "");
+  const andamento = veMetas ? await andamentoDasMetas(hojeNaClinica()) : null;
 
   const anterior = periodoAnterior(periodo.de, periodo.ate);
   const [painel, calor, gargalosLista, serieAtual, serieAnterior, expediente] = await Promise.all([
@@ -156,6 +162,13 @@ export default async function PainelPage(props: {
           manter={{ por }}
         />
       </div>
+
+      {andamento && (
+        <PainelMetas
+          andamento={andamento}
+          podeAjustar={perfil?.perfil === "admin" || perfil?.perfil === "gestao"}
+        />
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Cartao

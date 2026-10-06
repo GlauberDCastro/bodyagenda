@@ -330,6 +330,7 @@ export function DetalheAtendimento({
         <dl className="grid grid-cols-2 gap-x-5 gap-y-3.5 rounded-[var(--r-lg)] bg-[var(--superficie-2)] p-4 sm:grid-cols-3">
           <Item rotulo="Procedimento">
             {a.procedimento?.nome ?? "—"}
+            {a.regioes.length > 0 && ` · ${a.regioes.join(", ")}`}
             <span className="text-[var(--tinta-2)]"> · {minutos} min</span>
           </Item>
           <Item rotulo="Horário">

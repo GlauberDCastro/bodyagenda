@@ -26,6 +26,8 @@ export const pacoteSchema = z
     valor_total: z.coerce.number().nonnegative("Valor não pode ser negativo"),
     desconto: z.coerce.number().nonnegative().default(0),
     validade: vazioParaNulo(z.string()),
+    /** Região vendida: o saldo e as metas por região contam por ela. */
+    regiao_id: vazioParaNulo(z.uuid()),
     // RF-80 · como o pacote será pago.
     parcelas: z.coerce.number().int().min(1, "Mínimo 1 parcela").max(24, "Máximo 24 parcelas"),
     primeiro_vencimento: z.string().min(1, "Informe o primeiro vencimento"),

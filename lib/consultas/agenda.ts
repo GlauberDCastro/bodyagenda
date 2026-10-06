@@ -29,6 +29,8 @@ export interface AgendamentoNaAgenda {
   sem_avaliacao: boolean;
   sala_id: string;
   sala: { numero: number; nome: string } | null;
+  /** Regiões do atendimento (Ultraformer: papada, pálpebras…). */
+  regioes: string[];
   equipamentos: { id: string; nome: string }[];
   profissionais: { id: string; nome: string; cor_agenda: string }[];
 }
@@ -40,12 +42,14 @@ const CAMPOS_AGENDA = `id, inicio, fim, status, numero_sessao, sala_id, pacote_i
        paciente:paciente_id (id, nome, telefone),
        procedimento:procedimento_id (id, nome, duracao_min, buffer_min, avaliacao),
        agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
+       agendamento_regiao ( regiao:regiao_id (nome) ),
        agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`;
 
 type LinhaAgenda = Omit<
   AgendamentoNaAgenda,
-  "sessoes_pacote" | "equipamentos" | "profissionais" | "sem_avaliacao" | "vendedor"
+  "sessoes_pacote" | "equipamentos" | "profissionais" | "sem_avaliacao" | "vendedor" | "regioes"
 > & {
+  agendamento_regiao: { regiao: { nome: string } | null }[];
   vendido_por: string | null;
   pacote: { quantidade_sessoes: number } | null;
   agendamento_equipamento: { equipamento: { id: string; nome: string } | null }[];
@@ -55,13 +59,20 @@ type LinhaAgenda = Omit<
 };
 
 function paraAgenda(linha: LinhaAgenda): AgendamentoNaAgenda {
-  const { pacote, agendamento_equipamento, agendamento_profissional, vendido_por, ...resto } =
-    linha;
+  const {
+    pacote,
+    agendamento_equipamento,
+    agendamento_profissional,
+    agendamento_regiao,
+    vendido_por,
+    ...resto
+  } = linha;
   return {
     ...resto,
     valor_avulso: resto.valor_avulso === null ? null : Number(resto.valor_avulso),
     sessoes_pacote: pacote?.quantidade_sessoes ?? null,
     sem_avaliacao: false,
+    regioes: (agendamento_regiao ?? []).map((x) => x.regiao?.nome).filter((x): x is string => !!x),
     vendedor: vendido_por ? { id: vendido_por, nome: "" } : null,
     equipamentos: agendamento_equipamento
       .map((x) => x.equipamento)
@@ -218,15 +229,29 @@ export async function regrasDoCatalogo(): Promise<{
     modelo: string | null;
     quantidade: number;
   }[];
+  /** Regiões de cada procedimento (Ultraformer: papada, pálpebras, terços…). */
+  regioes: { procedimento_id: string; regiao_id: string; nome: string }[];
 }> {
   const supabase = await createServerSupabase();
-  const [h, r] = await Promise.all([
+  const [h, r, g] = await Promise.all([
     supabase.from("profissional_habilitacao").select("profissional_id, procedimento_id"),
     supabase
       .from("procedimento_requisito")
       .select("procedimento_id, recurso_tipo, recurso_id, modelo, quantidade"),
+    supabase
+      .from("procedimento_regiao")
+      .select("procedimento_id, regiao_id, regiao:regiao_id (nome, ordem)")
+      .eq("ativo", true),
   ]);
-  return { habilitacoes: h.data ?? [], requisitos: r.data ?? [] };
+  const regioes = ((g.data ?? []) as unknown as {
+    procedimento_id: string;
+    regiao_id: string;
+    regiao: { nome: string; ordem: number } | null;
+  }[])
+    .filter((x) => x.regiao)
+    .sort((a, b) => a.regiao!.ordem - b.regiao!.ordem || a.regiao!.nome.localeCompare(b.regiao!.nome))
+    .map((x) => ({ procedimento_id: x.procedimento_id, regiao_id: x.regiao_id, nome: x.regiao!.nome }));
+  return { habilitacoes: h.data ?? [], requisitos: r.data ?? [], regioes };
 }
 
 /**

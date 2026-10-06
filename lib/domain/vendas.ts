@@ -20,7 +20,10 @@ export interface Venda {
   valor: number;
   paciente_id: string;
   paciente_nome: string;
+  procedimento_id: string;
   procedimento_nome: string;
+  /** Regiões vendidas (vazio = sem região informada). */
+  regioes: string[];
   vendedor_id: string | null;
   vendedor_nome: string | null;
   vendedor_perfil: string | null;

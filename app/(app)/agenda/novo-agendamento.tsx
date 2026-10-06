@@ -60,6 +60,7 @@ interface Recursos {
       modelo: string | null;
       quantidade: number;
     }[];
+    regioes?: { procedimento_id: string; regiao_id: string; nome: string }[];
   };
 }
 
@@ -146,6 +147,7 @@ function FormularioAgendamento({
   );
 
   const procedimento = procedimentos.find((p) => p.id === procId);
+  const regioesDoProcedimento = (regras.regioes ?? []).filter((r) => r.procedimento_id === procId);
   const salaDedicadaDe = (id: string) =>
     salas.find((s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === id);
   const salaDedicada = salaDedicadaDe(procId);
@@ -394,6 +396,20 @@ function FormularioAgendamento({
           />
         </Campo>
       </div>
+
+      {/* Região vendida: o Ultraformer de papada e o de pálpebras contam em metas diferentes. */}
+      {!editando && regioesDoProcedimento.length > 0 && (
+        <Campo label="Região" dica="Escolha a região vendida: é ela que conta nas metas por região.">
+          <Select name="regiao_id" defaultValue="">
+            <option value="">Não informar</option>
+            {regioesDoProcedimento.map((r) => (
+              <option key={r.regiao_id} value={r.regiao_id}>
+                {r.nome}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+      )}
 
       {pacotesVisiveis.length > 0 && (
         <Campo label="Consumir de um pacote" dica="Deixe vazio para cobrar como sessão avulsa.">

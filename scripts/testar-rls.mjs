@@ -210,6 +210,8 @@ async function apagarTudo() {
   const ids = Object.values(usuarios).map((u) => u.id);
   const del = (sql, p) => db.query(sql, p).catch((e) => console.log(`    (limpeza: ${e.message})`));
   await del(`delete from lancamento where descricao = 'TESTE RLS'`);
+  await del(`delete from meta_venda where rotulo = 'TESTE RLS'`);
+  await del(`delete from meta_mes where mes = '2031-02'`);
   if (m.proc) {
     await del(
       `delete from lancamento where origem_tipo = 'pacote'
@@ -570,6 +572,34 @@ try {
         p_valor_avulso: 100,
       },
     })).ok);
+
+  console.log("\n-- metas (0047) --");
+  // Mês de teste longe do real; sai no fim deste bloco.
+  const MES_RLS = "2031-02";
+  const metaDe = (token) =>
+    api("meta_mes", { token, metodo: "POST", corpo: { mes: MES_RLS, ocupacao: 0.2 } });
+  checar("recepcao NAO define meta de ocupacao", !(await metaDe(t.recepcao)).ok);
+  checar("profissional NAO define meta de ocupacao", !(await metaDe(t.profissional)).ok);
+  checar("gestao define meta de ocupacao", (await metaDe(t.gestao)).ok);
+  const vendaMeta = (token) =>
+    api("meta_venda", {
+      token,
+      metodo: "POST",
+      corpo: { mes: MES_RLS, rotulo: "TESTE RLS", procedimento_id: m.proc.id, por_dia_min: 1 },
+    });
+  checar("sdr NAO cria meta de venda", !(await vendaMeta(sdr)).ok);
+  checar("gestao cria meta de venda", (await vendaMeta(t.gestao)).ok);
+  checar("profissional le as metas", (await linhas(`meta_venda?mes=eq.${MES_RLS}`, t.profissional)) === 1);
+  const apagou = await api(`meta_venda?mes=eq.${MES_RLS}`, { token: t.recepcao, metodo: "DELETE" });
+  checar("recepcao NAO apaga meta de venda", (apagou.dados ?? []).length === 0);
+  checar("meta de venda com maximo menor que minimo e recusada",
+    !(await api("meta_venda", {
+      token: t.gestao,
+      metodo: "POST",
+      corpo: { mes: MES_RLS, rotulo: "TESTE RLS", procedimento_id: m.proc.id, por_dia_min: 4, por_dia_max: 3 },
+    })).ok);
+  await db.query(`delete from meta_venda where mes = $1`, [MES_RLS]);
+  await db.query(`delete from meta_mes where mes = $1`, [MES_RLS]);
 } catch (e) {
   falharam++;
   console.log(`\n  ERRO  ${e.message}`);

@@ -810,6 +810,51 @@ export type Database = {
         Update: { id?: string; unica?: boolean; nome?: string; updated_at?: string };
         Relationships: [];
       };
+      meta_mes: {
+        Row: { id: string; mes: string; ocupacao: number | null; updated_at: string };
+        Insert: { id?: string; mes: string; ocupacao?: number | null; updated_at?: string };
+        Update: { id?: string; mes?: string; ocupacao?: number | null; updated_at?: string };
+        Relationships: [];
+      };
+      meta_venda: {
+        Row: {
+          id: string;
+          mes: string;
+          rotulo: string;
+          procedimento_id: string;
+          regioes: string[];
+          contagem: string;
+          por_dia_min: number;
+          por_dia_max: number | null;
+          ordem: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          mes: string;
+          rotulo: string;
+          procedimento_id: string;
+          regioes?: string[];
+          contagem?: string;
+          por_dia_min: number;
+          por_dia_max?: number | null;
+          ordem?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          mes?: string;
+          rotulo?: string;
+          procedimento_id?: string;
+          regioes?: string[];
+          contagem?: string;
+          por_dia_min?: number;
+          por_dia_max?: number | null;
+          ordem?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       convite: {
         Row: {
           id: string;
@@ -1289,7 +1334,9 @@ export type Database = {
           valor: number;
           paciente_id: string;
           paciente_nome: string;
+          procedimento_id: string;
           procedimento_nome: string;
+          regioes: string[];
           vendedor_id: string | null;
           vendedor_nome: string | null;
           vendedor_perfil: string | null;
@@ -1316,6 +1363,7 @@ export type Database = {
           p_observacoes?: string;
           p_valor_avulso?: number;
           p_duracao?: number;
+          p_regiao?: string;
         };
         Returns: string;
       };

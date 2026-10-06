@@ -15,6 +15,8 @@ import { SeletorPeriodo } from "@/components/relatorios/seletor-periodo";
 import { Exportar } from "@/components/relatorios/exportar";
 import { BarrasHorizontais, ColunasPorDia, Funil } from "@/components/gestao/graficos";
 import { Aviso, Vazio } from "@/components/ui/primitivos";
+import { andamentoDasMetas } from "@/lib/consultas/metas";
+import { PainelMetas } from "@/components/gestao/painel-metas";
 
 export const metadata = { title: "Central de gestão" };
 
@@ -99,12 +101,14 @@ export default async function GestaoPage(props: {
   }
 
   const periodo = resolverPeriodo(q.de, q.ate);
-  const [vendas, funil, novos, salas, profissionais] = await Promise.all([
+  const [vendas, funil, novos, salas, profissionais, andamento] = await Promise.all([
     vendasDoPeriodo(periodo),
     funilDaAvaliacao(periodo),
     novosPacientes(periodo),
     carregarPainel("sala", periodo),
     carregarPainel("profissional", periodo),
+    // Metas sempre do mês corrente, qualquer que seja o período escolhido.
+    andamentoDasMetas(hojeNaClinica()),
   ]);
   const resumo = resumirVendas(vendas, periodo.de, periodo.ate);
   const ocupacao = consolidar(salas.linhas);
@@ -141,6 +145,8 @@ export default async function GestaoPage(props: {
           hoje={hojeNaClinica()}
         />
       </header>
+
+      <PainelMetas andamento={andamento} podeAjustar />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Cartao

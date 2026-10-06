@@ -24,6 +24,8 @@ export const agendamentoSchema = z
     equipamentos: z.array(z.uuid()).default([]),
     profissionais: z.array(z.uuid()).default([]),
     pacote_id: vazioParaNulo(z.uuid()),
+    /** Região vendida (Ultraformer: papada, pálpebras…): conta nas metas por região. */
+    regiao_id: vazioParaNulo(z.uuid()),
     valor_avulso: z.preprocess(
       (v) => (v === "" || v === undefined ? null : Number(v)),
       z.number().nonnegative().nullable(),

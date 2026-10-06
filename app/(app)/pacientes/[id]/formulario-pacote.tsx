@@ -25,15 +25,19 @@ export function FormularioPacote({
   procedimentos,
   variante,
   abertoInicial = false,
+  regioes = [],
 }: {
   pacienteId: string;
   procedimentos: Procedimento[];
+  /** Regiões de cada procedimento (do catálogo). */
+  regioes?: { procedimento_id: string; regiao_id: string; nome: string }[];
   variante?: "primario" | "secundario";
   /** Já abre a venda: vindo do "Vender pacote" do atendimento. */
   abertoInicial?: boolean;
 }) {
   const [aberto, setAberto] = useState(abertoInicial);
   const [procId, setProcId] = useState("");
+  const regioesDoProcedimento = regioes.filter((r) => r.procedimento_id === procId);
   const [sessoes, setSessoes] = useState(1);
   const [valor, setValor] = useState(0);
   const [desconto, setDesconto] = useState(0);
@@ -93,6 +97,19 @@ export function FormularioPacote({
             ))}
         </Select>
       </Campo>
+
+      {regioesDoProcedimento.length > 0 && (
+        <Campo label="Região" dica="O saldo do pacote e as metas por região contam por ela.">
+          <Select name="regiao_id" defaultValue="">
+            <option value="">Não informar</option>
+            {regioesDoProcedimento.map((r) => (
+              <option key={r.regiao_id} value={r.regiao_id}>
+                {r.nome}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         <Campo label="Sessões" erro={estado.campos?.quantidade_sessoes}>

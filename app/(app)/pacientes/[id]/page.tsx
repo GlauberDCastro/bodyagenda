@@ -287,6 +287,7 @@ export default async function PacientePage(props: {
                 procedimentos={procedimentos.dados.filter((p) => p.ativo)}
                 variante="secundario"
                 abertoInicial={vender === "1"}
+                regioes={regras.regioes}
               />
               {paciente.ativo && (
                 <NovoAgendamento
