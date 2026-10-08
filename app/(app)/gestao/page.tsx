@@ -358,7 +358,10 @@ export default async function GestaoPage(props: {
                         {v.paciente_nome}
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5">{v.procedimento_nome}</td>
+                    <td className="px-3 py-2.5">
+                      {v.procedimento_nome}
+                      {v.marca_nome && <span className="text-[var(--tinta-2)]"> · {v.marca_nome}</span>}
+                    </td>
                     <td className="px-3 py-2.5 text-[var(--tinta-2)]">
                       {v.tipo === "pacote" ? "Pacote" : "Sessão avulsa"}
                     </td>

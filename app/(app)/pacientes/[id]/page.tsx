@@ -288,6 +288,7 @@ export default async function PacientePage(props: {
                 variante="secundario"
                 abertoInicial={vender === "1"}
                 regioes={regras.regioes}
+                marcas={regras.marcas}
               />
               {paciente.ativo && (
                 <NovoAgendamento

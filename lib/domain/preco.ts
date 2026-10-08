@@ -5,6 +5,9 @@
  * O parcelado segue o preço à vista de onde ele veio: região com preço
  * próprio e sem parcelado cobra o mesmo à vista e parcelado — nunca herda o
  * parcelado do procedimento, que é de outro preço.
+ *
+ * A marca do produto (toxina Botox, Dysport…) define o preço e passa na
+ * frente da região; duração e sessões continuam da região/procedimento.
  */
 export interface PrecoBase {
   valor_sessao: number | null;
@@ -23,10 +26,12 @@ export interface PrecoEfetivo {
 export function precoEfetivo(
   proc: PrecoBase & { valor_sessao: number; duracao_min: number; sessoes_padrao: number },
   regiao?: PrecoBase | null,
+  marca?: { valor_sessao: number; valor_parcelado: number | null } | null,
 ): PrecoEfetivo {
-  const avista = regiao?.valor_sessao ?? proc.valor_sessao;
-  const parcelado =
-    regiao?.valor_sessao != null
+  const avista = marca?.valor_sessao ?? regiao?.valor_sessao ?? proc.valor_sessao;
+  const parcelado = marca
+    ? (marca.valor_parcelado ?? marca.valor_sessao)
+    : regiao?.valor_sessao != null
       ? (regiao.valor_parcelado ?? regiao.valor_sessao)
       : (regiao?.valor_parcelado ?? proc.valor_parcelado ?? proc.valor_sessao);
   return {

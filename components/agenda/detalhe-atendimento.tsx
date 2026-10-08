@@ -331,6 +331,7 @@ export function DetalheAtendimento({
           <Item rotulo="Procedimento">
             {a.procedimento?.nome ?? "—"}
             {a.regioes.length > 0 && ` · ${a.regioes.join(", ")}`}
+            {a.marca && ` · ${a.marca}`}
             <span className="text-[var(--tinta-2)]"> · {minutos} min</span>
           </Item>
           <Item rotulo="Horário">

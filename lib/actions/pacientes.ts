@@ -140,6 +140,7 @@ export async function venderPacote(_anterior: Resultado, formData: FormData): Pr
     p_desconto: d.desconto,
     p_validade: d.validade,
     p_regiao: d.regiao_id ?? null,
+    p_marca: d.marca_id ?? undefined,
     p_parcelas: d.parcelas,
     p_primeiro_vencimento: d.primeiro_vencimento,
     p_forma: d.forma_pagamento,

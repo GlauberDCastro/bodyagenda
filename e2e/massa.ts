@@ -589,3 +589,35 @@ export async function apagarVendasImportadasDoE2E() {
     await db.end();
   }
 }
+
+/** Pacotes do procedimento de teste vendidos com marca: "marca valor". */
+export async function pacotesComMarca(m: Massa): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select pm.nome || ' ' || pc.valor_total::float as s
+         from pacote pc join procedimento_marca pm on pm.id = pc.marca_id
+        where pc.procedimento_id = $1 order by pc.created_at`,
+      [m.procedimentoId],
+    );
+    return rows.map((r) => r.s);
+  } finally {
+    await db.end();
+  }
+}
+
+export async function apagarMarcasDoE2E(m: Massa) {
+  const db = await conectar();
+  try {
+    const pacotes = `select id from pacote where marca_id in
+      (select id from procedimento_marca where procedimento_id = $1)`;
+    await db.query(
+      `delete from lancamento where origem_tipo = 'pacote' and origem_id in (${pacotes})`,
+      [m.procedimentoId],
+    );
+    await db.query(`delete from pacote where id in (${pacotes})`, [m.procedimentoId]);
+    await db.query(`delete from procedimento_marca where procedimento_id = $1`, [m.procedimentoId]);
+  } finally {
+    await db.end();
+  }
+}

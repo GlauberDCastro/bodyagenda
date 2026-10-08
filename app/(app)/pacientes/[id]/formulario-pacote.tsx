@@ -8,7 +8,7 @@ import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento } from "@/lib/types/database";
 import { FORMAS_PAGAMENTO } from "@/lib/schemas/pacientes";
-import type { RegiaoDoProcedimento } from "@/lib/consultas/agenda";
+import type { MarcaDoProcedimento, RegiaoDoProcedimento } from "@/lib/consultas/agenda";
 import { precoEfetivo, valorDaTabela } from "@/lib/domain/preco";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,11 +28,14 @@ export function FormularioPacote({
   variante,
   abertoInicial = false,
   regioes = [],
+  marcas = [],
 }: {
   pacienteId: string;
   procedimentos: Procedimento[];
   /** Regiões de cada procedimento (do catálogo). */
   regioes?: RegiaoDoProcedimento[];
+  /** Marcas do produto, com preço próprio (toxina Botox, Dysport…). */
+  marcas?: MarcaDoProcedimento[];
   variante?: "primario" | "secundario";
   /** Já abre a venda: vindo do "Vender pacote" do atendimento. */
   abertoInicial?: boolean;
@@ -41,6 +44,8 @@ export function FormularioPacote({
   const [procId, setProcId] = useState("");
   const regioesDoProcedimento = regioes.filter((r) => r.procedimento_id === procId);
   const [regiaoId, setRegiaoId] = useState("");
+  const [marcaId, setMarcaId] = useState("");
+  const marcasDoProcedimento = marcas.filter((m) => m.procedimento_id === procId);
   const [sessoes, setSessoes] = useState(1);
   /** null = segue a tabela; número = quem vende digitou outro valor. */
   const [valorManual, setValorManual] = useState<number | null>(null);
@@ -59,6 +64,7 @@ export function FormularioPacote({
     ? precoEfetivo(
         { ...procedimento, valor_sessao: Number(procedimento.valor_sessao) },
         regioes.find((r) => r.procedimento_id === procId && r.regiao_id === regiaoId),
+        marcasDoProcedimento.find((m) => m.id === marcaId),
       )
     : null;
   /** Pela tabela (à vista ou parcelado, da região), mas editável: pacote
@@ -68,6 +74,7 @@ export function FormularioPacote({
   function aoEscolherProcedimento(id: string) {
     setProcId(id);
     setRegiaoId("");
+    setMarcaId("");
     setValorManual(null);
     const p = procedimentos.find((x) => x.id === id);
     if (p) setSessoes(p.sessoes_padrao);
@@ -125,6 +132,26 @@ export function FormularioPacote({
             {regioesDoProcedimento.map((r) => (
               <option key={r.regiao_id} value={r.regiao_id}>
                 {r.nome}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+      )}
+
+      {marcasDoProcedimento.length > 0 && (
+        <Campo label="Marca do produto" dica="A marca define o preço da tabela.">
+          <Select
+            name="marca_id"
+            value={marcaId}
+            onChange={(e) => {
+              setMarcaId(e.target.value);
+              setValorManual(null);
+            }}
+          >
+            <option value="">Não informar</option>
+            {marcasDoProcedimento.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome} — {brl.format(m.valor_sessao)} à vista
               </option>
             ))}
           </Select>

@@ -11,6 +11,7 @@ const venda = (v: Partial<Venda>): Venda => ({
   procedimento_id: "proc",
   procedimento_nome: "Proc",
   regioes: [],
+  marca_nome: null,
   vendedor_id: "a",
   vendedor_nome: "Ana",
   vendedor_perfil: "closer",

@@ -115,8 +115,11 @@ test.describe.serial("convite de profissional", () => {
     await expect(visitante.getByText("Closer (vendas)", { exact: true })).toBeVisible();
     await contexto.close();
 
+    // Só o convite deste teste sai da lista: a clínica pode ter convites reais pendentes.
     await page.reload();
-    await expect(page.getByLabel("Convites pendentes")).toHaveCount(0);
+    await expect(
+      page.getByLabel("Convites pendentes").getByText("Closer Convidado E2E"),
+    ).toHaveCount(0);
   });
 
   test("link inválido explica e leva ao login", async ({ page }) => {

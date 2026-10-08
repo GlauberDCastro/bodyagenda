@@ -26,6 +26,7 @@ export const agendamentoSchema = z
     pacote_id: vazioParaNulo(z.uuid()),
     /** Região vendida (Ultraformer: papada, pálpebras…): conta nas metas por região. */
     regiao_id: vazioParaNulo(z.uuid()),
+    marca_id: vazioParaNulo(z.uuid()),
     valor_avulso: z.preprocess(
       (v) => (v === "" || v === undefined ? null : Number(v)),
       z.number().nonnegative().nullable(),

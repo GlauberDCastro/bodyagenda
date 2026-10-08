@@ -31,6 +31,8 @@ export interface AgendamentoNaAgenda {
   sala: { numero: number; nome: string } | null;
   /** Regiões do atendimento (Ultraformer: papada, pálpebras…). */
   regioes: string[];
+  /** Marca do produto (toxina Botox, Dysport…). */
+  marca: string | null;
   equipamentos: { id: string; nome: string }[];
   profissionais: { id: string; nome: string; cor_agenda: string }[];
 }
@@ -43,12 +45,14 @@ const CAMPOS_AGENDA = `id, inicio, fim, status, numero_sessao, sala_id, pacote_i
        procedimento:procedimento_id (id, nome, duracao_min, buffer_min, avaliacao),
        agendamento_equipamento ( equipamento:equipamento_id (id, nome) ),
        agendamento_regiao ( regiao:regiao_id (nome) ),
+       marca:marca_id (nome),
        agendamento_profissional ( profissional:profissional_id (id, nome, cor_agenda) )`;
 
 type LinhaAgenda = Omit<
   AgendamentoNaAgenda,
-  "sessoes_pacote" | "equipamentos" | "profissionais" | "sem_avaliacao" | "vendedor" | "regioes"
+  "sessoes_pacote" | "equipamentos" | "profissionais" | "sem_avaliacao" | "vendedor" | "regioes" | "marca"
 > & {
+  marca: { nome: string } | null;
   agendamento_regiao: { regiao: { nome: string } | null }[];
   vendido_por: string | null;
   pacote: { quantidade_sessoes: number } | null;
@@ -65,6 +69,7 @@ function paraAgenda(linha: LinhaAgenda): AgendamentoNaAgenda {
     agendamento_profissional,
     agendamento_regiao,
     vendido_por,
+    marca,
     ...resto
   } = linha;
   return {
@@ -72,6 +77,7 @@ function paraAgenda(linha: LinhaAgenda): AgendamentoNaAgenda {
     valor_avulso: resto.valor_avulso === null ? null : Number(resto.valor_avulso),
     sessoes_pacote: pacote?.quantidade_sessoes ?? null,
     sem_avaliacao: false,
+    marca: marca?.nome ?? null,
     regioes: (agendamento_regiao ?? []).map((x) => x.regiao?.nome).filter((x): x is string => !!x),
     vendedor: vendido_por ? { id: vendido_por, nome: "" } : null,
     equipamentos: agendamento_equipamento
@@ -216,6 +222,14 @@ export async function profissionaisHabilitados(procedimentoId: string) {
     );
 }
 
+export interface MarcaDoProcedimento {
+  id: string;
+  procedimento_id: string;
+  nome: string;
+  valor_sessao: number;
+  valor_parcelado: number | null;
+}
+
 export interface RegiaoDoProcedimento {
   procedimento_id: string;
   regiao_id: string;
@@ -242,9 +256,11 @@ export async function regrasDoCatalogo(): Promise<{
   /** Regiões de cada procedimento (Ultraformer: papada, pálpebras, terços…),
    * com o que a região sobrescreve do procedimento (null = herda). */
   regioes: RegiaoDoProcedimento[];
+  /** Marcas ativas de cada procedimento, com o preço de cada uma. */
+  marcas: MarcaDoProcedimento[];
 }> {
   const supabase = await createServerSupabase();
-  const [h, r, g] = await Promise.all([
+  const [h, r, g, m] = await Promise.all([
     supabase.from("profissional_habilitacao").select("profissional_id, procedimento_id"),
     supabase
       .from("procedimento_requisito")
@@ -255,6 +271,12 @@ export async function regrasDoCatalogo(): Promise<{
         "procedimento_id, regiao_id, valor_sessao, valor_parcelado, duracao_min, sessoes_padrao, regiao:regiao_id (nome, ordem)",
       )
       .eq("ativo", true),
+    supabase
+      .from("procedimento_marca")
+      .select("id, procedimento_id, nome, valor_sessao, valor_parcelado")
+      .eq("ativo", true)
+      .order("ordem")
+      .order("nome"),
   ]);
   const regioes = ((g.data ?? []) as unknown as (Omit<RegiaoDoProcedimento, "nome"> & {
     regiao: { nome: string; ordem: number } | null;
@@ -267,7 +289,12 @@ export async function regrasDoCatalogo(): Promise<{
       valor_parcelado: x.valor_parcelado === null ? null : Number(x.valor_parcelado),
       nome: regiao!.nome,
     }));
-  return { habilitacoes: h.data ?? [], requisitos: r.data ?? [], regioes };
+  const marcas = (m.data ?? []).map((x) => ({
+    ...x,
+    valor_sessao: Number(x.valor_sessao),
+    valor_parcelado: x.valor_parcelado === null ? null : Number(x.valor_parcelado),
+  }));
+  return { habilitacoes: h.data ?? [], requisitos: r.data ?? [], regioes, marcas };
 }
 
 /**

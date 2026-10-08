@@ -24,6 +24,8 @@ export interface Venda {
   procedimento_nome: string;
   /** Regiões vendidas (vazio = sem região informada). */
   regioes: string[];
+  /** Marca do produto, quando o procedimento tem marcas (toxina). */
+  marca_nome: string | null;
   vendedor_id: string | null;
   vendedor_nome: string | null;
   vendedor_perfil: string | null;

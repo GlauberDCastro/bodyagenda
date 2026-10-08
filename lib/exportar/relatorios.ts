@@ -256,6 +256,7 @@ export const RELATORIOS: Record<string, Gerador> = {
       { chave: "dia", rotulo: "Data", tipo: "data" as const },
       { chave: "paciente_nome", rotulo: "Paciente" },
       { chave: "procedimento_nome", rotulo: "Procedimento" },
+      { chave: "marca_nome", rotulo: "Marca" },
       { chave: "tipo", rotulo: "Tipo" },
       { chave: "canal", rotulo: "Canal" },
       { chave: "vendedor_nome", rotulo: "Vendido por" },

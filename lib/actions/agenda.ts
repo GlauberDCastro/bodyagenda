@@ -225,6 +225,7 @@ export async function criarAgendamento(
     p_valor_avulso: d.valor_avulso ?? undefined,
     p_duracao: d.duracao_min ?? undefined,
     p_regiao: d.regiao_id ?? undefined,
+    p_marca: d.marca_id ?? undefined,
   });
 
   if (error) return erroAoCriar(supabase, error, d);
@@ -347,6 +348,7 @@ export async function registrarUpsell(
     p_valor_avulso: d.valor_avulso ?? undefined,
     p_duracao: d.duracao_min ?? undefined,
     p_regiao: d.regiao_id ?? undefined,
+    p_marca: d.marca_id ?? undefined,
   });
   if (error) {
     if (error.code === "42501") return { erro: "Seu perfil não pode registrar upsell neste atendimento." };

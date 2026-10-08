@@ -1,6 +1,6 @@
 "use client";
 
-import type { RegiaoDoProcedimento } from "@/lib/consultas/agenda";
+import type { MarcaDoProcedimento, RegiaoDoProcedimento } from "@/lib/consultas/agenda";
 import { precoEfetivo } from "@/lib/domain/preco";
 
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -64,6 +64,7 @@ interface Recursos {
       quantidade: number;
     }[];
     regioes?: RegiaoDoProcedimento[];
+    marcas?: MarcaDoProcedimento[];
   };
 }
 
@@ -135,6 +136,7 @@ function FormularioAgendamento({
   const [pacoteId, setPacoteId] = useState(preset.pacote_id ?? "");
   const [procId, setProcId] = useState(preset.procedimento_id ?? "");
   const [regiaoId, setRegiaoId] = useState("");
+  const [marcaId, setMarcaId] = useState("");
 
   // Recursos controlados: o formulário aplica as regras do catálogo sozinho.
   const [salaSel, setSalaSel] = useState(preset.sala_id ?? "");
@@ -152,11 +154,13 @@ function FormularioAgendamento({
 
   const procedimento = procedimentos.find((p) => p.id === procId);
   const regioesDoProcedimento = (regras.regioes ?? []).filter((r) => r.procedimento_id === procId);
+  const marcasDoProcedimento = (regras.marcas ?? []).filter((m) => m.procedimento_id === procId);
   // A região pode ter duração e preço próprios (Ultraformer: terço 40 min, pálpebra 20).
   const tabela = procedimento
     ? precoEfetivo(
         { ...procedimento, valor_sessao: Number(procedimento.valor_sessao) },
         regioesDoProcedimento.find((r) => r.regiao_id === regiaoId),
+        marcasDoProcedimento.find((m) => m.id === marcaId),
       )
     : null;
   const salaDedicadaDe = (id: string) =>
@@ -185,6 +189,7 @@ function FormularioAgendamento({
   function escolherProcedimento(id: string) {
     setProcId(id);
     setRegiaoId("");
+    setMarcaId("");
     setDuracao("");
     setLivres(null);
     const salaBase = salaDedicadaDe(id)?.id ?? salaSel;
@@ -430,6 +435,20 @@ function FormularioAgendamento({
         </Campo>
       )}
 
+      {/* A marca muda o preço (toxina Botox, Dysport…); sessão de pacote usa a do pacote. */}
+      {!editando && marcasDoProcedimento.length > 0 && !pacoteEfetivo && (
+        <Campo label="Marca do produto">
+          <Select name="marca_id" value={marcaId} onChange={(e) => setMarcaId(e.target.value)}>
+            <option value="">Não informar</option>
+            {marcasDoProcedimento.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome} — {brl.format(m.valor_sessao)}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+      )}
+
       {pacotesVisiveis.length > 0 && (
         <Campo label="Consumir de um pacote" dica="Deixe vazio para cobrar como sessão avulsa.">
           <Select
@@ -461,7 +480,7 @@ function FormularioAgendamento({
         >
           <Input
             // Troca de procedimento ou região refaz o valor pela tabela.
-            key={`${procId}:${regiaoId}`}
+            key={`${procId}:${regiaoId}:${marcaId}`}
             name="valor_avulso"
             type="number"
             step="0.01"

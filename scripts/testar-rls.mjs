@@ -629,6 +629,24 @@ try {
   await db.query(`delete from lancamento where origem_tipo = 'pacote'
       and origem_id in (select id from pacote where id_externo like 'plano:TESTE-RLS%')`);
   await db.query(`delete from pacote where id_externo like 'plano:TESTE-RLS%'`);
+
+  console.log("\n-- marcas do produto (0054) --");
+  const marca = (token) =>
+    api("procedimento_marca", {
+      token, metodo: "POST",
+      corpo: { procedimento_id: m.proc.id, nome: "TESTE RLS marca", valor_sessao: 500 },
+    });
+  checar("recepcao NAO cadastra marca", !(await marca(t.recepcao)).ok);
+  const criada = await marca(t.gestao);
+  checar("gestao cadastra marca", criada.ok, JSON.stringify(criada.dados));
+  checar("profissional le as marcas", (await linhas(`procedimento_marca?procedimento_id=eq.${m.proc.id}`, t.profissional)) === 1);
+  const { rows: [outro] } = await db.query(`select id from procedimento where id <> $1 limit 1`, [m.proc.id]);
+  checar("venda com marca de outro procedimento e recusada",
+    !(await api("rpc/vender_pacote", { token: sdr, metodo: "POST", corpo: {
+      p_paciente: m.pacOutro.id, p_procedimento: outro.id, p_sessoes: 1, p_valor_total: 1, p_desconto: 0,
+      p_validade: null, p_regiao: null, p_parcelas: 1, p_primeiro_vencimento: "2030-01-07", p_forma: "Pix",
+      p_primeira_paga: false, p_marca: criada.dados?.[0]?.id } })).ok);
+  await db.query(`delete from procedimento_marca where nome = 'TESTE RLS marca'`);
 } catch (e) {
   falharam++;
   console.log(`\n  ERRO  ${e.message}`);

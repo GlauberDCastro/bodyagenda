@@ -20,6 +20,7 @@ export type Database = {
       };
       agendamento: {
         Row: {
+          marca_id: string | null;
           origem: string;
           vendido_por: string | null;
           atendimento_origem_id: string | null;
@@ -40,6 +41,7 @@ export type Database = {
           valor_avulso: number | null;
         };
         Insert: {
+          marca_id?: string | null;
           origem?: string;
           vendido_por?: string | null;
           atendimento_origem_id?: string | null;
@@ -60,6 +62,7 @@ export type Database = {
           valor_avulso?: number | null;
         };
         Update: {
+          marca_id?: string | null;
           origem?: string;
           vendido_por?: string | null;
           atendimento_origem_id?: string | null;
@@ -551,6 +554,7 @@ export type Database = {
       };
       pacote: {
         Row: {
+          marca_id: string | null;
           created_at: string;
           data_venda: string;
           desconto: number;
@@ -567,6 +571,7 @@ export type Database = {
           vendido_por: string | null;
         };
         Insert: {
+          marca_id?: string | null;
           created_at?: string;
           data_venda?: string;
           desconto?: number;
@@ -583,6 +588,7 @@ export type Database = {
           vendido_por?: string | null;
         };
         Update: {
+          marca_id?: string | null;
           created_at?: string;
           data_venda?: string;
           desconto?: number;
@@ -714,6 +720,39 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      procedimento_marca: {
+        Row: {
+          id: string;
+          procedimento_id: string;
+          nome: string;
+          valor_sessao: number;
+          valor_parcelado: number | null;
+          ativo: boolean;
+          ordem: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          procedimento_id: string;
+          nome: string;
+          valor_sessao: number;
+          valor_parcelado?: number | null;
+          ativo?: boolean;
+          ordem?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          procedimento_id?: string;
+          nome?: string;
+          valor_sessao?: number;
+          valor_parcelado?: number | null;
+          ativo?: boolean;
+          ordem?: number;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       procedimento_regiao: {
         Row: {
@@ -1266,6 +1305,7 @@ export type Database = {
           p_regiao?: string;
           p_sala: string;
           p_valor_avulso?: number;
+          p_marca?: string;
         };
         Returns: string;
       };
@@ -1316,6 +1356,7 @@ export type Database = {
           p_sessoes: number;
           p_validade: string | null;
           p_valor_total: number;
+          p_marca?: string;
         };
         Returns: string;
       };
@@ -1349,6 +1390,7 @@ export type Database = {
           procedimento_id: string;
           procedimento_nome: string;
           regioes: string[];
+          marca_nome: string | null;
           vendedor_id: string | null;
           vendedor_nome: string | null;
           vendedor_perfil: string | null;
@@ -1396,6 +1438,7 @@ export type Database = {
           p_valor_avulso?: number;
           p_duracao?: number;
           p_regiao?: string;
+          p_marca?: string;
         };
         Returns: string;
       };

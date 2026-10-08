@@ -44,6 +44,17 @@ describe("precoEfetivo", () => {
   });
 });
 
+describe("precoEfetivo com marca", () => {
+  it("a marca define o preço; a duração segue a região", () => {
+    expect(
+      precoEfetivo(proc, regiao({ duracao_min: 15 }), { valor_sessao: 1100, valor_parcelado: 1294.12 }),
+    ).toEqual({ avista: 1100, parcelado: 1294.12, duracao_min: 15, sessoes_padrao: 1 });
+  });
+  it("marca sem parcelado cobra o mesmo, sem herdar o parcelado do procedimento", () => {
+    expect(precoEfetivo(proc, null, { valor_sessao: 1100, valor_parcelado: null }).parcelado).toBe(1100);
+  });
+});
+
 describe("valorDaTabela", () => {
   const p = precoEfetivo(proc);
   it("à vista em 1 parcela, parcelado a partir de 2", () => {

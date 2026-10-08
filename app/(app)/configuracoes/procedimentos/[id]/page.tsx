@@ -21,6 +21,7 @@ import {
   type RegiaoOpcao,
   type Protocolo,
 } from "./formulario-regiao";
+import { MarcasDoProcedimento } from "./marcas";
 
 const ROTULO_TIPO: Record<string, string> = {
   insumo: "Insumo",
@@ -50,6 +51,7 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
     { data: salasAtivas },
     { data: regioes },
     { data: protocolos },
+    { data: marcas },
   ] = await Promise.all([
     supabase.from("procedimento").select("*").eq("id", id).maybeSingle(),
     supabase.from("procedimento_custo").select("*").eq("procedimento_id", id),
@@ -61,6 +63,12 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
       .from("procedimento_regiao")
       .select("*, regiao:regiao_id (id, nome, grupo, ordem)")
       .eq("procedimento_id", id),
+    supabase
+      .from("procedimento_marca")
+      .select("id, nome, valor_sessao, valor_parcelado, ativo")
+      .eq("procedimento_id", id)
+      .order("ordem")
+      .order("nome"),
   ]);
 
   if (!proc) notFound();
@@ -249,6 +257,15 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
           </div>
         )}
       </section>
+
+      <MarcasDoProcedimento
+        procedimentoId={id}
+        marcas={(marcas ?? []).map((m) => ({
+          ...m,
+          valor_sessao: Number(m.valor_sessao),
+          valor_parcelado: m.valor_parcelado === null ? null : Number(m.valor_parcelado),
+        }))}
+      />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-4">
