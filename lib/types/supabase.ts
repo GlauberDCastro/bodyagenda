@@ -559,6 +559,8 @@ export type Database = {
           procedimento_id: string;
           quantidade_sessoes: number;
           regiao_id: string | null;
+          id_externo: string | null;
+          observacoes: string | null;
           status: Database["public"]["Enums"]["status_pacote"];
           validade: string | null;
           valor_total: number;
@@ -573,6 +575,8 @@ export type Database = {
           procedimento_id: string;
           quantidade_sessoes: number;
           regiao_id?: string | null;
+          id_externo?: string | null;
+          observacoes?: string | null;
           status?: Database["public"]["Enums"]["status_pacote"];
           validade?: string | null;
           valor_total: number;
@@ -587,6 +591,8 @@ export type Database = {
           procedimento_id?: string;
           quantidade_sessoes?: number;
           regiao_id?: string | null;
+          id_externo?: string | null;
+          observacoes?: string | null;
           status?: Database["public"]["Enums"]["status_pacote"];
           validade?: string | null;
           valor_total?: number;
@@ -1350,6 +1356,26 @@ export type Database = {
       nomes_da_equipe: {
         Args: { p_ids: string[] };
         Returns: { id: string; nome: string }[];
+      };
+      paciente_da_importacao: {
+        Args: { p_nome: string };
+        Returns: string;
+      };
+      importar_venda: {
+        Args: {
+          p_id_externo: string;
+          p_paciente: string;
+          p_procedimento: string;
+          p_regiao: string | null;
+          p_sessoes: number;
+          p_valor: number;
+          p_data_venda: string;
+          p_validade: string | null;
+          p_vendedor: string | null;
+          p_forma: string | null;
+          p_observacoes: string | null;
+        };
+        Returns: string | null;
       };
       registrar_upsell: {
         Args: {

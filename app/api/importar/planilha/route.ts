@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { lerCsv } from "@/lib/importacao/pacientes";
 
@@ -61,9 +62,20 @@ export async function POST(request: Request) {
         const valores = (row.values as ExcelJS.CellValue[]).slice(1); // índice 0 é vazio no exceljs
         linhas.push(valores.map(textoDaCelula));
       });
+    } else if (nome.endsWith(".xls")) {
+      // Excel antigo (97-2003): é o formato que o sistema anterior exporta.
+      // O exceljs só lê .xlsx; aqui entra o SheetJS. raw: false devolve o texto
+      // como a planilha mostra ("1.390,00", "05/10/2026").
+      const livro = XLSX.read(new Uint8Array(bytes), { type: "array" });
+      const aba = livro.Sheets[livro.SheetNames[0]];
+      linhas = aba
+        ? XLSX.utils
+            .sheet_to_json<string[]>(aba, { header: 1, raw: false, defval: "", blankrows: false })
+            .map((r) => r.map((c) => String(c ?? "")))
+        : [];
     } else {
       return Response.json(
-        { erro: "Formato não aceito. Use .xlsx ou .csv (no Excel: Salvar como › CSV)." },
+        { erro: "Formato não aceito. Use .xlsx, .xls ou .csv (no Excel: Salvar como › CSV)." },
         { status: 415 },
       );
     }

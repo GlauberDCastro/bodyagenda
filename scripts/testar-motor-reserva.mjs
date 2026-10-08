@@ -107,8 +107,10 @@ const { sala, equipamentos, proc } = await criarMassa(cli, "transacao");
 
 console.log(`\nmassa: procedimento ${proc.duracao_min}min, ${equipamentos.length} aparelhos de teste\n`);
 
-// Terça-feira 14:00 — dentro do expediente seg-sex 08:00-18:00 da massa.
-const QUANDO = "2026-10-06T14:00:00-03:00";
+// Terça-feira 14:00 — dentro do expediente seg-sex 08:00-18:00 da massa. Semana
+// de 2037 com o mesmo calendário de outubro/2026: data no passado é recusada
+// (o recurso só vale a partir de quando foi cadastrado).
+const QUANDO = "2037-10-06T14:00:00-03:00";
 
 console.log("-- RN-01 · conflito de recurso --");
 
@@ -166,7 +168,7 @@ try {
   await cli.query("savepoint s3");
   const { rows: [ag] } = await cli.query(
     `select criar_agendamento($1,$2,$3::timestamptz,$4,$5::uuid[],'{}'::uuid[]) as id`,
-    [paciente.id, proc.id, "2026-10-06T14:20:00-03:00", sala.id, [equipamentos[0].id]],
+    [paciente.id, proc.id, "2037-10-06T14:20:00-03:00", sala.id, [equipamentos[0].id]],
   );
   encostou = !!ag.id;
   await cli.query("rollback to savepoint s3");
@@ -184,7 +186,7 @@ try {
   await cli.query("savepoint s4");
   await cli.query(
     `select criar_agendamento($1,$2,$3::timestamptz,$4,$5::uuid[],'{}'::uuid[])`,
-    [paciente.id, proc.id, "2026-10-04T14:00:00-03:00", sala.id, [equipamentos[2].id]],
+    [paciente.id, proc.id, "2037-10-04T14:00:00-03:00", sala.id, [equipamentos[2].id]],
   );
 } catch (e) {
   foraDoHorario = e.code === "23514";
@@ -195,7 +197,7 @@ checar("CA-02 · domingo (fora da janela) e recusado", foraDoHorario);
 // CA-03 · sobre bloqueio de manutencao
 await cli.query(
   `insert into recurso_bloqueio (recurso_tipo, recurso_id, inicio, fim, motivo)
-   values ('equipamento', $1, '2026-10-07T08:00:00-03:00', '2026-10-07T18:00:00-03:00', 'manutencao')`,
+   values ('equipamento', $1, '2037-10-07T08:00:00-03:00', '2037-10-07T18:00:00-03:00', 'manutencao')`,
   [equipamentos[2].id],
 );
 let sobreBloqueio = false;
@@ -203,7 +205,7 @@ try {
   await cli.query("savepoint s5");
   await cli.query(
     `select criar_agendamento($1,$2,$3::timestamptz,$4,$5::uuid[],'{}'::uuid[])`,
-    [paciente.id, proc.id, "2026-10-07T14:00:00-03:00", sala.id, [equipamentos[2].id]],
+    [paciente.id, proc.id, "2037-10-07T14:00:00-03:00", sala.id, [equipamentos[2].id]],
   );
 } catch (e) {
   sobreBloqueio = e.code === "23514";
@@ -215,7 +217,7 @@ console.log("\n-- RN-02 / RN-03 · capacidade e ocupacao --");
 
 const { rows: [cap] } = await cli.query(
   `select capacidade_recurso('equipamento', $1,
-     '2026-10-05T00:00:00-03:00', '2026-10-09T23:59:59-03:00') as c`,
+     '2037-10-05T00:00:00-03:00', '2037-10-09T23:59:59-03:00') as c`,
   [equipamentos[3].id],
 );
 // Seg a sex, 10h/dia. A janela cobre seg(5) a sex(9) = 5 dias uteis = 50h.
@@ -227,7 +229,7 @@ checar(
 
 const { rows: [capBloqueada] } = await cli.query(
   `select capacidade_recurso('equipamento', $1,
-     '2026-10-05T00:00:00-03:00', '2026-10-09T23:59:59-03:00') as c`,
+     '2037-10-05T00:00:00-03:00', '2037-10-09T23:59:59-03:00') as c`,
   [equipamentos[2].id],
 );
 checar(
@@ -238,7 +240,7 @@ checar(
 
 const { rows: [ocup] } = await cli.query(
   `select * from ocupacao_recurso('equipamento', $1,
-     '2026-10-06T00:00:00-03:00', '2026-10-06T23:59:59-03:00')`,
+     '2037-10-06T00:00:00-03:00', '2037-10-06T23:59:59-03:00')`,
   [equipamentos[0].id],
 );
 checar(
@@ -256,7 +258,7 @@ checar(
 await cli.query(`update agendamento set status = 'falta' where id = $1`, [ag1.id]);
 const { rows: [ocupFalta] } = await cli.query(
   `select * from ocupacao_recurso('equipamento', $1,
-     '2026-10-06T00:00:00-03:00', '2026-10-06T23:59:59-03:00')`,
+     '2037-10-06T00:00:00-03:00', '2037-10-06T23:59:59-03:00')`,
   [equipamentos[0].id],
 );
 checar(
@@ -291,7 +293,7 @@ checar("CA-08 · horario cancelado volta a ficar disponivel", reagendou);
 
 console.log("\n-- RF-43 / RF-23a / RF-48 · agendamento inteligente (0029) --");
 const { rows: [longo] } = await cli.query(
-  `select criar_agendamento($1, $2, '2026-10-08T09:00:00-03:00'::timestamptz, $3,
+  `select criar_agendamento($1, $2, '2037-10-08T09:00:00-03:00'::timestamptz, $3,
      '{}'::uuid[], '{}'::uuid[], p_duracao => 45) as id`,
   [paciente.id, proc.id, sala.id],
 );
@@ -301,12 +303,12 @@ const { rows: [dur] } = await cli.query(
 checar("RF-43 · duracao ajustada na hora de agendar", Number(dur.min) === 45, `veio ${dur.min}`);
 
 const { rows: [livres] } = await cli.query(
-  `select min(inicio) as primeiro from horarios_livres($1, '2026-10-08T09:00:00-03:00',
-     '2026-10-08T12:00:00-03:00', $2, p_duracao => 45)`,
+  `select min(inicio) as primeiro from horarios_livres($1, '2037-10-08T09:00:00-03:00',
+     '2037-10-08T12:00:00-03:00', $2, p_duracao => 45)`,
   [proc.id, sala.id],
 );
 checar("RF-48 · horario livre comeca depois do atendimento de 45 min",
-  new Date(livres.primeiro).toISOString() === "2026-10-08T12:45:00.000Z",
+  new Date(livres.primeiro).toISOString() === "2037-10-08T12:45:00.000Z",
   `veio ${livres.primeiro && new Date(livres.primeiro).toISOString()}`);
 
 const { rows: [prof] } = await cli.query(
@@ -320,7 +322,7 @@ let naoHabilitado = false;
 try {
   await cli.query("savepoint h1");
   await cli.query(
-    `select criar_agendamento($1, $2, '2026-10-08T14:00:00-03:00'::timestamptz, $3,
+    `select criar_agendamento($1, $2, '2037-10-08T14:00:00-03:00'::timestamptz, $3,
        '{}'::uuid[], array[$4]::uuid[])`,
     [paciente.id, proc.id, sala.id, prof.id],
   );
@@ -334,7 +336,7 @@ await cli.query(
   [prof.id, proc.id],
 );
 const { rows: [hab] } = await cli.query(
-  `select criar_agendamento($1, $2, '2026-10-08T14:00:00-03:00'::timestamptz, $3,
+  `select criar_agendamento($1, $2, '2037-10-08T14:00:00-03:00'::timestamptz, $3,
      '{}'::uuid[], array[$4]::uuid[]) as id`,
   [paciente.id, proc.id, sala.id, prof.id],
 );
@@ -358,7 +360,7 @@ const e3 = massa2.equipamentos[0];
 await preparar.end();
 
 const N = 8;
-const QUANDO2 = "2026-10-08T10:00:00-03:00";
+const QUANDO2 = "2037-10-08T10:00:00-03:00";
 
 const tentativas = await Promise.allSettled(
   Array.from({ length: N }, async () => {

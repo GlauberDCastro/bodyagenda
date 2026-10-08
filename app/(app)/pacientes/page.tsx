@@ -84,6 +84,14 @@ export default async function PacientesPage(props: {
               Importar planilha
             </Link>
           )}
+          {(perfil === "admin" || perfil === "gestao") && (
+            <Link
+              href="/pacientes/importar-vendas"
+              className="rounded-full border border-[var(--traco)] bg-[var(--superficie)] px-4 py-2.5 text-[13.5px] font-medium shadow-[var(--sombra-1)] hover:bg-[var(--superficie-2)]"
+            >
+              Importar vendas
+            </Link>
+          )}
           <FormularioPaciente />
         </div>
       </header>

@@ -555,3 +555,37 @@ export async function metasNoBanco(mes: string): Promise<string[]> {
     await db.end();
   }
 }
+
+/** Vendas que o E2E importa do relatório fictício (planos "E2E-…"). */
+export async function vendasImportadasDoE2E(): Promise<string[]> {
+  const db = await conectar();
+  try {
+    const { rows } = await db.query(
+      `select pr.nome || ' ' || coalesce(g.nome, '-') || ' ' || pc.valor_total::float
+              || ' ' || coalesce(l.status::text, 'sem-lancamento') as s
+         from pacote pc
+         join procedimento pr on pr.id = pc.procedimento_id
+         left join regiao g on g.id = pc.regiao_id
+         left join lancamento l on l.origem_tipo = 'pacote' and l.origem_id = pc.id
+        where pc.id_externo like 'plano:E2E-%'
+        order by pc.id_externo`,
+    );
+    return rows.map((r) => r.s);
+  } finally {
+    await db.end();
+  }
+}
+
+export async function apagarVendasImportadasDoE2E() {
+  const db = await conectar();
+  try {
+    await db.query(
+      `delete from lancamento where origem_tipo = 'pacote'
+          and origem_id in (select id from pacote where id_externo like 'plano:E2E-%')`,
+    );
+    await db.query(`delete from pacote where id_externo like 'plano:E2E-%'`);
+    await db.query(`delete from paciente where nome like 'Paciente Importado E2E%'`);
+  } finally {
+    await db.end();
+  }
+}

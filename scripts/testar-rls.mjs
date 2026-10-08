@@ -600,6 +600,35 @@ try {
     })).ok);
   await db.query(`delete from meta_venda where mes = $1`, [MES_RLS]);
   await db.query(`delete from meta_mes where mes = $1`, [MES_RLS]);
+
+  console.log("\n-- importar vendas (0048/0049) --");
+  const importar = (token) =>
+    api("rpc/importar_venda", {
+      token,
+      metodo: "POST",
+      corpo: {
+        p_id_externo: "plano:TESTE-RLS:servico:1", p_paciente: m.pacMeu.id, p_procedimento: m.proc.id,
+        p_regiao: null, p_sessoes: 1, p_valor: 10, p_data_venda: "2030-01-07", p_validade: null,
+        p_vendedor: null, p_forma: "pix", p_observacoes: null,
+      },
+    });
+  checar("recepcao NAO importa venda", !(await importar(t.recepcao)).ok);
+  checar("sdr NAO importa venda", !(await importar(sdr)).ok);
+  checar("recepcao NAO cria paciente pela importacao",
+    !(await api("rpc/paciente_da_importacao", { token: t.recepcao, metodo: "POST", corpo: { p_nome: "TESTE RLS Importado" } })).ok);
+  const primeira = await importar(t.gestao);
+  checar("gestao importa venda", primeira.ok && !!primeira.dados, JSON.stringify(primeira.dados));
+  const segunda = await importar(t.gestao);
+  checar("mesma venda importada de novo nao duplica", segunda.ok && segunda.dados === null);
+  const { rows: [lanc] } = await db.query(
+    `select count(*)::int n, min(status::text) s from lancamento where origem_tipo = 'pacote'
+        and origem_id in (select id from pacote where id_externo = 'plano:TESTE-RLS:servico:1')`);
+  checar("venda importada nasce paga, um lancamento", lanc.n === 1 && lanc.s === "pago");
+  const pacGestao = await api("rpc/paciente_da_importacao", { token: t.gestao, metodo: "POST", corpo: { p_nome: "  TESTE RLS PACIENTE   MEU " } });
+  checar("importacao reusa paciente com o mesmo nome", pacGestao.dados === m.pacMeu.id, JSON.stringify(pacGestao.dados));
+  await db.query(`delete from lancamento where origem_tipo = 'pacote'
+      and origem_id in (select id from pacote where id_externo like 'plano:TESTE-RLS%')`);
+  await db.query(`delete from pacote where id_externo like 'plano:TESTE-RLS%'`);
 } catch (e) {
   falharam++;
   console.log(`\n  ERRO  ${e.message}`);
