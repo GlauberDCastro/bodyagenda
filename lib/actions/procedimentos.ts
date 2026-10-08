@@ -13,6 +13,11 @@ const procedimentoSchema = z.object({
   buffer_min: z.coerce.number().int().min(0).default(0),
   sessoes_padrao: z.coerce.number().int().positive("Ao menos 1 sessão"),
   valor_sessao: z.coerce.number().nonnegative("Valor não pode ser negativo"),
+  // Preço na venda parcelada; vazio = o parcelado cobra o mesmo que à vista.
+  valor_parcelado: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.coerce.number().nonnegative("Valor não pode ser negativo").nullable(),
+  ),
   intervalo_min_dias: z.coerce.number().int().min(0).default(0),
 });
 
@@ -160,7 +165,7 @@ export async function duplicarProcedimento(id: string): Promise<Resultado & { id
       supabase
         .from("procedimento")
         .select(
-          "nome, descricao, duracao_min, buffer_min, sessoes_padrao, valor_sessao, intervalo_min_dias, valor_tabela",
+          "nome, descricao, duracao_min, buffer_min, sessoes_padrao, valor_sessao, intervalo_min_dias, valor_tabela, valor_parcelado",
         )
         .eq("id", id)
         .single(),
@@ -175,7 +180,7 @@ export async function duplicarProcedimento(id: string): Promise<Resultado & { id
       supabase
         .from("procedimento_regiao")
         .select(
-          "regiao_id, duracao_min, sessoes_padrao, valor_sessao, intervalo_min_dias, unidade, quantidade_padrao, observacoes, ativo, valor_tabela",
+          "regiao_id, duracao_min, sessoes_padrao, valor_sessao, intervalo_min_dias, unidade, quantidade_padrao, observacoes, ativo, valor_tabela, valor_parcelado",
         )
         .eq("procedimento_id", id),
       supabase.from("profissional_habilitacao").select("profissional_id").eq("procedimento_id", id),

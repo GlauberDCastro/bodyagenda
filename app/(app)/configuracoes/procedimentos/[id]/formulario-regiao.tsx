@@ -20,6 +20,7 @@ export interface Protocolo {
   duracao_min: number | null;
   sessoes_padrao: number | null;
   valor_sessao: number | null;
+  valor_parcelado: number | null;
   intervalo_min_dias: number | null;
   unidade: string;
   quantidade_padrao: number;
@@ -146,6 +147,15 @@ function CamposProtocolo({
               step="0.01"
               min="0"
               defaultValue={inicial?.valor_sessao ?? ""}
+            />
+          </Campo>
+          <Campo label="Valor parcelado por sessão" erro={estado.campos?.valor_parcelado}>
+            <Input
+              name="valor_parcelado"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={inicial?.valor_parcelado ?? ""}
             />
           </Campo>
           <Campo label="Carência (dias)" erro={estado.campos?.intervalo_min_dias}>

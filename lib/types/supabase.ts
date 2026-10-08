@@ -644,6 +644,7 @@ export type Database = {
           updated_at: string;
           valor_sessao: number;
           valor_tabela: number | null;
+          valor_parcelado: number | null;
         };
         Insert: {
           avaliacao?: boolean;
@@ -659,6 +660,7 @@ export type Database = {
           updated_at?: string;
           valor_sessao: number;
           valor_tabela?: number | null;
+          valor_parcelado?: number | null;
         };
         Update: {
           avaliacao?: boolean;
@@ -674,6 +676,7 @@ export type Database = {
           updated_at?: string;
           valor_sessao?: number;
           valor_tabela?: number | null;
+          valor_parcelado?: number | null;
         };
         Relationships: [];
       };
@@ -726,6 +729,7 @@ export type Database = {
           unidade: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao: number | null;
           valor_tabela: number | null;
+          valor_parcelado: number | null;
         };
         Insert: {
           ativo?: boolean;
@@ -740,6 +744,7 @@ export type Database = {
           unidade?: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao?: number | null;
           valor_tabela?: number | null;
+          valor_parcelado?: number | null;
         };
         Update: {
           ativo?: boolean;
@@ -754,6 +759,7 @@ export type Database = {
           unidade?: Database["public"]["Enums"]["unidade_medida"];
           valor_sessao?: number | null;
           valor_tabela?: number | null;
+          valor_parcelado?: number | null;
         };
         Relationships: [
           {

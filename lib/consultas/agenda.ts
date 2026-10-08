@@ -216,6 +216,16 @@ export async function profissionaisHabilitados(procedimentoId: string) {
     );
 }
 
+export interface RegiaoDoProcedimento {
+  procedimento_id: string;
+  regiao_id: string;
+  nome: string;
+  valor_sessao: number | null;
+  valor_parcelado: number | null;
+  duracao_min: number | null;
+  sessoes_padrao: number | null;
+}
+
 /**
  * Regras do catálogo que o formulário de agendamento aplica sozinho: quem é
  * habilitado em cada procedimento (RF-23a) e que aparelho ele exige (RF-44).
@@ -229,8 +239,9 @@ export async function regrasDoCatalogo(): Promise<{
     modelo: string | null;
     quantidade: number;
   }[];
-  /** Regiões de cada procedimento (Ultraformer: papada, pálpebras, terços…). */
-  regioes: { procedimento_id: string; regiao_id: string; nome: string }[];
+  /** Regiões de cada procedimento (Ultraformer: papada, pálpebras, terços…),
+   * com o que a região sobrescreve do procedimento (null = herda). */
+  regioes: RegiaoDoProcedimento[];
 }> {
   const supabase = await createServerSupabase();
   const [h, r, g] = await Promise.all([
@@ -240,17 +251,22 @@ export async function regrasDoCatalogo(): Promise<{
       .select("procedimento_id, recurso_tipo, recurso_id, modelo, quantidade"),
     supabase
       .from("procedimento_regiao")
-      .select("procedimento_id, regiao_id, regiao:regiao_id (nome, ordem)")
+      .select(
+        "procedimento_id, regiao_id, valor_sessao, valor_parcelado, duracao_min, sessoes_padrao, regiao:regiao_id (nome, ordem)",
+      )
       .eq("ativo", true),
   ]);
-  const regioes = ((g.data ?? []) as unknown as {
-    procedimento_id: string;
-    regiao_id: string;
+  const regioes = ((g.data ?? []) as unknown as (Omit<RegiaoDoProcedimento, "nome"> & {
     regiao: { nome: string; ordem: number } | null;
-  }[])
+  })[])
     .filter((x) => x.regiao)
     .sort((a, b) => a.regiao!.ordem - b.regiao!.ordem || a.regiao!.nome.localeCompare(b.regiao!.nome))
-    .map((x) => ({ procedimento_id: x.procedimento_id, regiao_id: x.regiao_id, nome: x.regiao!.nome }));
+    .map(({ regiao, ...x }) => ({
+      ...x,
+      valor_sessao: x.valor_sessao === null ? null : Number(x.valor_sessao),
+      valor_parcelado: x.valor_parcelado === null ? null : Number(x.valor_parcelado),
+      nome: regiao!.nome,
+    }));
   return { habilitacoes: h.data ?? [], requisitos: r.data ?? [], regioes };
 }
 

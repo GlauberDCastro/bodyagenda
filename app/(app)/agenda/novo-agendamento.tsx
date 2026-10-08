@@ -1,5 +1,8 @@
 "use client";
 
+import type { RegiaoDoProcedimento } from "@/lib/consultas/agenda";
+import { precoEfetivo } from "@/lib/domain/preco";
+
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Formulario, useEnvioFormulario } from "@/components/ui/formulario";
 import {
@@ -60,7 +63,7 @@ interface Recursos {
       modelo: string | null;
       quantidade: number;
     }[];
-    regioes?: { procedimento_id: string; regiao_id: string; nome: string }[];
+    regioes?: RegiaoDoProcedimento[];
   };
 }
 
@@ -131,6 +134,7 @@ function FormularioAgendamento({
   const [pacotes, setPacotes] = useState<PacoteOpcao[]>([]);
   const [pacoteId, setPacoteId] = useState(preset.pacote_id ?? "");
   const [procId, setProcId] = useState(preset.procedimento_id ?? "");
+  const [regiaoId, setRegiaoId] = useState("");
 
   // Recursos controlados: o formulário aplica as regras do catálogo sozinho.
   const [salaSel, setSalaSel] = useState(preset.sala_id ?? "");
@@ -148,6 +152,13 @@ function FormularioAgendamento({
 
   const procedimento = procedimentos.find((p) => p.id === procId);
   const regioesDoProcedimento = (regras.regioes ?? []).filter((r) => r.procedimento_id === procId);
+  // A região pode ter duração e preço próprios (Ultraformer: terço 40 min, pálpebra 20).
+  const tabela = procedimento
+    ? precoEfetivo(
+        { ...procedimento, valor_sessao: Number(procedimento.valor_sessao) },
+        regioesDoProcedimento.find((r) => r.regiao_id === regiaoId),
+      )
+    : null;
   const salaDedicadaDe = (id: string) =>
     salas.find((s) => s.tipo_alocacao === "dedicada" && s.procedimento_fixo_id === id);
   const salaDedicada = salaDedicadaDe(procId);
@@ -173,6 +184,7 @@ function FormularioAgendamento({
   /** RF-44 / RF-20b · ao escolher o procedimento, marca os aparelhos que ele exige. */
   function escolherProcedimento(id: string) {
     setProcId(id);
+    setRegiaoId("");
     setDuracao("");
     setLivres(null);
     const salaBase = salaDedicadaDe(id)?.id ?? salaSel;
@@ -214,7 +226,7 @@ function FormularioAgendamento({
         salaId: salaEfetiva,
         equipamentos: equipSel,
         profissionais: profSel,
-        duracaoMin: duracao ? Number(duracao) : null,
+        duracaoMin: duracao ? Number(duracao) : (tabela?.duracao_min ?? null),
       }),
     );
     setBuscandoLivres(false);
@@ -391,7 +403,7 @@ function FormularioAgendamento({
             min={5}
             step={5}
             value={duracao}
-            placeholder={procedimento ? String(procedimento.duracao_min) : ""}
+            placeholder={tabela ? String(tabela.duracao_min) : ""}
             onChange={(e) => setDuracao(e.target.value)}
           />
         </Campo>
@@ -400,7 +412,14 @@ function FormularioAgendamento({
       {/* Região vendida: o Ultraformer de papada e o de pálpebras contam em metas diferentes. */}
       {!editando && regioesDoProcedimento.length > 0 && (
         <Campo label="Região" dica="Escolha a região vendida: é ela que conta nas metas por região.">
-          <Select name="regiao_id" defaultValue="">
+          <Select
+            name="regiao_id"
+            value={regiaoId}
+            onChange={(e) => {
+              setRegiaoId(e.target.value);
+              setLivres(null);
+            }}
+          >
             <option value="">Não informar</option>
             {regioesDoProcedimento.map((r) => (
               <option key={r.regiao_id} value={r.regiao_id}>
@@ -435,19 +454,19 @@ function FormularioAgendamento({
           dica={
             procedimento?.avaliacao
               ? "Avaliação inicial: sem cobrança."
-              : procedimento
-                ? `Tabela: ${brl.format(Number(procedimento.valor_sessao))}`
+              : tabela
+                ? `Tabela: ${brl.format(tabela.avista)} à vista · ${brl.format(tabela.parcelado)} parcelado`
                 : undefined
           }
         >
           <Input
+            // Troca de procedimento ou região refaz o valor pela tabela.
+            key={`${procId}:${regiaoId}`}
             name="valor_avulso"
             type="number"
             step="0.01"
             min="0"
-            defaultValue={
-              preset.valor_avulso ?? (procedimento ? Number(procedimento.valor_sessao) : "")
-            }
+            defaultValue={preset.valor_avulso ?? tabela?.avista ?? ""}
           />
         </Campo>
       )}

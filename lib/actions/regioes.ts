@@ -20,6 +20,7 @@ const protocoloSchema = z.object({
   duracao_min: vazioParaNulo(z.coerce.number().int().positive()),
   sessoes_padrao: vazioParaNulo(z.coerce.number().int().positive()),
   valor_sessao: vazioParaNulo(z.coerce.number().nonnegative()),
+  valor_parcelado: vazioParaNulo(z.coerce.number().nonnegative()),
   intervalo_min_dias: vazioParaNulo(z.coerce.number().int().min(0)),
   unidade: z.enum(["sessao", "ui", "ml", "seringa", "flash", "aplicacao"]),
   quantidade_padrao: z.coerce.number().positive("Quantidade deve ser maior que zero"),

@@ -119,7 +119,7 @@ export async function criarMassa(): Promise<Massa> {
     const {
       rows: [proc],
     } = await db.query(
-      `insert into procedimento (nome, duracao_min, valor_sessao) values ($1, 30, 300) returning id`,
+      `insert into procedimento (nome, duracao_min, valor_sessao, valor_parcelado) values ($1, 30, 300, 400) returning id`,
       [procedimento],
     );
     const profissionais: { id: string; nome: string }[] = [];

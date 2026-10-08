@@ -1,3 +1,4 @@
+import { precoEfetivo } from "@/lib/domain/preco";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -109,6 +110,8 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
           {proc.duracao_min} min
           {proc.buffer_min > 0 && ` + ${proc.buffer_min} de preparo`} · {proc.sessoes_padrao}{" "}
           sessão(ões) · {brlExato.format(Number(proc.valor_sessao))} por sessão
+          {proc.valor_parcelado !== null &&
+            ` · ${brlExato.format(Number(proc.valor_parcelado))} parcelado`}
         </p>
       </header>
 
@@ -214,6 +217,10 @@ export default async function ProcedimentoPage(props: { params: Promise<{ id: st
                           ) : (
                             <Herdado>{brlExato.format(Number(proc.valor_sessao))}</Herdado>
                           )}
+                          <span className="block text-[11.5px] text-[var(--tinta-3)]">
+                            parcelado{" "}
+                            {brlExato.format(precoEfetivo(proc, pr).parcelado)}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           {pr.unidade === "sessao" ? (

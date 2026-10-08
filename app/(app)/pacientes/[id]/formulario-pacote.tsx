@@ -8,6 +8,8 @@ import { Campo, Input, Select, Botao } from "@/components/ui/primitivos";
 import { GatilhoModal, AcoesModal } from "@/components/ui/modal";
 import type { Procedimento } from "@/lib/types/database";
 import { FORMAS_PAGAMENTO } from "@/lib/schemas/pacientes";
+import type { RegiaoDoProcedimento } from "@/lib/consultas/agenda";
+import { precoEfetivo, valorDaTabela } from "@/lib/domain/preco";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -30,7 +32,7 @@ export function FormularioPacote({
   pacienteId: string;
   procedimentos: Procedimento[];
   /** Regiões de cada procedimento (do catálogo). */
-  regioes?: { procedimento_id: string; regiao_id: string; nome: string }[];
+  regioes?: RegiaoDoProcedimento[];
   variante?: "primario" | "secundario";
   /** Já abre a venda: vindo do "Vender pacote" do atendimento. */
   abertoInicial?: boolean;
@@ -38,8 +40,10 @@ export function FormularioPacote({
   const [aberto, setAberto] = useState(abertoInicial);
   const [procId, setProcId] = useState("");
   const regioesDoProcedimento = regioes.filter((r) => r.procedimento_id === procId);
+  const [regiaoId, setRegiaoId] = useState("");
   const [sessoes, setSessoes] = useState(1);
-  const [valor, setValor] = useState(0);
+  /** null = segue a tabela; número = quem vende digitou outro valor. */
+  const [valorManual, setValorManual] = useState<number | null>(null);
   const [desconto, setDesconto] = useState(0);
   const [parcelas, setParcelas] = useState(1);
 
@@ -50,15 +54,31 @@ export function FormularioPacote({
   }, {});
 
 
-  /** Preenche a partir do catálogo, mas o valor continua editável: pacote
+  const procedimento = procedimentos.find((x) => x.id === procId);
+  const tabela = procedimento
+    ? precoEfetivo(
+        { ...procedimento, valor_sessao: Number(procedimento.valor_sessao) },
+        regioes.find((r) => r.procedimento_id === procId && r.regiao_id === regiaoId),
+      )
+    : null;
+  /** Pela tabela (à vista ou parcelado, da região), mas editável: pacote
    * vendido congela o preço (RN-09), então promoção não altera a tabela. */
+  const valor = valorManual ?? (tabela ? valorDaTabela(tabela, sessoes, parcelas) : 0);
+
   function aoEscolherProcedimento(id: string) {
     setProcId(id);
+    setRegiaoId("");
+    setValorManual(null);
     const p = procedimentos.find((x) => x.id === id);
-    if (p) {
-      setSessoes(p.sessoes_padrao);
-      setValor(Number(p.valor_sessao) * p.sessoes_padrao);
-    }
+    if (p) setSessoes(p.sessoes_padrao);
+  }
+
+  function aoEscolherRegiao(id: string) {
+    setRegiaoId(id);
+    setValorManual(null);
+    if (!procedimento) return;
+    const r = regioes.find((x) => x.procedimento_id === procId && x.regiao_id === id);
+    setSessoes(precoEfetivo({ ...procedimento, valor_sessao: Number(procedimento.valor_sessao) }, r).sessoes_padrao);
   }
 
   const liquido = Math.max(0, valor - desconto);
@@ -100,7 +120,7 @@ export function FormularioPacote({
 
       {regioesDoProcedimento.length > 0 && (
         <Campo label="Região" dica="O saldo do pacote e as metas por região contam por ela.">
-          <Select name="regiao_id" defaultValue="">
+          <Select name="regiao_id" value={regiaoId} onChange={(e) => aoEscolherRegiao(e.target.value)}>
             <option value="">Não informar</option>
             {regioesDoProcedimento.map((r) => (
               <option key={r.regiao_id} value={r.regiao_id}>
@@ -129,7 +149,7 @@ export function FormularioPacote({
             step="0.01"
             min="0"
             value={valor}
-            onChange={(e) => setValor(Number(e.target.value))}
+            onChange={(e) => setValorManual(Number(e.target.value))}
             required
           />
         </Campo>
@@ -144,6 +164,24 @@ export function FormularioPacote({
           />
         </Campo>
       </div>
+
+      {tabela && (
+        <p className="-mt-2 text-[12.5px] text-[var(--tinta-2)]">
+          Tabela por sessão: {brl.format(tabela.avista)} à vista · {brl.format(tabela.parcelado)}{" "}
+          parcelado.{" "}
+          {valorManual === null ? (
+            parcelas > 1 ? "Valor pelo preço parcelado." : "Valor pelo preço à vista."
+          ) : (
+            <button
+              type="button"
+              onClick={() => setValorManual(null)}
+              className="font-medium text-[var(--tinta-1)] underline underline-offset-2"
+            >
+              Voltar ao valor da tabela
+            </button>
+          )}
+        </p>
+      )}
 
       <div className="rounded-lg bg-[var(--superficie-2)] p-3 text-sm ">
         <div className="flex justify-between">

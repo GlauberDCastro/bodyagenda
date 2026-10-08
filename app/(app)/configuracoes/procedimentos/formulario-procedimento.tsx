@@ -116,6 +116,26 @@ export function FormularioProcedimento({
       </div>
 
       <Campo
+        label="Valor parcelado POR SESSÃO"
+        erro={estado.campos?.valor_parcelado}
+        dica={
+          valor > 0
+            ? `Usado na venda em 2 ou mais parcelas. Pela regra das vendas de outubro (à vista ÷ 0,85): ${(
+                Math.ceil((valor / 0.85) * 100) / 100
+              ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Vazio = mesmo valor à vista.`
+            : "Usado na venda em 2 ou mais parcelas. Vazio = mesmo valor à vista."
+        }
+      >
+        <Input
+          name="valor_parcelado"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={inicial?.valor_parcelado ?? ""}
+        />
+      </Campo>
+
+      <Campo
         label="Carência entre sessões (dias)"
         erro={estado.campos?.intervalo_min_dias}
         dica="A agenda avisa se for desrespeitada, mas não bloqueia."

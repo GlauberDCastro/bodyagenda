@@ -342,8 +342,15 @@ test.describe.serial("fluxos críticos", () => {
     const venda = page.getByRole("dialog");
     await venda.locator('select[name="procedimento_id"]').selectOption(m.procedimentoId);
     await venda.locator('input[name="quantidade_sessoes"]').fill("3");
-    await venda.locator('input[name="valor_total"]').fill("900");
+    // Pela tabela: em 2 ou mais parcelas vale o parcelado (R$ 400 por sessão).
+    // O à vista muda no teste de configurações, então só se compara o parcelado.
+    await expect(venda.locator('input[name="valor_total"]')).not.toHaveValue("1200");
     await venda.locator('input[name="parcelas"]').fill("3");
+    await expect(venda.locator('input[name="valor_total"]')).toHaveValue("1200");
+    await expect(venda).toContainText("Valor pelo preço parcelado.");
+    // Quem vende pode dar outro valor (aqui, o à vista mesmo parcelando).
+    await venda.locator('input[name="valor_total"]').fill("900");
+    await expect(venda.getByRole("button", { name: "Voltar ao valor da tabela" })).toBeVisible();
     await expect(venda).toContainText("3× de R$");
     await venda.getByRole("button", { name: "Vender pacote" }).click();
     await expect(venda).toBeHidden();
